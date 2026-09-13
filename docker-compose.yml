@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  # The Auto Deployer service
+  oops:
+    build: .
+    container_name: oops
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+
