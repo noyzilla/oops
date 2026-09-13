@@ -1,5 +1,8 @@
 # Oops
 
+![Oops Logo](logo.jpg)
+> *Because "Oops, sorry!" is the most common phrase when DevOps breaks production.*
+
 Oops is a lightweight service written in Go (Golang) designed to handle webhooks from CI/CD systems (e.g., GitHub Actions, GitLab CI). It automates the process of pulling the latest Docker images, performing graceful shutdowns, recreating containers, and pruning old images, all based on Docker Labels defined on the target containers.
 
 ## Features
