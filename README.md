@@ -72,7 +72,7 @@ To allow the Oops to manage a specific container, the following labels must be a
 | `oops.tool.image` | No | **(Optional)** Image to run as a tool container after git pull. |
 | `oops.tool.cmd` | No | **(Optional)** Command to run inside the tool container. |
 
-### Example Target `docker-compose.yml` (Image Mode):
+### Example Target `docker-compose.yml`:
 ```yaml
 services:
   app_image_node:
