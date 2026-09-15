@@ -77,9 +77,32 @@ func TestHandleUpdate_Unauthorized(t *testing.T) {
 	// ... skipped ...
 }
 
+func TestHandleUpdate_GitMissingURL(t *testing.T) {
+	// Create a POST request with valid JSON but missing 'url' for action 'git'
+	body := []byte(`{"action": "git", "tag": "v1.0.0"}`)
+	req, err := http.NewRequest(http.MethodPost, "/update", bytes.NewBuffer(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(HandleUpdate)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusBadRequest)
+	}
+
+	expectedBody := "Missing 'url' field. Git deployments require a repository URL.\n"
+	if rr.Body.String() != expectedBody {
+		t.Errorf("handler returned unexpected body: got %v want %v", rr.Body.String(), expectedBody)
+	}
+}
+
 func TestHandleUpdate_GitMissingTag(t *testing.T) {
 	// Create a POST request with valid JSON but missing 'tag' for action 'git'
-	body := []byte(`{"action": "git"}`)
+	body := []byte(`{"action": "git", "url": "https://github.com/noyzilla/lab-web.git"}`)
 	req, err := http.NewRequest(http.MethodPost, "/update", bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatal(err)
@@ -99,3 +122,4 @@ func TestHandleUpdate_GitMissingTag(t *testing.T) {
 		t.Errorf("handler returned unexpected body: got %v want %v", rr.Body.String(), expectedBody)
 	}
 }
+

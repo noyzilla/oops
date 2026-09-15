@@ -18,49 +18,47 @@ Oops is a lightweight service written in Go (Golang) designed to handle webhooks
 
 ## Installation & Setup
 
-You can install the Oops using the official Image or by building it from source.
+You can run Oops using the official Docker image or by building it from source.
 
-### Method 1: Using an Image (Recommended)
+### Docker Image (Recommended)
 
-1. Create a `docker-compose.yml` for the Oops on your server:
-   ```yaml
-   services:
-     oops:
-       image: ghcr.io/noyzilla/oops:latest
-       container_name: oops
-       restart: unless-stopped
-       volumes:
-         # Must mount docker.sock to allow the oops to manage other containers
-         - /var/run/docker.sock:/var/run/docker.sock
-       ports:
-         - "8080:80"
-   ```
-2. Start the service:
-   ```bash
-   docker compose up -d
-   ```
+Create a `docker-compose.yml` for Oops:
+```yaml
+services:
+  oops:
+    image: ghcr.io/noyzilla/oops:latest
+    container_name: oops
+    restart: unless-stopped
+    volumes:
+      # Must mount docker.sock to allow oops to manage other containers
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8080:80"
+```
 
-### Method 2: Building from Source
+Start the service:
+```bash
+docker compose up -d
+```
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/noyzilla/oops.git
-   cd oops
-   ```
-2. Start the service and build the image locally:
-   ```bash
-   docker compose up -d --build
-   ```
+### Build from Source
 
-> The Oops will listen for webhooks on port `8080`.
+Clone the repository and start:
+```bash
+git clone https://github.com/noyzilla/oops.git
+cd oops
+docker compose up -d --build
+```
+
+> Oops will listen for webhooks on port `8080` (or the port configured via `PORT` environment variable).
 
 ---
 
 ## Target Container Configuration
 
-For security reasons, the Oops relies exclusively on **Docker Labels** instead of Environment Variables. This prevents sensitive infrastructure secrets from being exposed inside the container's application space (preventing leaks in case of a Remote Code Execution vulnerability in the app).
+For security reasons, Oops relies exclusively on **Docker Labels** instead of Environment Variables. This prevents sensitive infrastructure secrets from being exposed inside the container's application space (preventing leaks in case of a Remote Code Execution vulnerability in the app).
 
-To allow the Oops to manage a specific container, the following labels must be added to the target project's `docker-compose.yml`:
+To allow Oops to manage a specific container, add the following labels to the target project's `docker-compose.yml`:
 
 | Label | Required | Description |
 | --- | --- | --- |
@@ -69,6 +67,7 @@ To allow the Oops to manage a specific container, the following labels must be a
 | `oops.stop.cmd` | No | **(Optional)** Command to execute inside the container **before** it is stopped (useful for graceful shutdowns). |
 | `oops.stop.timeout` | No | **(Optional)** Maximum time (in seconds) to wait for the stop command to complete. Default is `60` seconds. |
 | `oops.git.dir` | **Yes (Git Mode)** | The absolute path inside the container where the source code is mounted (e.g. `/app`). |
+| `oops.git.url` | **Yes (Git Mode)** | The Git repository URL of the project. Validated against the webhook `url` to prevent accidental deployments to the wrong container, and used to auto-clone if `.git` does not exist. |
 | `oops.tool.image` | No | **(Optional)** Image to run as a tool container after git pull. |
 | `oops.tool.cmd` | No | **(Optional)** Command to run inside the tool container. |
 
@@ -92,6 +91,7 @@ services:
     labels:
       - "oops.enable=true"
       - "oops.secret=my-secret"
+      - "oops.git.url=https://github.com/myorg/my-php-app.git"
       - "oops.git.dir=/app/public"
       - "oops.tool.image=composer:latest"
       - "oops.tool.cmd=composer install --no-dev"
@@ -105,6 +105,7 @@ services:
     labels:
       - "oops.enable=true"
       - "oops.secret=my-bun-secret"
+      - "oops.git.url=https://github.com/myorg/my-bun-app.git"
       - "oops.git.dir=/app"
       - "oops.tool.image=oven/bun:alpine"
       - "oops.tool.cmd=bun install"
@@ -116,17 +117,17 @@ services:
 
 The service listens for HTTP `POST` requests at the `/update` endpoint. You must provide the authentication token in the headers and the target configuration in a JSON payload.
 
-### 1. Header (Authentication)
+### Authentication Header
 The `Authorization` header is required.
 ```http
 Authorization: Bearer <SECRET_TOKEN>
 ```
 
-### 2. JSON Payload
+### JSON Payload
 
 You can trigger different deployment modes by specifying the `action` field (`image` or `git`).
 
-#### A. Image Deployment Mode (Default)
+#### Image Deployment Mode (Default)
 The `image` field is **mandatory** for this mode.
 
 - **Update all containers using a specific image**
@@ -146,7 +147,7 @@ The `image` field is **mandatory** for this mode.
   }
   ```
 
-#### B. Git Pull Deployment Mode
+#### Git Pull Deployment Mode
 Uses a temporary container to execute `git fetch` and `git checkout` to a specific tag in your mounted volume, then restarts the target container.
 
 > [!WARNING]
@@ -156,12 +157,13 @@ Uses a temporary container to execute `git fetch` and `git checkout` to a specif
   ```json
   {
     "action": "git",
+    "url": "https://github.com/myorg/my-bun-app.git",
     "tag": "v1.2.3",
     "container": "^web_git_bun$"
   }
   ```
 
-### Example cURL Request:
+### Example cURL Request
 ```bash
 curl -X POST \
   -H "Authorization: Bearer super-secret-key-for-this-app" \
@@ -176,5 +178,13 @@ curl -X POST \
 
 - `action`: (Required) Either `"image"` or `"git"`. Defaults to `"image"`.
 - `image`: (Required for `image` action) The full image name and tag to deploy.
+- `url`: (Required for `git` action) The Git repository URL. Only containers with a matching `oops.git.url` label will be targeted.
 - `tag`: (Required for `git` action) The specific Git tag to checkout (e.g., `v1.2.3`).
-- `container`: (Optional) Regular expression matching the container names to update. If omitted, it will attempt to update ALL authorized containers matching the given `image`.
+- `container`: (Optional) Regular expression matching the container names to update. If omitted, it will attempt to update ALL authorized containers matching the given `image` or `url`.
+
+---
+
+## Contributing
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for local development setup, testing, Conventional Commits guidelines, and release procedures with `svu`.
+

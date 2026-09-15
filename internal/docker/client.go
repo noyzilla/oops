@@ -16,8 +16,16 @@ import (
 	"github.com/docker/docker/client"
 )
 
+// NormalizeGitURL normalizes a Git repository URL for reliable comparison
+func NormalizeGitURL(raw string) string {
+	u := strings.TrimSpace(raw)
+	u = strings.TrimSuffix(u, "/")
+	u = strings.TrimSuffix(u, ".git")
+	return u
+}
+
 // ValidateAndFindTargets finds matching target containers and validates the provided secret token
-func ValidateAndFindTargets(ctx context.Context, action, imageURL, containerRegex, token string) ([]string, error) {
+func ValidateAndFindTargets(ctx context.Context, action, imageURL, gitURL, containerRegex, token string) ([]string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %v", err)
@@ -61,6 +69,13 @@ func ValidateAndFindTargets(ctx context.Context, action, imageURL, containerRege
 
 		if action == "image" {
 			if !(c.Image == imageURL || strings.Contains(c.Image, imageURL)) {
+				continue
+			}
+		}
+
+		if action == "git" {
+			containerGitURL, exists := inspect.Config.Labels["oops.git.url"]
+			if !exists || NormalizeGitURL(containerGitURL) != NormalizeGitURL(gitURL) {
 				continue
 			}
 		}
@@ -268,8 +283,24 @@ func ExecuteGitPull(ctx context.Context, targetIDs []string, tag string) error {
 
 		var gitCmd string
 		cleanTag := strings.TrimPrefix(tag, "tags/")
-		log.Printf("[%s] Executing Git Checkout in directory %s (Tag: %s)...", name, gitDir, cleanTag)
-		gitCmd = fmt.Sprintf("git config --global --add safe.directory %s && cd %s && git fetch --all --tags && git checkout -f tags/%s", gitDir, gitDir, cleanTag)
+		gitURL := inspect.Config.Labels["oops.git.url"]
+
+		if gitURL != "" {
+			log.Printf("[%s] Executing Git Checkout in directory %s (URL: %s, Tag: %s)...", name, gitDir, gitURL, cleanTag)
+			gitCmd = fmt.Sprintf(
+				"git config --global --add safe.directory %s && "+
+					"if [ ! -d \"%s/.git\" ]; then "+
+					"  git clone \"%s\" \"%s\"; "+
+					"else "+
+					"  cd \"%s\" && (git remote set-url origin \"%s\" 2>/dev/null || git remote add origin \"%s\"); "+
+					"fi && "+
+					"cd \"%s\" && git fetch --all --tags && git checkout -f tags/%s",
+				gitDir, gitDir, gitURL, gitDir, gitDir, gitURL, gitURL, gitDir, cleanTag,
+			)
+		} else {
+			log.Printf("[%s] Executing Git Checkout in directory %s (Tag: %s)...", name, gitDir, cleanTag)
+			gitCmd = fmt.Sprintf("git config --global --add safe.directory %s && cd %s && git fetch --all --tags && git checkout -f tags/%s", gitDir, gitDir, cleanTag)
+		}
 
 		created, err := cli.ContainerCreate(
 			ctx,
