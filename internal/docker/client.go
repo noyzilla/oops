@@ -294,12 +294,12 @@ func ExecuteGitPull(ctx context.Context, targetIDs []string, tag string) error {
 					"else "+
 					"  cd \"%s\" && (git remote set-url origin \"%s\" 2>/dev/null || git remote add origin \"%s\"); "+
 					"fi && "+
-					"cd \"%s\" && git fetch --all --tags && git checkout -f tags/%s",
+					"cd \"%s\" && git fetch --all --tags --force && git checkout -f tags/%s",
 				gitDir, gitDir, gitURL, gitDir, gitDir, gitURL, gitURL, gitDir, cleanTag,
 			)
 		} else {
 			log.Printf("[%s] Executing Git Checkout in directory %s (Tag: %s)...", name, gitDir, cleanTag)
-			gitCmd = fmt.Sprintf("git config --global --add safe.directory %s && cd %s && git fetch --all --tags && git checkout -f tags/%s", gitDir, gitDir, cleanTag)
+			gitCmd = fmt.Sprintf("git config --global --add safe.directory %s && cd %s && git fetch --all --tags --force && git checkout -f tags/%s", gitDir, gitDir, cleanTag)
 		}
 
 		created, err := cli.ContainerCreate(
