@@ -305,8 +305,9 @@ func ExecuteGitPull(ctx context.Context, targetIDs []string, tag string) error {
 		created, err := cli.ContainerCreate(
 			ctx,
 			&container.Config{
-				Image: "alpine/git",
-				Cmd:   []string{"sh", "-c", gitCmd},
+				Image:      "alpine/git",
+				Entrypoint: []string{"sh", "-c"},
+				Cmd:        []string{gitCmd},
 			},
 			&container.HostConfig{
 				VolumesFrom: []string{id},
@@ -361,7 +362,8 @@ func ExecuteGitPull(ctx context.Context, targetIDs []string, tag string) error {
 				ctx,
 				&container.Config{
 					Image:      toolImage,
-					Cmd:        []string{"sh", "-c", toolCmd},
+					Entrypoint: []string{"sh", "-c"},
+					Cmd:        []string{toolCmd},
 					WorkingDir: gitDir,
 				},
 				&container.HostConfig{
