@@ -1,6 +1,39 @@
-# Contributing & Development Guide
+# Contributing Guidelines
 
-Thank you for contributing to **Oops**! This document outlines the development workflow, testing standards, commit conventions, and release procedures.
+Thank you for contributing to this project. All contributors (human engineers and AI coding assistants) operate under the same engineering standards to ensure high architectural integrity.
+
+## AI Usage Policy & Contributor Accountability
+
+Contributions prepared with the assistance of generative AI tools are welcomed, under the following conditions:
+
+- **Full Contributor Accountability**: The submitter is 100% responsible for every line of code, test, and documentation in the pull request.
+- **No Incomplete AI Slop**: Pull requests containing incomplete implementations, speculative changes, unverified code, or starter scaffolding expecting others to finish will be closed immediately.
+- **Focused Scope**: Submit single, focused changes linked to an approved issue or task. Do not include unrelated reformatting or stylistic churn.
+- **Verification Mandatory**: All contributions must include test coverage and pass all automated verification checks before submission.
+
+## Engineering Standards
+
+This repository enforces unified engineering conventions:
+
+- For commit formats and SemVer rules, see [.agents/rules/jarn-standards.md](.agents/rules/jarn-standards.md#commit-conventions).
+- For documentation and commenting rules, see [.agents/rules/jarn-standards.md](.agents/rules/jarn-standards.md#documentation--commenting-rules).
+- For ecosystem lifecycle guidelines, see [.agents/rules/jarn-standards.md](.agents/rules/jarn-standards.md#ecosystem-native-lifecycle-contract).
+
+## Pull Request Workflow [ขั้นตอนการส่งงาน Pull Request]
+
+### Branch Isolation & Lifecycle
+All work must be conducted within isolated branches branched from `main`. Direct commits or pushes to `main` are strictly forbidden (Step 0 Invariant). See [.agents/rules/jarn-safety.md](.agents/rules/jarn-safety.md).
+
+### Incremental Micro-Commits
+See [.agents/rules/jarn-standards.md](.agents/rules/jarn-standards.md#commit-frequency--granularity-micro-commit-strategy).
+
+### Pre-Submission Verification
+Before opening a pull request, run the active verification commands configured for this project in [AGENTS.md](AGENTS.md#project-execution-commands).
+
+### Pre-Merge Quality Checklist
+Verify that your pull request satisfies all quality gates defined in the pre-merge checklist:
+- Universal Pre-Merge Quality Gates: [.agents/rules/jarn-review.md](.agents/rules/jarn-review.md)
+- Project Pre-Merge Checklist: [REVIEW.md](REVIEW.md)
 
 ---
 
@@ -23,48 +56,13 @@ go build -o oops .
 
 ---
 
-## Commit Conventions
+## Automated AI Release Process [ขั้นตอนการ Release โดย AI]
 
-This project strictly follows the [Conventional Commits](https://www.conventionalcommits.org/) specification coupled with [Semantic Versioning (SemVer)](https://semver.org/).
+Releases are fully automated by AI agents to ensure meticulous changelog generation and correct semantic versioning. 
 
-### Format
-```text
-<type>(<scope>): <subject>
-```
+Instead of manually calculating the next version and drafting changelogs, simply instruct the AI agent to trigger a release (e.g., `"ทำการ Release เวอร์ชั่นใหม่"` or `/goal Run jarn-release`).
 
-### Commit Types & SemVer Impact
-
-| Prefix | Description | SemVer Bump | Example |
-| :--- | :--- | :---: | :--- |
-| **`feat:`** | Introduces a new feature | **MINOR** (`v0.1.0` -> `v0.2.0`) | `feat: add oops.git.url matching` |
-| **`fix:`** | Fixes a bug | **PATCH** (`v0.1.0` -> `v0.1.1`) | `fix: handle missing secret label` |
-| **`feat!:`** or `BREAKING CHANGE:` | Introduces breaking changes | **MAJOR** (`v0.1.0` -> `v1.0.0`) | `feat!: enforce url field in git mode` |
-| **`docs:`** | Documentation changes only | None / Patch | `docs: update deployment examples` |
-| **`refactor:`** | Code refactoring without feature/fix | None / Patch | `refactor: simplify target validation` |
-| **`test:`** | Adding or updating tests | None | `test: add git url normalization test` |
-| **`chore:`** | Maintenance tasks or tooling updates | None | `chore: clean build scripts` |
-
----
-
-## Releasing & Tagging with `svu`
-
-We use [svu (Semantic Version Util)](https://github.com/caarlos0/svu) — a pure Go tool that analyzes Conventional Commits since the last Git tag to calculate the next SemVer version.
-
-### Installation
-```bash
-go install github.com/caarlos0/svu@latest
-# or via Homebrew:
-# brew install caarlos0/tap/svu
-```
-
-### Tagging and Releasing
-```bash
-# Check current tag
-svu current
-
-# Preview the next calculated version
-svu next
-
-# Create and push the new Git tag
-git tag $(svu next) && git push origin $(svu next)
-```
+The agent will activate the `jarn-release` skill, which will:
+- Analyze all Conventional Commits since the last tag to calculate the next SemVer (Major/Minor/Patch).
+- Generate a highly detailed `CHANGELOG.md` entry with context.
+- Commit the changelog and push the new Git tag automatically.

@@ -188,3 +188,11 @@ curl -X POST \
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for local development setup, testing, Conventional Commits guidelines, and release procedures with `svu`.
 
+---
+
+## Architecture & Domain Context
+
+- [System Architecture](ARCHITECTURE.md)
+- [Domain Glossary & Ubiquitous Language](CONTEXT.md)
+- [System Documentation & Deep-Dives](docs/README.md)
+
