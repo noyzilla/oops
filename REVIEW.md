@@ -22,5 +22,4 @@ Please review and check all items defined in the Universal Quality Gates: [.agen
 
 Add custom review gates, domain compliance checks, performance budgets, or security audits specific to this project below:
 
-- [ ] **UI Visual Proof (When Applicable)**: For user-visible UI changes, before and after screenshots or recordings are attached in the PR description, complying with tokens in `DESIGN.md`.
 - [ ] **Domain Invariants**: Business constraints and state transitions match the subsystem specification in `docs/specs/`.

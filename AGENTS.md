@@ -39,8 +39,6 @@ When modifying specific layers or subsystems, update the designated locations an
 | **Domain Logic & Services** | `src/domain/`, `src/services/`, `docs/specs/` | Run unit tests for affected package |
 | **API & Routing Layer** | `src/api/`, `src/controllers/`, `routes/`, `docs/specs/` | Run API / integration tests and linter |
 | **Data Schema & Migrations** | `migrations/`, `db/`, `models/`, `docs/specs/` | Run migration scripts and database test suite |
-| **Frontend Components** | `src/components/`, `src/views/` | Run UI component tests and visual checks |
-| **Design System & Styling** | `DESIGN.md`, `docs/design/` | `git diff --check` and visual token verification |
 | **Living Specifications** | `docs/specs/` | `git diff --check` and verify spec contract alignment |
 | **Architectural Decisions (ADR)** | `docs/decisions/` | `git diff --check` and verify filename status lifecycle |
 | **Development & Runbooks** | `docs/development/` | `git diff --check` and test script execution |
