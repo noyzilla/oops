@@ -1,5 +1,9 @@
 # Agent Operational Guide [คู่มือการปฏิบัติงานสำหรับเอไอ]
 
+> **ALWAYS ON DIRECTIVE: MUST READ CORE RULES**
+>
+> You are operating under the Jarn Governance Framework. These rules are **Always ON** and non-negotiable.
+> **You MUST read** the core rule files before executing any task. Do not assume you already know them.
 > First, use your directory listing tool on `.agents/rules/` to discover all active `jarn-*.md` files. Then, read each of them.
 >
 > **MANDATORY PRE-FLIGHT GUARD [มาตรฐานจุดตรวจก่อนเริ่มงาน]**:

@@ -57,6 +57,11 @@ Insert a new section at the top (under the main header) for the new version:
 - Submit the branch through the project's normal review and merge process.
 - Do not push directly to `main`.
 
+## Post-Release Cleanup [การทำความสะอาดหลังเผยแพร่]
+
+Once the release is merged and published, the working context must be reset:
+- **Clean TASK.md**: Clear all items under the `Completed Milestones` section in `TASK.md`. Those milestones are now permanently recorded in the `CHANGELOG.md`, and `TASK.md` should be reset for the next iteration to prevent infinite file growth.
+
 ## Publication Approval [การอนุมัติเผยแพร่]
 
 - After the release preparation is merged, check out the clean `main` branch and verify the approved changelog commit is present.
