@@ -15,24 +15,24 @@ Contributions prepared with the assistance of generative AI tools are welcomed, 
 
 This repository enforces unified engineering conventions:
 
-- For commit formats and SemVer rules, see [.agents/rules/jarn-standards.md](.agents/rules/jarn-standards.md#commit-conventions).
-- For documentation and commenting rules, see [.agents/rules/jarn-standards.md](.agents/rules/jarn-standards.md#documentation--commenting-rules).
-- For ecosystem lifecycle guidelines, see [.agents/rules/jarn-standards.md](.agents/rules/jarn-standards.md#ecosystem-native-lifecycle-contract).
+- For commit formats and SemVer rules, see [.agents/rules/jarn-git.md](.agents/rules/jarn-git.md#commit-conventions).
+- For documentation and commenting rules, see [.agents/rules/jarn-coding.md](.agents/rules/jarn-coding.md#documentation--commenting-rules).
+- For ecosystem lifecycle guidelines, see [.agents/rules/jarn-architecture.md](.agents/rules/jarn-architecture.md#ecosystem-native-lifecycle-contract).
 
 ## Pull Request Workflow [ขั้นตอนการส่งงาน Pull Request]
 
 ### Branch Isolation & Lifecycle
-All work must be conducted within isolated branches branched from `main`. Direct commits or pushes to `main` are strictly forbidden (Step 0 Invariant). See [.agents/rules/jarn-safety.md](.agents/rules/jarn-safety.md).
+All work must be conducted within isolated branches branched from `main`. Direct commits or pushes to `main` are strictly forbidden (Step 0 Invariant). See [.agents/rules/jarn-governance.md](.agents/rules/jarn-governance.md).
 
 ### Incremental Micro-Commits
-See [.agents/rules/jarn-standards.md](.agents/rules/jarn-standards.md#commit-frequency--granularity-micro-commit-strategy).
+See [.agents/rules/jarn-git.md](.agents/rules/jarn-git.md#commit-frequency--granularity-micro-commit-strategy).
 
 ### Pre-Submission Verification
 Before opening a pull request, run the active verification commands configured for this project in [AGENTS.md](AGENTS.md#project-execution-commands).
 
 ### Pre-Merge Quality Checklist
 Verify that your pull request satisfies all quality gates defined in the pre-merge checklist:
-- Universal Pre-Merge Quality Gates: [.agents/rules/jarn-review.md](.agents/rules/jarn-review.md)
+- Universal Pre-Merge Quality Gates: [.agents/rules/jarn-testing.md](.agents/rules/jarn-testing.md)
 - Project Pre-Merge Checklist: [REVIEW.md](REVIEW.md)
 
 ---

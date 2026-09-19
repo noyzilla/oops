@@ -1,6 +1,26 @@
-# Collaboration Lifecycle & Workflow Protocol [ระเบียบปฏิบัติและวงจรชีวิตการทำงาน]
+# Governance, Workflow, and Safety [การกำกับดูแล ขั้นตอนการทำงาน และความปลอดภัย]
 
-This document defines the core operational lifecycle, inquiry standards, and documentation management rules for human and AI collaboration.
+This document establishes the safety boundaries, escalation gates, and core operational lifecycle for all contributors (human engineers and AI agents) operating within this codebase.
+
+## Safety Boundaries & Non-Negotiable Invariants
+
+The following actions are strictly prohibited without prior explicit human confirmation:
+
+- **Database Destruction**: Dropping databases, schemas, or tables, executing table truncation, or applying unverified data-destructive migrations.
+- **Git History Rewrite**: Force-pushing (`git push --force` or `--force-with-lease`) to remote branches, deleting remote branches, or hard-resetting shared branches.
+- **Direct Edits & Commits to Main (Step 0 Invariant)**: Modifying, creating, or committing files directly on the `main` or production branch. Before making any codebase changes, contributors and agents MUST verify `git branch --show-current` and branch out (`git checkout -b <type>/<slug>`).
+- **Credential Exposure**: Adding, modifying, reading, or printing production secrets, private keys, authentication tokens, API keys, or `.env` files containing sensitive credentials.
+- **Uncontrolled Dependencies**: Introducing new third-party libraries, packages, or external dependencies that have not been explicitly discussed and agreed upon.
+- **Unbounded Deletion**: Recursively deleting directories or bulk deleting source files outside of designated build output or scratch folders.
+
+## Stop and Ask Escalation Gates
+
+Contributors and agents must pause execution and consult when any of the following conditions arise:
+
+- **Ambiguous Requirements**: The request lacks clear acceptance criteria or presents multiple conflicting implementation paths.
+- **Architectural Deviation**: An intended change conflicts with patterns established in `ARCHITECTURE.md` or active Living Specifications (`docs/specs/`).
+- **Unforeseen Impact**: Modifying a module introduces cascading errors or breaks contracts across dependent modules.
+- **Scope Expansion**: The implementation requires touching files or services beyond the boundaries of the approved plan.
 
 ## Consult First, Act Second [การปรึกษานำหน้าการลงมือทำ]
 
@@ -33,7 +53,7 @@ To prevent misaligned implementations, unnecessary documentation churn, and AI c
 - The AI challenges assumptions, clarifies edge cases, and seeks alignment on core business invariants.
 
 ### Living Spec Synthesis (`docs/specs/`)
-- Once consensus is reached, the AI synthesizes the agreement into a living specification under `docs/specs/<feature-name>.md` using [0000-template.md](../../../docs/specs/0000-template.md).
+- Once consensus is reached, the AI synthesizes the agreement into a living specification under `docs/specs/<feature-name>.md` using `docs/specs/0000-template.md`.
 - The specification defines current truth: business rules, state machines, API contracts, and explicit verification criteria.
 - Unlike traditional Architecture Decision Records (ADRs) that accumulate dead historical decisions and pollute AI context windows, living specifications remain 100% current. Historical evolution is recorded cleanly in `CHANGELOG.md` and Git commit logs.
 
@@ -56,9 +76,10 @@ To prevent misaligned implementations, unnecessary documentation churn, and AI c
 - Make minimal, modular edits focused strictly on the approved scope.
 - **Targeted Verification**: Check `git status` before running verification commands. Execute project native test suites and linters via Terminal to verify Exit Code 0 and zero regression.
 
-### GATE 2: KNOWLEDGE CAPTURE & PARITY [จุดตรวจบันทึกความรู้และสเปกมีชีวิต]
+### GATE 2: KNOWLEDGE Capture & PARITY [จุดตรวจบันทึกความรู้และสเปกมีชีวิต]
 - **Code-Spec Parity Verification**: Ensure code implementations match living specs in `docs/specs/`.
 - **Evidence Attachment**: Attach empirical test execution logs demonstrating clean passing results (Exit Code 0).
+- **Task State Synchronization**: Before concluding any session or task, the agent MUST update `TASK.md` in the project root to reflect the newly completed milestones and immediate next actions.
 - Provide a concise walkthrough of changes and test results, then conclude the task cleanly.
 
 ## Definition of Done (DoD)
@@ -71,36 +92,3 @@ A task is considered complete only when all the following criteria are satisfied
 - New or modified logic includes adequate test coverage.
 - Related documentation (`ARCHITECTURE.md`, `DESIGN.md`, or `docs/`) is synchronized.
 - Git commit messages comply with project commit conventions.
-
-## The Non-Subtractive Principle (Knowledge Preservation)
-
-When updating documentation, plans, or technical specifications:
-- **Preserve Deep Knowledge**: Contributors and AI agents are strictly prohibited from silently deleting technical specifics, configuration values, port mappings, edge case explanations, or architectural rationales.
-- **Carry-Forward Rule**: Before rewriting or replacing any documentation, scan for existing domain knowledge and ensure all operational details are preserved in the updated version.
-
-## The Mirror Index Pattern (Document Splitting Protocol)
-
-To keep root-level documentation clean and prevent context bloat:
-
-### Root File Invariants
-- Root documentation files (`ARCHITECTURE.md`, `DESIGN.md`, `CONTRIBUTING.md`) must remain lean master indexes and executive summaries.
-- Root files must not exceed approximately 200 lines or hold deep implementation specs.
-
-### Subdirectory Extraction Triggers
-Extract or create detailed documentation under `docs/<name>/` when:
-- Detailing a specific subsystem, isolated module, database schema, or runbook.
-- Content exceeds 150-200 lines or contains extensive schemas and tables.
-- Information is reference-only for specific domain workflows.
-
-### Target Mapping Convention
-Always organize documentation under `docs/` according to the system documentation taxonomy defined in [docs/README.md](../../../docs/README.md):
-- Subsystem and feature living specifications go into `docs/specs/<feature>.md` (vertical slices combining domain rules, APIs, and database impacts)
-- Macro topologies and architectural deep-dives go into `docs/architecture/<topic>.md` (mirroring `ARCHITECTURE.md`)
-- Global design tokens and UI component guides go into `docs/design/<topic>.md` (mirroring `DESIGN.md`)
-- Developer onboarding, runbooks, and operational workflows go into `docs/development/<runbook>.md` (mirroring `CONTRIBUTING.md`)
-- Macro architectural decision records go into `docs/decisions/<id>-<slug>.md` (with explicit `.deprecated.md` or `.superseded.md` lifecycle naming for zero-token AI filtering)
-
-### Two-Way Linking Requirement
-Whenever a sub-document is created under `docs/<name>/`:
-- Add a bullet point and link under the deep-dive index section of the root parent file.
-- Add a backlink to the parent root file at the top or bottom of the sub-document.

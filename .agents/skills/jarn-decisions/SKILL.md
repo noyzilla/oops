@@ -47,10 +47,14 @@ Collaborate with the human lead to evaluate viable options:
 - Enumerate positive consequences (benefits, capabilities gained).
 - Enumerate negative consequences (technical debt, operational overhead, migration burden).
 
+### Phase: Decision Proposal & Approval Checkpoint
+- Determine the next sequential four-digit identifier (e.g., `0001`, `0002`) and prepare a proposed ADR in the conversation.
+- Present Context, Problem Statement, Decision, Consequences, and Evaluated Alternatives to the human lead.
+- Keep the proposed status as `Proposed` and wait for an explicit directive before creating or modifying an ADR file.
+
 ### Phase: Synthesis & Drafting
-- Determine the next sequential four-digit identifier (e.g., `0001`, `0002`).
-- Create `docs/decisions/<id>-<slug>.md` using [docs/decisions/0000-template.md](../../../docs/decisions/0000-template.md).
-- Document Context, Problem Statement, Decision, Consequences, and Evaluated Alternatives.
+- After explicit approval, create `docs/decisions/<id>-<slug>.md` using [docs/decisions/0000-template.md](../../../docs/decisions/0000-template.md).
+- Record the approved Context, Problem Statement, Decision, Consequences, and Evaluated Alternatives.
 - Keep status marked as `Proposed` until human lead sign-off.
 
 ### Phase: Superseding & Deprecation Lifecycle

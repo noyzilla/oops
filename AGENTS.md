@@ -1,20 +1,26 @@
 # Agent Operational Guide [คู่มือการปฏิบัติงานสำหรับเอไอ]
 
+> First, use your directory listing tool on `.agents/rules/` to discover all active `jarn-*.md` files. Then, read each of them.
+>
 > **MANDATORY PRE-FLIGHT GUARD [มาตรฐานจุดตรวจก่อนเริ่มงาน]**:
-> - **Step 0 Branch Isolation**: NEVER edit or commit on `main`. Verify `git branch --show-current` before modifying any files. Branch out (`git checkout -b <type>/<slug>`) immediately if on `main`. (See [.agents/rules/jarn-safety.md](.agents/rules/jarn-safety.md))
-> - **Inquiry vs Directive**: Treat discussions as Inquiry Mode (read-only analysis). Do NOT mutate code without an explicit Directive trigger (e.g. "ทำเลย", "อนุมัติ", "proceed"). (See [.agents/rules/jarn-workflow.md](.agents/rules/jarn-workflow.md))
+> - **Step 0 Branch Isolation**: NEVER edit or commit on `main`. Verify `git branch --show-current` before modifying any files. Branch out (`git checkout -b <type>/<slug>`) immediately if on `main`. (See [.agents/rules/jarn-governance.md](.agents/rules/jarn-governance.md))
+> - **Inquiry vs Directive**: Treat discussions as Inquiry Mode (read-only analysis). Do NOT mutate code without an explicit Directive trigger (e.g. "ทำเลย", "อนุมัติ", "proceed"). (See [.agents/rules/jarn-governance.md](.agents/rules/jarn-governance.md))
 > - **Operational Workflow Gates**: Adhere strictly to **GATE 0** (Mission Approval Hard Stop) -> **GATE 1** (Self-Verification Exit Code 0) -> **GATE 2** (Knowledge Capture & Living Specs).
 
 This document is the primary machine-readable entrypoint for AI coding agents collaborating on this codebase.
 
-## Core Governance & Universal Standards [มาตรฐานศูนย์กลางและการกำกับดูแล]
+## Current Rule Manifest [รายการกฎที่ใช้งานอยู่]
 
-Agents MUST strictly comply with universal standards defined in `.agents/rules/jarn-` (synchronized across projects via `./.agents/scripts/jarn-update.sh`):
+Directory discovery in the pre-flight guard determines the active rules. This manifest describes the expected Jarn baseline and MUST remain synchronized with `.agents/rules/jarn-*.md`.
 
-- **Safety & Escalation Gates**: [.agents/rules/jarn-safety.md](.agents/rules/jarn-safety.md) (Branch isolation, zero destructive ops, secret exposure protection, escalation gates).
-- **Workflow & AI State Machine**: [.agents/rules/jarn-workflow.md](.agents/rules/jarn-workflow.md) (Inquiry vs Directive distinction, GATE 0/1/2 lifecycle, Change Taxonomy, Living Specs in `docs/specs/`, DoD).
-- **Engineering Standards**: [.agents/rules/jarn-standards.md](.agents/rules/jarn-standards.md) (Companion tests, Zero-regression Exit Code 0 proof, Visual Hygiene, Bilingual `[...]` annotations, Conventional Commits, Semantic Numbering, Stable References).
-- **Pre-Merge Quality Gates**: [.agents/rules/jarn-review.md](.agents/rules/jarn-review.md) and project-specific checklist in [REVIEW.md](REVIEW.md).
+Agents MUST strictly comply with every active Jarn rule:
+
+- **Governance & Safety**: [.agents/rules/jarn-governance.md](.agents/rules/jarn-governance.md) (Safety boundaries, escalation gates, workflow state machine, change taxonomy, DoD).
+- **Architecture & Lifecycle**: [.agents/rules/jarn-architecture.md](.agents/rules/jarn-architecture.md) (Ecosystem-native lifecycle, configuration architecture, document splitting, frontmatter).
+- **Naming Conventions**: [.agents/rules/jarn-naming.md](.agents/rules/jarn-naming.md) (Path notation, environment variable parity, domain alignment).
+- **Coding Style & Hygiene**: [.agents/rules/jarn-coding.md](.agents/rules/jarn-coding.md) (Visual hygiene, bilingual annotations, numbering invariants, stable references).
+- **Git & Commits**: [.agents/rules/jarn-git.md](.agents/rules/jarn-git.md) (Conventional commits, micro-commit strategy).
+- **Testing & Quality Gates**: [.agents/rules/jarn-testing.md](.agents/rules/jarn-testing.md) (Pre-merge review checklist, targeted verification).
 - **Local Domain Context**: Align all entity names and parameters with ubiquitous language in [CONTEXT.md](CONTEXT.md).
 - **Documentation Taxonomy**: Maintain system documentation under `docs/` according to [docs/README.md](docs/README.md).
 
@@ -39,10 +45,11 @@ When modifying specific layers or subsystems, update the designated locations an
 | **Domain Logic & Services** | `src/domain/`, `src/services/`, `docs/specs/` | Run unit tests for affected package |
 | **API & Routing Layer** | `src/api/`, `src/controllers/`, `routes/`, `docs/specs/` | Run API / integration tests and linter |
 | **Data Schema & Migrations** | `migrations/`, `db/`, `models/`, `docs/specs/` | Run migration scripts and database test suite |
+| **CLI Output & Logging** | `DESIGN.md`, `docs/design/` | `git diff --check` and verify log formatting rules |
 | **Living Specifications** | `docs/specs/` | `git diff --check` and verify spec contract alignment |
 | **Architectural Decisions (ADR)** | `docs/decisions/` | `git diff --check` and verify filename status lifecycle |
 | **Development & Runbooks** | `docs/development/` | `git diff --check` and test script execution |
-| **Automation & Shell Scripts** | `scripts/*.sh`, `.agents/*.sh` | `sh -n <touched_script>` and dry-run execution |
+| **Automation & Shell Scripts** | `scripts/*.sh`, `.agents/scripts/*.sh` | `sh -n <touched_script>` and dry-run execution |
 | **Universal Standards & Rules** | `.agents/rules/jarn-*.md`, `AGENTS.md` | `git diff --check` and verify Markdown links |
 | **Jarn Skills** | `.agents/skills/jarn-*` | `git diff --check` and verify skill frontmatter/links |
 | **Documentation Only** | `docs/`, `*.md` | `git diff --check` and verify Markdown links |
@@ -70,4 +77,4 @@ When specialized expertise or operational procedures are required, activate the 
 - [jarn-review](.agents/skills/jarn-review/SKILL.md): Autonomous quality gate runbook to inspect git status, run targeted verification, audit commit conventions, and synthesize pre-merge evidence.
 - [jarn-diagnostics](.agents/skills/jarn-diagnostics/SKILL.md): Isolated defect investigation procedure bounded strictly to the living spec's blast-radius matrix without blind codebase scans.
 - [jarn-release](.agents/skills/jarn-release/SKILL.md): End-to-end automated GitHub Release lifecycle, including SemVer calculation, CHANGELOG drafting, and tag publishing.
-- [jarn-update](.agents/skills/jarn-update/SKILL.md): Execute the Jarn framework update script, analyze incoming changes to Jarn standards, and flag or resolve any breaking impacts on the project.
+- [jarn-framework-update](.agents/skills/jarn-framework-update/SKILL.md): Update the installed Jarn framework, execute Shadow Merge, and identify required project migrations.

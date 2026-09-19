@@ -12,7 +12,7 @@ This skill defines the autonomous quality gate review procedure executed before 
 
 ## Core Philosophy [ปรัชญาหลัก]
 
-Quality assurance in an AI-assisted environment must be deterministic, evidence-based, and targeted. This skill enforces the Universal Pre-Merge Standard ([.agents/rules/jarn-review.md](../../rules/jarn-review.md)) across three operational gates without running wasteful, cargo-cult test executions across untouched tech stacks.
+Quality assurance in an AI-assisted environment must be deterministic, evidence-based, and targeted. This skill enforces the Universal Pre-Merge Standard ([.agents/rules/jarn-testing.md](../../rules/jarn-testing.md)) across three operational gates without running wasteful, cargo-cult test executions across untouched tech stacks.
 
 ## When to Use This Skill [เมื่อใดควรใช้สกิลนี้]
 

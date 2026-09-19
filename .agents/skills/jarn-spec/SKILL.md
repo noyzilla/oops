@@ -31,10 +31,10 @@ Do NOT use this workflow when:
 ## Operational Execution Runbook
 
 ### Phase: Classification & Discovery
-- Verify the change classification against the Change Taxonomy in `.agents/rules/jarn-workflow.md`.
+- Verify the change classification against the Change Taxonomy in `.agents/rules/jarn-governance.md`.
 - Ensure the task is Spec-Altering (introduces or changes observable behavior).
 - Check `docs/specs/` to determine if a specification for this subsystem already exists.
-- If it exists, prepare to edit the file in place. If new, create `docs/specs/<feature-slug>.md` using [docs/specs/0000-template.md](../../../docs/specs/0000-template.md).
+- If it exists, identify it as the proposed update target. If new, identify `docs/specs/<feature-slug>.md` as the proposed file path using [docs/specs/0000-template.md](../../../docs/specs/0000-template.md).
 
 ### Phase: Interactive Design Debate
 Before writing specification details or code, conduct an architectural debate with the human lead:
@@ -53,6 +53,10 @@ Draft the specification following the structure defined in [docs/specs/0000-temp
 - **Dependency & Blast-Radius Matrix**: Bounded callers, dependencies, and files affected.
 - **Verification & Acceptance Criteria**: Specific test commands, covered files, and concrete happy/error path scenarios.
 
+### Phase: Specification Approval Checkpoint
+- Present the proposed specification in the conversation, including the affected file path and implementation scope.
+- Wait for explicit human approval before creating or modifying a specification file.
+
 ### Phase: Dependency & Blast-Radius Calculation
 Define the blast radius with precision:
 - Identify **Inbound Callers**: Which controllers, CLI commands, background workers, or external services invoke this spec?
@@ -64,7 +68,7 @@ Define the blast radius with precision:
 - Ensure the acceptance criteria provide unambiguous assertions that can be validated via automated tests.
 
 ### Phase: Synchronized Implementation & Review
-- Obtain explicit human approval on the specification.
+- After explicit human approval, create or update the specification on an isolated branch.
 - Implement code changes on an isolated branch (`feat/...`) with incremental micro-commits.
 - Maintain code-spec parity: commit the code changes and the updated `docs/specs/<feature-slug>.md` together.
 - Record the addition or modification in `CHANGELOG.md` under `[Unreleased]`.
