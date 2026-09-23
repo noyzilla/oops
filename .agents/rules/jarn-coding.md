@@ -1,16 +1,20 @@
-# Coding & Documentation Style [มาตรฐานสไตล์โค้ดและเอกสาร]
+# Coding & Documentation Style
+
+> **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill). Add project-specific style rules to your project's `AGENTS.md` or `docs/development/` only.
 
 This document defines the visual hygiene, bilingual annotation rules, and code commenting invariants for all project files.
 
-## Visual Hygiene Invariant [มาตรฐานความสะอาดทางสายตา]
+## Visual Hygiene Invariant
 
 Strictly **NO emojis or decorative icons** in production code, commit subjects, build logs, terminal output, or technical spec comments. All comments, log messages, and spec texts must maintain clean visual hygiene to prevent parser noise and noisy Git diffs.
 
-## Bilingual Documentation Annotation Standard [มาตรฐานการเขียนแบบสองภาษา]
+## Bilingual Documentation Annotation Standard
 
-All core governance documents, specs, and architectural guidelines must use **English as the lead technical language** for precision and AI scanning compatibility, followed by **Thai annotations in brackets `[...]`** for human developer intuition and rapid context scanning.
+All **user-facing** governance documents, specs, and architectural guidelines must use **English as the lead technical language** for precision and AI scanning compatibility, followed by **Thai annotations in brackets `[...]`** for human developer intuition and rapid context scanning.
 
-## Documentation & Commenting Rules [กฎระเบียบเอกสารและการบันทึกโค้ด]
+**Scope**: This standard applies to root-level documents (`AGENTS.md`, `CONTEXT.md`, `README.md`, `ARCHITECTURE.md`, `DESIGN.md`) and `docs/` content that humans read directly. Files inside `.agents/rules/` and `.agents/skills/` are machine-readable agent instructions and MUST use **English only** — no Thai heading annotations — to minimize token consumption per session.
+
+## Documentation & Commenting Rules
 
 All code comments, markdown files, specifications, plans, walkthroughs, and architecture records must prevent formatting maintenance overhead and maintain resilient, location-agnostic references.
 
@@ -26,7 +30,7 @@ Core principle: **Numbers used merely for sequence or reading order are prohibit
 - **Do NOT use numbered steps merely to indicate reading or execution order**: Never use `1.`, `2.`, `3.`, or `### 1.` in documentation, markdown files, plans, walkthroughs, or code comments solely to indicate sequence.
 - **Prefer descriptive headings and unnumbered bullet points**: Readers naturally understand the intended order from top to bottom. Use unnumbered bullets (`-`) for workflows, procedures, collections, categories, concepts, and checklists.
 - **Use numbers only when the number itself has semantic meaning**: Numbers are permitted and expected when they represent domain concepts, semantic milestones, or specific identifiers, including:
-  - Operational Gates and Milestones (e.g., `GATE 0 — Mission Approval`, `GATE 1 — Self-Verification`, `GATE 2 — Knowledge Capture`)
+  - Operational Gates and Milestones (e.g., `GATE 1 — Living Spec & Approval`, `GATE 2 — Self-Verification`, `GATE 3 — Knowledge Capture`)
   - Phases and milestones (e.g., `Phase 1 — Schema Migration`, `Phase 2 — Data Migration`)
   - Versions and protocol standards (e.g., `OAuth 2.0`, `TLS 1.3`, `HTTP 200`, `IPv6`)
   - Retries, backoffs, and priorities (e.g., `Retry 1 (immediate)`, `Retry 2 (30s backoff)`, `P1 Critical`)
@@ -47,9 +51,9 @@ Execution or reading order (No numbers needed; top-to-bottom list communicates s
 Semantic Identity (Numbers represent named domain phases referenced across tickets, plans, and releases):
 ```markdown
 ## Operational Gates
-### GATE 0 — Mission Approval
-### GATE 1 — Self-Verification
-### GATE 2 — Knowledge Capture
+### GATE 1 — Living Spec & Mission Approval
+### GATE 2 — Surgical Execution & Self-Verification
+### GATE 3 — Knowledge Capture & Pre-Merge Audit
 ```
 
 ### Code Comments Invariants

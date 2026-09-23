@@ -1,4 +1,6 @@
-# Git & Commit Conventions [ข้อตกลงการใช้งาน Git และการคัดส่งโค้ด]
+# Git & Commit Conventions
+
+> **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill). Add project-specific git workflows to your project's `docs/development/` only.
 
 This project strictly follows the Conventional Commits specification coupled with Semantic Versioning (SemVer) and Micro-Commit strategies.
 
@@ -25,8 +27,9 @@ This project strictly follows the Conventional Commits specification coupled wit
 | **`refactor:`** | Code change that neither fixes a bug nor adds a feature | None / Patch | `refactor: simplify target validation` |
 | **`test:`** | Adding or updating tests | None | `test: add unit tests for token parser` |
 | **`chore:`** | Tooling, build scripts, or maintenance | None | `chore: update build script dependencies` |
+| **`handoff:`** | Handing off a task to another role in a Multi-Role Topology | None | `handoff(qa): ready for UI tests` |
 
-## Commit Frequency & Granularity (Micro-Commit Strategy) [กลยุทธ์การคัดส่งแบบย่อย]
+## Commit Frequency & Granularity (Micro-Commit Strategy)
 
 To ensure code stability, bisectability, and rapid troubleshooting, all contributors and agents must follow an incremental micro-commit workflow:
 

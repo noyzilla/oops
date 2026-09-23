@@ -8,6 +8,8 @@ description: >-
 
 # Jarn Defect Diagnostics & Blast-Radius Scoping
 
+> **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill).
+
 This skill defines the surgical diagnostic runbook for investigating and resolving bugs without causing context pollution or uncoordinated full-codebase scans.
 
 ## Core Philosophy

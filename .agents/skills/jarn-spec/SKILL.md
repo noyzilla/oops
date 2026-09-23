@@ -8,6 +8,8 @@ description: >-
 
 # Jarn Living Specification Workflow
 
+> **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill).
+
 This skill defines the procedural runbook for drafting, refining, and maintaining living specifications under `docs/specs/<feature>.md`.
 
 ## Core Philosophy

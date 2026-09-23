@@ -8,6 +8,8 @@ description: >-
 
 # Jarn Architectural Decision Records (ADR) Workflow
 
+> **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill).
+
 This skill defines the procedural runbook for proposing, drafting, evaluating, and retiring Architectural Decision Records under `docs/decisions/`.
 
 ## Core Philosophy
