@@ -255,3 +255,7 @@ $RECYCLE.BIN/
 oops
 .antigravitycli/
 .gemini/
+.env
+.env.local
+.env.*.local
+.air/

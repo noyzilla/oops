@@ -1,23 +1,23 @@
-# Project Task State & Roadmap
+# Branch Task: Jarn Framework Update to v0.6.0
 
-This document serves as the shared real-time task board and scratchpad for collaborators. Update this document continuously across sessions.
+This file serves as the state machine for the current branch. It tracks the progress of the feature or fix from development through testing and Pre-Merge Audit.
 
-## Current Mission
-- Define the initial mission for this project.
+- **Branch Target**: `chore/jarn-framework-update`
+- **Related Specs**: N/A (Framework Update)
 
-## Handoff & Session Checkpoints
-- **Last Successful Action**: Initialized project blueprint.
-- **Immediate Next Action**: Configure language presets and set project identity.
-- **Active Blockers**: None.
+## Dev Execution (GATE 2)
+*Completed by the Developer / Dev Agent.*
 
-## In Progress
-- 
+- [x] Run Jarn updater script (`curl -fsSL https://raw.githubusercontent.com/noyzilla/jarn/main/scripts/jarn.sh | sh`).
+- [x] Synchronize Jarn rules (`jarn-lifecycle.md`, `jarn-quality.md`) and skills (`jarn-consult`).
+- [x] Execute AI-Driven Shadow Merge between `.agents/.jarn-templates/` and root project files (`AGENTS.md`, `REVIEW.md`, `docs/README.md`, `ARCHITECTURE.md`, `CONTRIBUTING.md`, `.gitignore`).
+- [x] Pass all local verification checks (tests, linters).
 
-## Next Up (Backlog)
-- 
+## QA & Review (GATE 3)
+*Completed by the QA / Reviewer Agent (if applicable).*
 
-## Completed Milestones
-- 
+- [ ] Completed the Pre-Merge Quality Gate checklist in `REVIEW.md`.
+- [ ] Run targeted verification (`git diff --check`, `go test ./...`, etc.).
 
-## Blocked & Under Discussion
-- None currently.
+## Pre-Merge Cleanup
+- [ ] Before merging the pull request, clear these checklists or reset to template to keep the `main` branch clean.

@@ -19,6 +19,27 @@ This repository enforces unified engineering conventions:
 - For documentation and commenting rules, see [.agents/rules/jarn-coding.md](.agents/rules/jarn-coding.md#documentation--commenting-rules).
 - For ecosystem lifecycle guidelines, see [.agents/rules/jarn-architecture.md](.agents/rules/jarn-architecture.md#ecosystem-native-lifecycle-contract).
 
+## Project Team & Roles (Handoff Protocol)
+
+This project supports decentralized collaboration. Tasks flow continuously to completion (Single-Flow) unless a handoff is required. When handing off work to another team member or agent, use the `handoff(<target>): <message>` commit convention.
+
+Find your role below to understand your triggers and responsibilities:
+
+- **Role: `dev` (Software Engineers)**
+  - **Trigger**: New task assigned.
+  - **Action**: Branch out, create branch-scoped `TASK.md`, implement code, and write unit tests.
+  - **Handoff**: Commit `handoff(qa): ready for UI tests` and push to origin. (If no QA is required, proceed to merge).
+
+- **Role: `qa` (Quality Assurance)**
+  - **Trigger**: Wait for a commit starting with `handoff(qa): ...`
+  - **Action**: Pull the branch, run E2E/UI tests, and update the branch's `TASK.md`.
+  - **Handoff**: Commit `handoff(reviewer): all tests passed` (or handoff back to dev if failed).
+
+- **Role: `reviewer` (Code Owners)**
+  - **Trigger**: Wait for a commit starting with `handoff(reviewer): ...`
+  - **Action**: Perform Pre-Merge Audit (GATE 3).
+  - **Handoff**: Merge pull request to `main` and delete branch.
+
 ## Pull Request Workflow [ขั้นตอนการส่งงาน Pull Request]
 
 ### Branch Isolation & Lifecycle
@@ -32,7 +53,7 @@ Before opening a pull request, run the active verification commands configured f
 
 ### Pre-Merge Quality Checklist
 Verify that your pull request satisfies all quality gates defined in the pre-merge checklist:
-- Universal Pre-Merge Quality Gates: [.agents/rules/jarn-testing.md](.agents/rules/jarn-testing.md)
+- Universal Pre-Merge Quality Gates: [.agents/rules/jarn-quality.md](.agents/rules/jarn-quality.md)
 - Project Pre-Merge Checklist: [REVIEW.md](REVIEW.md)
 
 ---

@@ -18,6 +18,6 @@ This document provides the high-level architecture, module boundaries, and desig
 In accordance with the Mirror Index Pattern and system documentation taxonomy in [docs/README.md](docs/README.md):
 - [Living Specifications](docs/specs/0000-template.md) (`docs/specs/`) - Feature and subsystem contracts combining domain rules, API schemas, and dependency blast-radius matrices.
 - [Architectural Decisions](docs/decisions/0000-template.md) (`docs/decisions/`) - Strategic architectural decision records (ADR) with explicit `.deprecated.md` and `.superseded.md` lifecycle naming.
-- [Architecture Deep-Dives](docs/architecture/) (`docs/architecture/`) - Subsystem topologies, component interaction diagrams, and system data flows.
-- [Design Specifications](DESIGN.md) (`docs/design/`) - Reusable component tokens, form styling, and accessibility standards.
-- [Development Workflows](docs/development/) (`docs/development/`) - Developer onboarding, local environment setup, and migration runbooks.
+- [Architecture Deep-Dives](docs/architecture/0000-template.md) (`docs/architecture/`) - Subsystem topologies, component interaction diagrams, and system data flows.
+- [Design Specifications](docs/design/0000-template.md) (`docs/design/`) - Reusable component tokens, form styling, and accessibility standards.
+- [Development Workflows](docs/development/0000-template.md) (`docs/development/`) - Developer onboarding, local environment setup, and migration runbooks.
