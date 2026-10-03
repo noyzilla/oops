@@ -4,9 +4,8 @@ services:
     container_name: oops
     hostname: oops.oops
     restart: unless-stopped
-    command: [ "server", "--port", "8080" ]
+    command: ["server"]
     environment:
-      OOPS_PORT: ${OOPS_PORT:-8080}
       OOPS_SECRET: ${OOPS_SECRET:?OOPS_SECRET must be set}
       OOPS_DNS_UPSTREAM: ${OOPS_DNS_UPSTREAM:-1.1.1.1:53,8.8.8.8:53}
       OOPS_STOP_TIMEOUT: ${OOPS_STOP_TIMEOUT:-30s}
@@ -17,16 +16,14 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
     labels:
-      # Optional: Ingress through Caddy for Webhook
+      # Ingress through Caddy
       caddy: "${OOPS_DOMAIN:-oops.web.oops}"
-      caddy.reverse_proxy: "{{upstreams 8080}}"
+      caddy.reverse_proxy: "{{upstreams 80}}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ../:/work
       - backup_data:/work/backups
     working_dir: /work
-    ports:
-      - "8080:8080"
     networks:
       - net-edge
       - net-db

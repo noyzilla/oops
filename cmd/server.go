@@ -26,7 +26,7 @@ func newServerCmd() *cobra.Command {
 				if port == "" {
 					port = os.Getenv("PORT")
 					if port == "" {
-						port = "8080"
+						port = "80"
 					}
 				}
 			}
@@ -55,7 +55,7 @@ func newServerCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&port, "port", "p", "", "Webhook server listening port (default: 8080 or $OOPS_PORT)")
+	cmd.Flags().StringVarP(&port, "port", "p", "", "Webhook server listening port (default: 80 or $OOPS_PORT)")
 	cmd.Flags().StringVarP(&configPath, "config", "c", "", "Path to configuration file")
 
 	return cmd

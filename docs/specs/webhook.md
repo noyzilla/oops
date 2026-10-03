@@ -27,7 +27,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 ## Business Rules & Logic Invariants
 
 ### HTTP Daemon & Listening Configuration
-- Listens on port defined by `OOPS_PORT` environment variable (default: `:8080`, fallback: `PORT`).
+- Listens on port defined by `PORT` / `OOPS_PORT` environment variable (default: `:80`).
 - Handlers:
   - `POST /update` (primary deployment endpoint)
   - `POST /deploy` (synonym endpoint for CI/CD parity)
