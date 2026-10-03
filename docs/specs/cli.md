@@ -114,6 +114,13 @@ For each matched service in target order:
   - Optional flag with shorthand `-r` (default `7d`, accepts `7d`, `30d`, or integer days `7`).
   - Prunes all backup files matching `<engine>_backup_*.sql.gz` older than the retention threshold.
 
+### Working Directory Auto-Discovery & Path Parity
+Oops commands can be invoked from any terminal directory. The working directory is determined using a 4-tier fallback:
+- **Explicit Flag (`-C, --dir <path>`)**: Highest priority. Expands `~` to the user's home directory.
+- **Environment Variable (`OOPS_DIR`)**: If set in the shell (e.g. `export OOPS_DIR=$HOME/oopsbox`).
+- **Current Directory (`.`)**: If `.` contains `stacks/` or compose files.
+- **Default Oopsbox Paths**: Auto-probes `$HOME/oopsbox` (Local Dev) and `/opt/oopsbox` (Production Server).
+
 ---
 
 ## Interface & Data Contracts
@@ -122,10 +129,11 @@ For each matched service in target order:
 
 | Command | Arguments / Flags | Description |
 | :--- | :--- | :--- |
-| `oops up` | `[targets...] [-d 0s]` | Starts stack, layer, or globbed services with optional inter-service delay (`-d`, `--delay`) |
+| `oops` | `[-C, --dir <path>]` | Global persistent flag to target a specific oopsbox directory |
+| `oops up` | `[targets...] [-d 0s]` | Starts stack or globbed services with optional inter-service delay (`-d`, `--delay`) |
 | `oops stop` | `<targets...> [-d 0s]` | Gracefully stops target services with stop hooks and inter-service delay (`-d`, `--delay`) |
 | `oops restart`| `[targets...] [-d 0s]` | Restarts target services with stop hooks and inter-service delay (`-d`, `--delay`) |
-| `oops down` | `[-d 0s]` | Tears down all layers with stop hooks and inter-service delay (`-d`, `--delay`) |
+| `oops down` | `[-d 0s]` | Tears down all stacks with stop hooks and inter-service delay (`-d`, `--delay`) |
 | `oops status` | *(none)* | Formatted table of containers, health, and ports |
 | `oops logs` | `<service> [--tail 100] [-f]` | Tail service logs |
 | `oops pull` | `[targets...]` | Pulls images for targets |

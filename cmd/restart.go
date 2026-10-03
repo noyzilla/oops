@@ -20,7 +20,8 @@ func newRestartCmd() *cobra.Command {
 				return err
 			}
 
-			targets, err := docker.ResolveTargets(".", args)
+			workDir := ResolveWorkDir(targetDir)
+			targets, err := docker.ResolveTargets(workDir, args)
 			if err != nil {
 				return err
 			}

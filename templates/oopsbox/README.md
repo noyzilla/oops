@@ -1,11 +1,11 @@
-# Oops Stack Blueprint Template
+# Oopsbox Blueprint Template
 
-This blueprint provides a production-ready, modular multi-stack Docker Compose layout designed for orchestration via **Oops** (`ghcr.io/noyzilla/oops:latest`).
+This blueprint provides a production-ready, modular multi-stack Docker Compose environment (**Oopsbox**) designed for orchestration via **Oops** (`ghcr.io/noyzilla/oops:latest`).
 
 ## Directory Topology
 
 ```text
-my-stack/
+~/oopsbox/                # Standard Root Directory (or /opt/oopsbox on production)
 ├── .env                  # Environment variables & secrets (copy from .env.example)
 ├── stacks/               # All Docker Compose Stacks
 │   ├── edge/             # Stack: Ingress Reverse Proxy & Auto-SSL (net-edge)
@@ -60,18 +60,18 @@ cp .env.example .env
 # Edit .env and set secure values for OOPS_SECRET and database passwords
 ```
 
-### 2. Manage Stack with Oops CLI
+### 2. Manage Oopsbox with Oops CLI
 Use Oops natively or via the container alias:
 
 ```bash
-# Set up Host Alias (for COS or minimal Linux environments):
+# Set up Host Alias in ~/.zshrc or ~/.bashrc (Identical Fullpath Mount):
 alias oops='docker run --rm -it \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -v "$PWD":/work \
-  -w /work \
+  -v "$HOME/oopsbox":"$HOME/oopsbox" \
+  -w "$HOME/oopsbox" \
   ghcr.io/noyzilla/oops:latest'
 
-# Start entire stack
+# Start entire oopsbox (from anywhere!)
 oops up
 
 # Start specific stacks (in dependency order)

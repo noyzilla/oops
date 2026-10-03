@@ -12,6 +12,11 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ## Core Domain Entities & Concepts
 
+### Entity: Oopsbox
+- **Canonical Term**: `Oopsbox`
+- **Definition**: The complete host deployment environment encapsulating all stacks (`stacks/`), live data storage (`data/`), backup dumps (`backups/`), and environment configuration (`.env`).
+- **Standard Default Locations**: `~/oopsbox` (Local Dev) and `/opt/oopsbox` (Production Server).
+
 ### Entity: Stack
 - **Canonical Term**: `Stack`
 - **Definition**: A distinct functional tier and docker compose setup residing in `stacks/<stack>/` (or top-level compose) containing a dedicated `docker-compose.yml` file.
@@ -86,6 +91,7 @@ All environment variables follow the **[Topic] -> [Modifier] -> [Unit]** standar
 
 | Environment Variable | Internal Config Path | Type | Default | Description |
 | :--- | :--- | :---: | :---: | :--- |
+| `OOPS_DIR` | `CONFIG.CLI.WORK_DIR` | `string` | `""` | Target oopsbox directory (auto-probes `~/oopsbox`, `/opt/oopsbox`) |
 | `OOPS_DOMAIN` | `CONFIG.SERVER.DOMAIN` | `string` | `""` | Optional ingress FQDN for webhook daemon |
 | `OOPS_PORT` | `CONFIG.SERVER.PORT` | `int / string` | `80` | Webhook HTTP daemon listening port (fallback: `PORT`) |
 | `OOPS_SECRET` | `CONFIG.WEBHOOK.SECRET` | `string` | `""` | Global fallback webhook secret token |

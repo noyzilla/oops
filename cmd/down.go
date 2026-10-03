@@ -22,7 +22,8 @@ func newDownCmd() *cobra.Command {
 				return err
 			}
 
-			orderedStacks, composeMap, err := docker.DiscoverStacks(".")
+			workDir := ResolveWorkDir(targetDir)
+			orderedStacks, composeMap, err := docker.DiscoverStacks(workDir)
 			if err != nil {
 				return err
 			}
@@ -37,7 +38,7 @@ func newDownCmd() *cobra.Command {
 			if err == nil {
 				defer orch.Close()
 				// Run pre-stop hooks on all running containers
-				allTargets, err := docker.ResolveTargets(".", nil)
+				allTargets, err := docker.ResolveTargets(workDir, nil)
 				if err == nil {
 					for _, t := range allTargets {
 						cID, err := orch.FindContainerID(context.Background(), t)

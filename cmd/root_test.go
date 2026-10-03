@@ -93,6 +93,20 @@ func TestHelpOutput(t *testing.T) {
 	}
 }
 
+func TestResolveWorkDir(t *testing.T) {
+	// 1. Explicit Custom Dir
+	custom := "/tmp/my-oopsbox"
+	if got := cmd.ResolveWorkDir(custom); got != custom {
+		t.Errorf("ResolveWorkDir(%q) = %q, expected %q", custom, got, custom)
+	}
+
+	// 2. Default fallback
+	fallback := cmd.ResolveWorkDir("")
+	if fallback == "" {
+		t.Errorf("ResolveWorkDir(\"\") returned empty string")
+	}
+}
+
 func containsAlias(aliases []string, name string) bool {
 	for _, a := range aliases {
 		if a == name {
