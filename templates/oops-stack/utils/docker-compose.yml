@@ -15,7 +15,6 @@ services:
       OOPS_BACKUP_RETENTION: ${OOPS_BACKUP_RETENTION:-7d}
       OOPS_BACKUP_DIR: ${OOPS_BACKUP_DIR:-/work/backups}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
     labels:
       # Optional: Ingress through Caddy for Webhook
