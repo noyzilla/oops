@@ -72,14 +72,15 @@ alias oops='docker run --rm -it \
 oops up
 
 # Start specific layers (in dependency order)
-oops up edge
-oops up db
-oops up utils
-oops up apps
+oops up /edge
+oops up /db
+oops up /utils
+oops up /apps
 
-# Start specific services or glob pattern
+# Start specific services or wildcard
 oops up mysql
-oops up "app*"
+oops up /db/mysql
+oops up app..
 ```
 
 ---
@@ -89,7 +90,7 @@ oops up "app*"
 ### Sequential Rolling Updates (Zero Downtime)
 Deploy updates across apps sequentially with automated health check polling:
 ```bash
-oops update "app*"
+oops update app.. -d 2s
 oops update app1
 ```
 
@@ -115,9 +116,9 @@ oops db pg drop myapp_db myapp_user
 ### Database Backup & Retention
 Execute automated dumps and prune archives older than `BACKUP_RETENTION_DAYS`:
 ```bash
-oops backup
-oops backup mysql
-oops backup postgres
+oops db-backup
+oops db-backup mysql
+oops db-backup postgres -r 14d
 ```
 
 ### Webhook Automation (CI/CD)
@@ -126,5 +127,5 @@ Trigger deployments from GitHub Actions or GitLab CI via the Webhook Engine:
 curl -X POST https://webhook.yourdomain.com/deploy \
   -H "X-Oops-Token: your_secret_token" \
   -H "Content-Type: application/json" \
-  -d '{"target": "app*", "mode": "image"}'
+  -d '{"target": "app..", "mode": "image"}'
 ```
