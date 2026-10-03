@@ -31,9 +31,11 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 ### 1. Smart Layer Auto-Detection & Target Matching
 - When `oops up`, `stop`, `restart`, `pull`, or `logs` is invoked with a target:
-  - If target matches a layer name (`edge`, `db`, `apps`, `utils`), execute on that layer's `docker-compose.yml`.
-  - If target is a glob pattern (`app*`, `*worker*`) or service name (`caddy`, `mysql`), scan all existing layer compose files, discover matching service names, and map them to their corresponding compose files.
-  - If no target is specified, operate across all layers in topological order: `edge` -> `db` -> `apps` -> `utils` (for `up`/`pull`) and reverse for `down`.
+  - If target matches a layer name (`edge`, `db`, `utils`, `apps`, or custom layer), execute on that layer's `docker-compose.yml`.
+  - If target is a glob pattern (`app*`, `*worker*`, `app`) or service name (`caddy`, `mysql`), scan all existing layer compose files, discover matching service names, and map them to their corresponding compose files.
+  - If no target is specified, operate across all layers in dependency order:
+    - **Startup (`oops up`)**: `edge` -> `db` -> `utils` -> `apps` -> `[custom layers...]`
+    - **Teardown (`oops down`)**: `[custom layers...]` -> `apps` -> `utils` -> `db` -> `edge`
 
 ### 2. Sequential Rolling Update Algorithm (`oops update <targets...>`)
 For each matched service in target order:
@@ -47,27 +49,38 @@ For each matched service in target order:
   - If status is `"unhealthy"` or polling exceeds `HEALTHCHECK_TIMEOUT_SECONDS` (default 600s): Abort the update sequence immediately, print container logs, and exit with Code 1.
 
 ### 3. Database Management (`oops db <engine>[:<target>] <action>`)
-- **Syntax**: `oops db mysql[:<target>] create <db> <user> [pass]` (also accepts `mysql/create` and `mysql-create`).
+- **Syntax**: `oops db mysql[:<target>] <create|passwd|list|drop> [args...]` (also accepts shorthand `mysql/create`, `mysql-create`, `mysql passwd`, `mysql password`).
 - **Target Resolution**:
   - `mysql` -> Default container `mysql`
   - `mysql:<target>` (e.g. `mysql:mysql-analytics`) -> Target container `mysql-analytics`
   - `pg` / `postgres` -> Default container `postgres`
   - `pg:<target>` (e.g. `pg:pg-replica`) -> Target container `pg-replica`
-- **Password Enforcement**: If password argument is omitted or empty, generate a 20-character secure alphanumeric string (`[A-Za-z0-9]`). Never permit creating users with blank passwords.
-- **MySQL Isolation**:
-  ```sql
-  CREATE DATABASE IF NOT EXISTS `<db>` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-  CREATE USER IF NOT EXISTS '<user>'@'%' IDENTIFIED BY '<pass>';
-  GRANT ALL PRIVILEGES ON `<db>`.* TO '<user>'@'%';
-  FLUSH PRIVILEGES;
-  ```
-- **PostgreSQL Isolation**:
-  ```sql
-  CREATE ROLE "<user>" WITH LOGIN PASSWORD '<pass>';
-  CREATE DATABASE "<db>" OWNER "<user>";
-  GRANT ALL PRIVILEGES ON DATABASE "<db>" TO "<user>";
-  GRANT ALL ON SCHEMA public TO "<user>";
-  ```
+- **Password Generation & Enforcement**: If password argument is omitted or empty (in `create` or `passwd`), generate a 20-character secure alphanumeric string (`[A-Za-z0-9]`). Never permit creating or updating users with blank passwords.
+- **MySQL Queries**:
+  - **Create**:
+    ```sql
+    CREATE DATABASE IF NOT EXISTS `<db>` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE USER IF NOT EXISTS '<user>'@'%' IDENTIFIED BY '<pass>';
+    GRANT ALL PRIVILEGES ON `<db>`.* TO '<user>'@'%';
+    FLUSH PRIVILEGES;
+    ```
+  - **Passwd**:
+    ```sql
+    ALTER USER '<user>'@'%' IDENTIFIED BY '<new_pass>';
+    FLUSH PRIVILEGES;
+    ```
+- **PostgreSQL Queries**:
+  - **Create**:
+    ```sql
+    CREATE ROLE "<user>" WITH LOGIN PASSWORD '<pass>';
+    CREATE DATABASE "<db>" OWNER "<user>";
+    GRANT ALL PRIVILEGES ON DATABASE "<db>" TO "<user>";
+    GRANT ALL ON SCHEMA public TO "<user>";
+    ```
+  - **Passwd**:
+    ```sql
+    ALTER ROLE "<user>" WITH PASSWORD '<new_pass>';
+    ```
 
 ### 4. Database Backup & Retention (`oops backup [targets...]`)
 - **Execution**:

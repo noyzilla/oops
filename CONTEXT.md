@@ -24,8 +24,10 @@ This document establishes the official domain glossary and ubiquitous language f
 - **Permitted Canonical Values**:
   - `edge`: Ingress reverse proxy and SSL termination (e.g. Caddy, Traefik).
   - `db`: Persistence and cache databases (e.g. MySQL, PostgreSQL, Redis).
+  - `utils`: Auxiliary daemons, sidecars, proxies, queues, and oops webhook engine.
   - `apps`: Core application services and web backends.
-  - `utils`: Auxiliary daemons, sidecars, proxies, and oops webhook engine.
+  - `[custom]`: Dynamic custom layers (e.g. `monitoring`, `analytics`, `ai`).
+- **Dependency Startup Order**: `edge` -> `db` -> `utils` -> `apps` -> `[custom...]`
 - **Avoid**: `databases` (use `db`), `utilities` (use `utils`), `ingress`, `frontend`
 
 ### Entity: Service
@@ -48,12 +50,13 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ### Concept: Database Action
 - **Canonical Term**: `Database Action`
-- **Definition**: Operations managed by `oops db <engine>[:<target>] <action>` to create, list, or drop isolated databases and users with least-privilege credentials.
+- **Definition**: Operations managed by `oops db <engine>[:<target>] <action>` to create, list, drop, or change passwords for isolated databases and users with least-privilege credentials.
 - **Permitted Canonical Values**:
-  - `create`: Provision database and dedicated user with auto-generated secure password if omitted.
+  - `create`: Provision database and dedicated user with auto-generated 20-character secure password if omitted.
+  - `passwd` (alias: `password`): Change or rotate password for an existing user (auto-generates 20-character password if omitted).
   - `list`: Inspect active databases and role grants.
   - `drop`: Safely remove database and associated user.
-- **Avoid**: `add_db`, `remove_db`, `grant_user`
+- **Avoid**: `add_db`, `remove_db`, `grant_user`, `change_pass`
 
 ### Concept: Backup & Retention
 - **Canonical Term**: `Backup`

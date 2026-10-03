@@ -194,5 +194,7 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) for local development setup, testi
 
 - [System Architecture](ARCHITECTURE.md)
 - [Domain Glossary & Ubiquitous Language](CONTEXT.md)
+- [Living Specifications: Orchestration Engine](docs/specs/orchestration.md)
+- [Oops Stack Blueprint Template](templates/oops-stack/README.md)
 - [System Documentation & Deep-Dives](docs/README.md)
 

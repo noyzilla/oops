@@ -1,0 +1,56 @@
+services:
+  # ----------------------------------------------------------------------------
+  # Public Service: Receives traffic from Edge + Accesses Database
+  # ----------------------------------------------------------------------------
+  web-app:
+    image: ghcr.io/traefik/whoami:latest
+    container_name: web-app
+    restart: unless-stopped
+    labels:
+      # Oops Orchestration
+      oops.enable: "true"
+      oops.secret: "${OOPS_SECRET:-change_this_to_a_secure_token}"
+      oops.stop.cmd: ""
+      oops.stop.timeout: "30"
+      oops.health.url: "http://localhost:80/health"
+
+      # Caddy Proxy Ingress (Public Facing)
+      caddy: "app.${DOMAIN:-example.com}"
+      caddy.reverse_proxy: "{{upstreams 80}}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - net-edge
+      - net-db
+
+  # ----------------------------------------------------------------------------
+  # Internal Worker / Private Service: Isolated (NO Internet / NO Edge Ingress)
+  # ----------------------------------------------------------------------------
+  worker:
+    image: ghcr.io/traefik/whoami:latest
+    container_name: worker
+    restart: unless-stopped
+    labels:
+      # Oops Orchestration
+      oops.enable: "true"
+      oops.secret: "${OOPS_SECRET:-change_this_to_a_secure_token}"
+      oops.stop.cmd: "echo 'Finishing background tasks...'"
+      oops.stop.timeout: "60"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - net-db
+
+networks:
+  net-edge:
+    name: net-edge
+    external: true
+  net-db:
+    name: net-db
+    external: true
