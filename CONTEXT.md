@@ -86,6 +86,7 @@ All environment variables follow the **[Topic] -> [Modifier] -> [Unit]** standar
 
 | Environment Variable | Internal Config Path | Type | Default | Description |
 | :--- | :--- | :---: | :---: | :--- |
+| `OOPS_DOMAIN` | `CONFIG.SERVER.DOMAIN` | `string` | `""` | Optional ingress FQDN for webhook daemon |
 | `OOPS_PORT` | `CONFIG.SERVER.PORT` | `int / string` | `8080` | Webhook HTTP daemon listening port (fallback: `PORT`) |
 | `OOPS_SECRET` | `CONFIG.WEBHOOK.SECRET` | `string` | `""` | Global fallback webhook secret token |
 | `OOPS_HEALTHCHECK_TIMEOUT` | `CONFIG.HEALTHCHECK.TIMEOUT` | `duration` | `10m` | Maximum wait time for container to become healthy (fallback: `HEALTHCHECK_TIMEOUT_SECONDS`) |

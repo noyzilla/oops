@@ -18,7 +18,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
     labels:
       # Optional: Ingress through Caddy for Webhook
-      caddy: "webhook.${DOMAIN:-example.com}"
+      caddy: "${OOPS_DOMAIN:-webhook.example.com}"
       caddy.reverse_proxy: "{{upstreams 8080}}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
