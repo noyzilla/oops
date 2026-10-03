@@ -2,6 +2,7 @@ services:
   caddy-proxy:
     image: lucaslorentz/caddy-docker-proxy:2.9-alpine
     container_name: caddy-proxy
+    hostname: .web.oops
     restart: unless-stopped
     ports:
       - "80:80"

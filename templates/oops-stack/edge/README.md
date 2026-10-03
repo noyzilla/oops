@@ -47,7 +47,7 @@ services:
     image: my-app:latest
     labels:
       # Caddy Auto-SSL Reverse Proxy
-      caddy: "app.example.com"
+      caddy: "app.web.oops"
       caddy.reverse_proxy: "{{upstreams 80}}"
     networks:
       - oops_network
@@ -81,7 +81,7 @@ services:
     image: my-app:latest
     labels:
       traefik.enable: "true"
-      traefik.http.routers.myapp.rule: "Host(`app.example.com`)"
+      traefik.http.routers.myapp.rule: "Host(`app.web.oops`)"
       traefik.http.routers.myapp.entrypoints: "websecure"
       traefik.http.routers.myapp.tls.certresolver: "letsencrypt"
     networks:
@@ -115,8 +115,8 @@ services:
   my-app:
     image: my-app:latest
     environment:
-      - VIRTUAL_HOST=app.example.com
-      - LETSENCRYPT_HOST=app.example.com
+      - VIRTUAL_HOST=app.web.oops
+      - LETSENCRYPT_HOST=app.web.oops
     networks:
       - oops_network
 ```

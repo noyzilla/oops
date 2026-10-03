@@ -1,7 +1,8 @@
 services:
-  oops-engine:
+  oops:
     image: ghcr.io/noyzilla/oops:latest
-    container_name: oops-engine
+    container_name: oops
+    hostname: oops.oops
     restart: unless-stopped
     command: ["server", "--port", "8080"]
     environment:
@@ -19,7 +20,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
     labels:
       # Optional: Ingress through Caddy for Webhook
-      caddy: "${OOPS_DOMAIN:-webhook.example.com}"
+      caddy: "${OOPS_DOMAIN:-oops.web.oops}"
       caddy.reverse_proxy: "{{upstreams 8080}}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

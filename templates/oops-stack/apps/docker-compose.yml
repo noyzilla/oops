@@ -5,6 +5,7 @@ services:
   web-app:
     image: ghcr.io/traefik/whoami:latest
     container_name: web-app
+    hostname: web-app.oops
     restart: unless-stopped
     labels:
       # Oops Orchestration
@@ -14,8 +15,8 @@ services:
       oops.stop.timeout: "30s"
       oops.health.url: "http://localhost:80/health"
 
-      # Caddy Proxy Ingress (Public Facing)
-      caddy: "app.example.com"
+      # Caddy Proxy Ingress (Public Facing / HTTPS)
+      caddy: "app.web.oops"
       caddy.reverse_proxy: "{{upstreams 80}}"
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
@@ -32,6 +33,7 @@ services:
   worker:
     image: ghcr.io/traefik/whoami:latest
     container_name: worker
+    hostname: worker.oops
     restart: unless-stopped
     labels:
       # Oops Orchestration

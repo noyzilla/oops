@@ -2,6 +2,7 @@ services:
   mysql:
     image: mysql:8.0
     container_name: mysql
+    hostname: mysql.oops
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
@@ -18,6 +19,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: postgres
+    hostname: postgres.oops
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-app_user}
@@ -36,6 +38,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis
+    hostname: redis.oops
     restart: unless-stopped
     volumes:
       - redis_data:/data
