@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: "Coding style, visual hygiene, numbering invariants, and English-only agent rules."
+---
+
 # Coding & Documentation Style
 
 > **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill). Add project-specific style rules to your project's `AGENTS.md` or `docs/development/` only.

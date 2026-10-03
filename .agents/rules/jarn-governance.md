@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: "Core governance, safety boundaries, escalation gates, and workflow state machine."
+---
+
 # Governance, Workflow, and Safety
 
 > **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill). Extend governance behavior through your project's `AGENTS.md` and `REVIEW.md` only.
@@ -14,6 +19,7 @@ The following actions are strictly prohibited without prior explicit human confi
 - **Credential Exposure**: Adding, modifying, reading, or printing production secrets, private keys, authentication tokens, API keys, or `.env` files containing sensitive credentials.
 - **Uncontrolled Dependencies**: Introducing new third-party libraries, packages, or external dependencies that have not been explicitly discussed and agreed upon.
 - **Unbounded Deletion**: Recursively deleting directories or bulk deleting source files outside of designated build output or scratch folders.
+- **Root Pollution**: Creating temporary scratch files, mock payloads, reproduction scripts, or logs in the project root. All transient artifacts must reside strictly in `.scratch/<task-slug>/tmp/`.
 
 ## Stop and Ask Escalation Gates
 
@@ -21,6 +27,7 @@ Contributors and agents must pause execution and consult when any of the followi
 
 - **Ambiguous Requirements**: The request lacks clear acceptance criteria or presents multiple conflicting implementation paths.
 - **Architectural Deviation**: An intended change conflicts with patterns established in `ARCHITECTURE.md` or active Living Specifications (`docs/specs/`).
+- **Deep Blocking or Cycle Detected**: An issue chain in `.scratch/<task-slug>/issues/` exceeds depth 2 (Blocker's Blocker blocked) or forms a circular dependency, signaling architectural foundation failure.
 - **Unforeseen Impact**: Modifying a module introduces cascading errors or breaks contracts across dependent modules.
 - **Scope Expansion**: The implementation requires touching files or services beyond the boundaries of the approved plan.
 
@@ -29,11 +36,11 @@ Contributors and agents must pause execution and consult when any of the followi
 Every non-trivial modification follows a disciplined progression from inquiry to verified execution. Never make unilateral code modifications during planning phases.
 
 ### Inquiry vs Directive State Machine
-Human collaborators interact naturally and conversationally without being burdened to format long, rigid prompt syntaxes. The system enforces safety through an internal AI state machine:
-- **Inquiry Mode (Default State / Consultation)**: All conversational requests, questions, or ideas are treated as Inquiry Mode by default. The agent is strictly prohibited from executing code-altering tools on application source files. The agent remains in read-only analysis, design debate, or living spec drafting mode.
-- **Directive Mode (Explicit Execution Trigger)**: The agent may only transition to Directive Mode when the human lead provides an explicit execution directive (such as "ทำเลย", "เริ่มแก้ได้", "อนุมัติ", "proceed", or approving an implementation plan). Without an explicit directive, the agent must continue the consultation and refine specifications.
-- **Inquiry Trade-offs**: When discussing architectural or non-trivial implementations, the agent must present at least two viable implementation options with technical trade-offs before requesting an execution directive.
-- **Ambiguous Directive Fallback (Safety Brake)**: If the human lead provides a vague execution directive (e.g., "fix it", "แก้เลย") without a clearly established context, specific file scope, or prior approved plan, the agent must treat the directive as a potential high-blast-radius risk. The agent MUST fall back to Inquiry Mode and ask for clarification or propose a specific scoped plan before proceeding.
+- **Inquiry Mode (Default / Consultation)**: All conversational requests are treated as Inquiry Mode by default. The agent is strictly prohibited from mutating application source files, remaining in read-only analysis, design debate, or living spec drafting mode.
+- **Directive Mode (Explicit Execution Trigger)**: The agent transitions to Directive Mode only upon explicit human directive (e.g., "ทำเลย", "เริ่มแก้ได้", "อนุมัติ", "proceed", or approving an implementation plan). Without an explicit directive, the agent must continue consultation and refine specifications.
+- **Plan Approval vs. Commit Authority**: Plan approval grants authority to modify files and run verification tools in the Working Tree only. It does NOT grant blanket commit authority. Commits require explicit sub-task review confirmation.
+- **Inquiry Trade-offs**: When discussing architectural or non-trivial implementations, present at least two viable implementation options with technical trade-offs before requesting an execution directive.
+- **Ambiguous Directive Fallback (Safety Brake)**: If a vague directive is given without established context or approved plan, fall back to Inquiry Mode and ask for clarification.
 
 ## Collaborative Spec Protocol & Change Taxonomy
 
@@ -54,10 +61,10 @@ To prevent misaligned implementations, unnecessary documentation churn, and AI c
 - Before generating implementation plans or code for spec-altering changes, human and AI discuss intent, constraints, domain definitions, and technical trade-offs.
 - The AI challenges assumptions, clarifies edge cases, and seeks alignment on core business invariants.
 
-### Living Spec Synthesis (`docs/specs/`)
-- Once consensus is reached, the AI synthesizes the agreement into a living specification under `docs/specs/<feature-name>.md` using `docs/specs/0000-template.md`.
-- The specification defines current truth: business rules, state machines, API contracts, and explicit verification criteria.
-- Unlike traditional Architecture Decision Records (ADRs) that accumulate dead historical decisions and pollute AI context windows, living specifications remain 100% current. Historical evolution is recorded cleanly in `CHANGELOG.md` and Git commit logs.
+### Living Spec Synthesis (`docs/specs/`) — Spec is Law
+- Once consensus is reached, the AI synthesizes the agreement into the subsystem living specification under `docs/specs/<subsystem>.md` using `docs/specs/0000-template.md`.
+- **Current System Truth Invariant**: Living specifications define current system truth (e.g. `docs/specs/authentication.md`), never in-flight feature requests or task deltas (e.g., `docs/specs/add-oauth.md` is forbidden). All code implementations must strictly conform to the spec.
+- The specification defines current truth: business rules, state machines, API contracts, and explicit verification criteria. Historical evolution is recorded cleanly in `CHANGELOG.md` and Git commit logs.
 
 ### Dependency & Blast-Radius Scoping
 - Every living specification must document its Dependency & Blast-Radius Matrix (upstream callers, downstream dependencies, and affected packages).

@@ -28,30 +28,32 @@ Every document in this directory answers a specific dimensional question:
   - Target: Developers, operators, and DevOps engineers.
 
 - **`docs/specs/` (WHAT - Living Subsystem Specifications)**:
-  - Answers: What does this feature do, what are its domain rules, state machines, API contracts, and database impacts?
+  - Answers: What does this subsystem do today, what are its domain rules, state machines, API contracts, and database impacts?
+  - Core Principle (Spec is Law): Living specifications represent **Current System Truth**, never transient feature requests or task backlogs (e.g., `docs/specs/authentication.md` is valid; creating `docs/specs/add-google-login.md` is strictly forbidden). Code implementations must never conflict with the active spec.
   - Structure: Vertical slices combining domain invariants, endpoints, schemas, and bounded blast radiuses into a single cohesive specification per subsystem.
-  - Governance: Strictly bound by the Code-Spec Parity Invariant. Changes to business logic or interfaces must update the corresponding spec in lockstep.
+  - Governance: Strictly bound by the Code-Spec Parity Invariant. When a new capability or behavioral change is completed, the corresponding subsystem spec is updated in place to reflect the new system truth.
   - Template: Follows [docs/specs/0000-template.md](specs/0000-template.md).
   - Target: Software engineers and AI coding agents.
 
-- **`docs/decisions/` (WHY - Architectural Decision Records)**:
+- **`docs/adr/` (WHY - Architectural Decision Records)**:
   - Answers: Why did we choose this architectural approach over alternatives, and what were the evaluated trade-offs?
   - Content: Strategic macro decisions (such as database engine selection, partitioning schemes, or messaging frameworks).
   - Lifecycle & Naming:
     - Active Decisions: Named with standard numeric slug (e.g., `0001-postgresql.md`).
     - Inactive Decisions: Renamed with explicit status suffix (e.g., `0002-mongodb.deprecated.md` or `0004-session.superseded.md`).
-  - Template: Follows [docs/decisions/0000-template.md](decisions/0000-template.md).
+  - Template: Follows [docs/adr/0000-template.md](adr/0000-template.md).
   - Target: All developers and AI agents evaluating architectural changes.
 
 ## Baseline Seeded Templates & Directory Structure
 
 To keep the repository organized and structured:
-- All core documentation directories (`docs/architecture/`, `docs/design/`, `docs/development/`, `docs/specs/`, and `docs/decisions/`) are seeded with active templates out of the box.
+- All core documentation directories (`docs/architecture/`, `docs/design/`, `docs/development/`, `docs/specs/`, and `docs/adr/`) are seeded with active templates out of the box.
 - Deep-dive topic documents are added to these directories on demand when extracting details from root index files (`ARCHITECTURE.md`, `DESIGN.md`, `CONTRIBUTING.md`).
 - Never create empty directories with placeholder `.gitkeep` files if there is no immediate documentation content to commit.
 
 ## Anti-Drift Invariants for AI Coding Agents
 
-- **No Ad-Hoc Directories**: Never create fragmented horizontal directories (such as `docs/domain/`, `docs/database/`, or `docs/api/`). Feature-specific domain rules, API contracts, and storage impacts must be consolidated inside `docs/specs/<feature>.md`.
-- **Zero-Token Decision Filtering**: When querying `docs/decisions/`, inspect file names first. Always exclude files ending in `.deprecated.md` or `.superseded.md` from context ingestion.
-- **Targeted Reading**: When implementing or debugging a feature, read only the matching specification in `docs/specs/<feature>.md` rather than loading unrelated documentation directories.
+- **No Ad-Hoc Directories**: Never create fragmented horizontal directories (such as `docs/domain/`, `docs/database/`, or `docs/api/`). Feature-specific domain rules, API contracts, and storage impacts must be consolidated inside `docs/specs/<subsystem>.md`.
+- **Current System Truth over Task Delta**: Never create transient feature-request specs (e.g. `docs/specs/add-oauth.md`). In-flight tasks live in implementation plans or task trackers; `docs/specs/<subsystem>.md` is updated in place upon feature completion.
+- **Zero-Token Decision Filtering**: When querying `docs/adr/`, inspect file names first. Always exclude files ending in `.deprecated.md` or `.superseded.md` from context ingestion.
+- **Targeted Reading**: When implementing or debugging a feature, read only the matching specification in `docs/specs/<subsystem>.md` rather than loading unrelated documentation directories.

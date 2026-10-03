@@ -19,6 +19,18 @@ This repository enforces unified engineering conventions:
 - For documentation and commenting rules, see [.agents/rules/jarn-coding.md](.agents/rules/jarn-coding.md#documentation--commenting-rules).
 - For ecosystem lifecycle guidelines, see [.agents/rules/jarn-architecture.md](.agents/rules/jarn-architecture.md#ecosystem-native-lifecycle-contract).
 
+## Collaborative Pairing & Two-Tier Review Model
+
+This project operates on a Two-Tier Review Model across human engineers and AI coding agents:
+
+- **Tier 1: Dev Pairing (Inner Loop — GATE 2)**:
+  - Collaborators work in pairs (Driver + Navigator, e.g. AI Driver + Human Navigator, or Agent-to-Agent).
+  - **Working Tree Loop by Default**: All active changes across the codebase stay uncommitted in the working tree by default.
+  - **Sub-task Milestone Commits**: The Driver commits a sub-task only after the Navigator inspects the diff and confirms it, before moving to the next sub-task.
+
+- **Tier 2: Senior / Lead Pre-Merge Audit (Outer Loop — GATE 3)**:
+  - System-wide verification, security audit, and architecture alignment conducted by the Senior Lead (or specialized Auditor Agent) before merging into `main`.
+
 ## Project Team & Roles (Handoff Protocol)
 
 This project supports decentralized collaboration. Tasks flow continuously to completion (Single-Flow) unless a handoff is required. When handing off work to another team member or agent, use the `handoff(<target>): <message>` commit convention.
@@ -27,7 +39,7 @@ Find your role below to understand your triggers and responsibilities:
 
 - **Role: `dev` (Software Engineers)**
   - **Trigger**: New task assigned.
-  - **Action**: Branch out, create branch-scoped `TASK.md`, implement code, and write unit tests.
+  - **Action**: Branch out, create branch-scoped `TASK.md`, implement code in working tree loop, and commit upon sub-task review confirmation.
   - **Handoff**: Commit `handoff(qa): ready for UI tests` and push to origin. (If no QA is required, proceed to merge).
 
 - **Role: `qa` (Quality Assurance)**
@@ -35,7 +47,7 @@ Find your role below to understand your triggers and responsibilities:
   - **Action**: Pull the branch, run E2E/UI tests, and update the branch's `TASK.md`.
   - **Handoff**: Commit `handoff(reviewer): all tests passed` (or handoff back to dev if failed).
 
-- **Role: `reviewer` (Code Owners)**
+- **Role: `reviewer` (Code Owners & Senior Leads)**
   - **Trigger**: Wait for a commit starting with `handoff(reviewer): ...`
   - **Action**: Perform Pre-Merge Audit (GATE 3).
   - **Handoff**: Merge pull request to `main` and delete branch.

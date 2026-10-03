@@ -1,7 +1,7 @@
 ---
 name: jarn-decisions
 description: >-
-  Manage the lifecycle of Architectural Decision Records (ADRs) in docs/decisions/,
+  Manage the lifecycle of Architectural Decision Records (ADRs) in docs/adr/,
   evaluate trade-offs, and handle active vs .deprecated.md/.superseded.md file renaming
   for zero-token filtering.
 ---
@@ -10,7 +10,7 @@ description: >-
 
 > **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill).
 
-This skill defines the procedural runbook for proposing, drafting, evaluating, and retiring Architectural Decision Records under `docs/decisions/`.
+This skill defines the procedural runbook for proposing, drafting, evaluating, and retiring Architectural Decision Records under `docs/adr/`.
 
 ## Core Philosophy
 
@@ -55,7 +55,7 @@ Collaborate with the human lead to evaluate viable options:
 - Keep the proposed status as `Proposed` and wait for an explicit directive before creating or modifying an ADR file.
 
 ### Phase: Synthesis & Drafting
-- After explicit approval, create `docs/decisions/<id>-<slug>.md` using [docs/decisions/0000-template.md](../../../docs/decisions/0000-template.md).
+- After explicit approval, create `docs/adr/<id>-<slug>.md` using [docs/adr/0000-template.md](../../../docs/adr/0000-template.md).
 - Record the approved Context, Problem Statement, Decision, Consequences, and Evaluated Alternatives.
 - Keep status marked as `Proposed` until human lead sign-off.
 
@@ -63,11 +63,11 @@ Collaborate with the human lead to evaluate viable options:
 When a new decision replaces or invalidates an existing ADR:
 - **Superseding**:
   - Locate the existing active ADR (e.g., `0002-mongodb.md`).
-  - Rename the file using Git: `git mv docs/decisions/0002-mongodb.md docs/decisions/0002-mongodb.superseded.md`.
+  - Rename the file using Git: `git mv docs/adr/0002-mongodb.md docs/adr/0002-mongodb.superseded.md`.
   - In `0002-mongodb.superseded.md`, update status to `Superseded by ADR-[XXXX]` and add a direct markdown link to the new ADR.
   - In the new ADR, add a direct markdown link referencing the superseded ADR in the context section.
 - **Deprecation**:
-  - If a decision is retired without a direct replacement, rename the file using Git: `git mv docs/decisions/<id>-<slug>.md docs/decisions/<id>-<slug>.deprecated.md`.
+  - If a decision is retired without a direct replacement, rename the file using Git: `git mv docs/adr/<id>-<slug>.md docs/adr/<id>-<slug>.deprecated.md`.
   - Update status to `Deprecated` and document the rationale for retirement.
 
 ### Phase: Verification & Zero-Token Filtering

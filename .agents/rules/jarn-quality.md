@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: "Universal quality gates, targeted verification, and pre-merge audit standards."
+---
+
 # Universal Quality Gates & Pre-Merge Standard
 
 > **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill). To add project-specific checks, use your project's `REVIEW.md` under "Project-Specific Review Extensions" only.

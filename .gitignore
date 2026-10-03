@@ -259,3 +259,7 @@ oops
 .env.local
 .env.*.local
 .air/
+/.scratch/
+scratch/
+.agents/scratch/
+.agents/local/

@@ -1,6 +1,11 @@
+---
+trigger: always_on
+description: "Ecosystem-native lifecycle, documentation topology, and configuration architecture."
+---
+
 # Architecture & Lifecycle Standards
 
-> **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill). Document project-specific architectural decisions in `docs/decisions/` and topology in `docs/architecture/` only.
+> **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill). Document project-specific architectural decisions in `docs/adr/` and topology in `docs/architecture/` only.
 
 This document establishes the architectural principles, documentation topology, and native ecosystem lifecycles for the project.
 
@@ -51,7 +56,7 @@ Always organize documentation under `docs/` according to the system documentatio
 - Macro topologies and architectural deep-dives go into `docs/architecture/<topic>.md` (mirroring `ARCHITECTURE.md`)
 - Global design tokens and UI component guides go into `docs/design/<topic>.md` (mirroring `DESIGN.md`)
 - Developer onboarding, runbooks, and operational workflows go into `docs/development/<id>-<slug>.md` (mirroring `CONTRIBUTING.md`)
-- Macro architectural decision records go into `docs/decisions/<id>-<slug>.md` (with explicit `.deprecated.md` or `.superseded.md` lifecycle naming for zero-token AI filtering)
+- Macro architectural decision records go into `docs/adr/<id>-<slug>.md` (with explicit `.deprecated.md` or `.superseded.md` lifecycle naming for zero-token AI filtering)
 
 ### Two-Way Linking Requirement
 Whenever a sub-document is created under `docs/<name>/`:
@@ -66,13 +71,13 @@ When updating documentation, plans, or technical specifications:
 
 ## Frontmatter Synapses & Cross-Referencing
 
-All documentation deep-dives across all 5 taxonomy areas—living specifications (`docs/specs/`), developer runbooks (`docs/development/`), architectural decision records (`docs/decisions/`), topology deep-dives (`docs/architecture/`), and design specifications (`docs/design/`)—must include standard YAML frontmatter with tags and synapses (relative markdown links) to establish clear traceability:
+All documentation deep-dives across all 5 taxonomy areas—living specifications (`docs/specs/`), developer runbooks (`docs/development/`), architectural decision records (`docs/adr/`), topology deep-dives (`docs/architecture/`), and design specifications (`docs/design/`)—must include standard YAML frontmatter with tags and synapses (relative markdown links) to establish clear traceability:
 
 ```yaml
 ---
 title: Feature Living Spec Title
 status: active
 tags: [auth, jwt, security]
-synapses: ["docs/decisions/0001-project-identity-jarn.md"]
+synapses: ["docs/adr/0001-project-identity-jarn.md"]
 ---
 ```

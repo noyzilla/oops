@@ -5,6 +5,8 @@ This document provides the high-level architecture, module boundaries, and desig
 
 ## Architectural Principles
 - **Contract-First Design**: Define interfaces, data schemas, and API contracts before implementation.
+- **Linear Version Lifecycle**: Development proceeds forward on a single canonical line (`main`). A new release supersedes the previous release; parallel version branches are not maintained unless explicitly required by an external compatibility obligation.
+- **Minimizing Concurrent State**: Limit work-in-progress by executing tasks serially by default. Concurrency is permitted strictly when proven orthogonal via the Dependency & Blast-Radius Matrix.
 - **Separation of Concerns**: Isolate domain logic, operational orchestration, and external I/O into modular components.
 - **Explicit Over Implicit**: Favor clear, observable code structures over hidden side effects or implicit magic.
 - **Progressive Disclosure**: Keep high-level maps here at the root; extract deep-dive specifications into `docs/architecture/`.
@@ -17,7 +19,7 @@ This document provides the high-level architecture, module boundaries, and desig
 ## System Documentation & Deep-Dives
 In accordance with the Mirror Index Pattern and system documentation taxonomy in [docs/README.md](docs/README.md):
 - [Living Specifications](docs/specs/0000-template.md) (`docs/specs/`) - Feature and subsystem contracts combining domain rules, API schemas, and dependency blast-radius matrices.
-- [Architectural Decisions](docs/decisions/0000-template.md) (`docs/decisions/`) - Strategic architectural decision records (ADR) with explicit `.deprecated.md` and `.superseded.md` lifecycle naming.
+- [Architectural Decisions](docs/adr/0000-template.md) (`docs/adr/`) - Strategic architectural decision records (ADR) with explicit `.deprecated.md` and `.superseded.md` lifecycle naming.
 - [Architecture Deep-Dives](docs/architecture/0000-template.md) (`docs/architecture/`) - Subsystem topologies, component interaction diagrams, and system data flows.
 - [Design Specifications](docs/design/0000-template.md) (`docs/design/`) - Reusable component tokens, form styling, and accessibility standards.
 - [Development Workflows](docs/development/0000-template.md) (`docs/development/`) - Developer onboarding, local environment setup, and migration runbooks.

@@ -9,6 +9,7 @@
 > **MANDATORY PRE-FLIGHT GUARD [มาตรฐานจุดตรวจก่อนเริ่มงาน]**:
 > - **Step 0 Branch Isolation**: NEVER edit or commit on `main`. Verify `git branch --show-current` before modifying any files. Branch out (`git checkout -b <type>/<slug>`) immediately if on `main`. (See [.agents/rules/jarn-governance.md](.agents/rules/jarn-governance.md))
 > - **Inquiry vs Directive**: Treat discussions as Inquiry Mode (read-only analysis). Do NOT mutate code without an explicit Directive trigger (e.g. "ทำเลย", "อนุมัติ", "proceed"). (See [.agents/rules/jarn-governance.md](.agents/rules/jarn-governance.md))
+> - **Working Tree Loop Default**: Keep changes uncommitted in the Working Tree by default. Plan approval authorizes coding in the working tree, NOT committing. Never run `git commit` without explicit sub-task review confirmation, unless an auto-commit directive was given upfront.
 > - **Operational Workflow Gates**: Adhere strictly to **GATE 1** (Living Spec & Mission Approval) -> **GATE 2** (Surgical Execution & Self-Verification) -> **GATE 3** (Knowledge Capture & Pre-Merge Audit).
 
 This document is the primary machine-readable entrypoint for AI coding agents collaborating on this codebase.
@@ -52,10 +53,10 @@ When modifying specific layers or subsystems, update the designated locations an
 | **Data Schema & Migrations** | `migrations/`, `db/`, `models/`, `docs/specs/` | Run migration scripts and database test suite |
 | **CLI Output & Logging** | `DESIGN.md`, `docs/design/` | `git diff --check` and verify log formatting rules |
 | **Living Specifications** | `docs/specs/` | `git diff --check` and verify spec contract alignment |
-| **Architectural Decisions (ADR)** | `docs/decisions/` | `git diff --check` and verify filename status lifecycle |
+| **Architectural Decisions (ADR)** | `docs/adr/` | `git diff --check` and verify filename status lifecycle |
 | **Development & Runbooks** | `docs/development/` | `git diff --check` and test script execution |
 | **Automation & Shell Scripts** | `scripts/*.sh`, `.agents/scripts/*.sh` | `sh -n <touched_script>` and dry-run execution |
-| **Universal Standards & Rules** | `.agents/rules/jarn-*.md`, `AGENTS.md` | `git diff --check` and verify Markdown links |
+| **Universal Standards & Rules** | `.agents/rules/jarn-*.md`, `AGENTS.md` | `git diff --check` and verify rule frontmatter/links |
 | **Jarn Skills** | `.agents/skills/jarn-*` | `git diff --check` and verify skill frontmatter/links |
 | **Documentation Only** | `docs/`, `*.md` | `git diff --check` and verify Markdown links |
 
@@ -79,7 +80,7 @@ When modifying specific layers or subsystems, update the designated locations an
 When specialized expertise or operational procedures are required, activate the relevant skill under `.agents/skills/`:
 - [jarn-consult](.agents/skills/jarn-consult/SKILL.md): Structured requirement discovery and brainstorming (GATE 1). Classifies work, coaches intent with focused questions, evaluates viability, proposes implementation options with trade-offs, and hands off a confirmed agreement to jarn-spec.
 - [jarn-spec](.agents/skills/jarn-spec/SKILL.md): Author, debate, and maintain vertical slice living specifications (`docs/specs/`) with Code-Spec Parity and blast-radius matrices (GATE 1).
-- [jarn-decisions](.agents/skills/jarn-decisions/SKILL.md): Manage the lifecycle of Architectural Decision Records (`docs/decisions/`) with zero-token filtering.
+- [jarn-decisions](.agents/skills/jarn-decisions/SKILL.md): Manage the lifecycle of Architectural Decision Records (`docs/adr/`) with zero-token filtering.
 - [jarn-review](.agents/skills/jarn-review/SKILL.md): Autonomous quality gate runbook (GATE 3) to inspect git status, run targeted verification, audit commit conventions, and synthesize pre-merge evidence against jarn-quality.md.
 - [jarn-diagnostics](.agents/skills/jarn-diagnostics/SKILL.md): Isolated defect investigation procedure bounded strictly to the living spec's blast-radius matrix without blind codebase scans.
 - [jarn-release](.agents/skills/jarn-release/SKILL.md): End-to-end automated GitHub Release lifecycle, including SemVer calculation, CHANGELOG drafting, and tag publishing.

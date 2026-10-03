@@ -2,7 +2,7 @@
 title: [Decision Title]
 status: proposed
 tags: [architecture, template]
-synapses: []
+synapses: ["ARCHITECTURE.md"]
 ---
 
 # ADR 0000: [Decision Title]
