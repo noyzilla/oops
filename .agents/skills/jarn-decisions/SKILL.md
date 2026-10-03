@@ -55,7 +55,7 @@ Collaborate with the human lead to evaluate viable options:
 - Keep the proposed status as `Proposed` and wait for an explicit directive before creating or modifying an ADR file.
 
 ### Phase: Synthesis & Drafting
-- After explicit approval, create `docs/adr/<id>-<slug>.md` using [docs/adr/0000-template.md](../../../docs/adr/0000-template.md).
+- After explicit approval, create `docs/adr/<id>-<slug>.md` using [.agents/templates/docs/adr.md](../../templates/docs/adr.md).
 - Record the approved Context, Problem Statement, Decision, Consequences, and Evaluated Alternatives.
 - Keep status marked as `Proposed` until human lead sign-off.
 

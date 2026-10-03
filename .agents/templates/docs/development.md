@@ -10,7 +10,6 @@ synapses: ["CONTRIBUTING.md"]
 - **Status**: Active | Draft
 - **Type**: Setup Guide | Migration Runbook | Operational Playbook | Incident Guide
 - **Target Audience**: Developers, Operators, and AI Coding Agents
-- **Parent Reference**: [CONTRIBUTING.md](../../CONTRIBUTING.md)
 
 ## Overview & Objective
 Concise summary of what this runbook accomplishes, the problem it addresses, and the conditions under which it should be executed.

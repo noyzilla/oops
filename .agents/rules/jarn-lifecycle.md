@@ -31,8 +31,8 @@ GATE 1 → GATE 2 → GATE 3
 - **Anti-Hallucination Discovery & Research**:
   - Empirically verify library versions, external APIs, and project configurations via terminal commands or official docs before proposing solutions.
 - **Living Spec & Transient Plan Synthesis**:
-  - Produce or update the living specification in `docs/specs/<feature>.md` using `docs/specs/0000-template.md` (`jarn-spec`).
-  - Author the branch-scoped execution plan in `.scratch/<task-slug>/plan.md` and decompose into discrete issue files under `.scratch/<task-slug>/issues/XXXX-<slug>.md`.
+  - Produce or update the living specification in `docs/specs/<feature>.md` using `.agents/templates/docs/spec.md` (`jarn-spec`).
+  - Author the branch-scoped execution plan in `.scratch/<task-slug>/plan.md` and decompose into discrete issue files under `.scratch/<task-slug>/issues/XXXX-<slug>.md` using `.agents/templates/scratch/`.
 - **Hard Stop**: Halt execution and wait for explicit human green light (Directive Mode) before touching application code.
 - GATE 1 operates entirely within Inquiry Mode. No codebase mutations occur during this gate.
 

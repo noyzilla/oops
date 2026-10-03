@@ -62,7 +62,7 @@ To prevent misaligned implementations, unnecessary documentation churn, and AI c
 - The AI challenges assumptions, clarifies edge cases, and seeks alignment on core business invariants.
 
 ### Living Spec Synthesis (`docs/specs/`) — Spec is Law
-- Once consensus is reached, the AI synthesizes the agreement into the subsystem living specification under `docs/specs/<subsystem>.md` using `docs/specs/0000-template.md`.
+- Once consensus is reached, the AI synthesizes the agreement into the subsystem living specification under `docs/specs/<subsystem>.md` using `.agents/templates/docs/spec.md`.
 - **Current System Truth Invariant**: Living specifications define current system truth (e.g. `docs/specs/authentication.md`), never in-flight feature requests or task deltas (e.g., `docs/specs/add-oauth.md` is forbidden). All code implementations must strictly conform to the spec.
 - The specification defines current truth: business rules, state machines, API contracts, and explicit verification criteria. Historical evolution is recorded cleanly in `CHANGELOG.md` and Git commit logs.
 

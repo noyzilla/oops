@@ -2,15 +2,13 @@
 title: [Architecture Topic / Subsystem Topology]
 status: draft
 tags: [architecture, topology, boundaries, template]
-synapses: ["ARCHITECTURE.md", "docs/adr/0000-template.md"]
+synapses: ["ARCHITECTURE.md"]
 ---
 
 # Architecture Deep-Dive: [Topic Name]
 
 - **Status**: Active | Draft | Deprecated
-- **Parent Reference**: [ARCHITECTURE.md](../../ARCHITECTURE.md)
 - **Target Audience**: System Architects, Lead Engineers, and AI Coding Agents
-- **Related ADRs**: [docs/adr/0000-template.md](../adr/0000-template.md)
 
 ## Overview & Scope
 Concise summary of this topological area, system responsibilities, and architectural boundaries.

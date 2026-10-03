@@ -2,15 +2,13 @@
 title: [Component or Design Topic Name]
 status: draft
 tags: [design, component, ui, template]
-synapses: ["DESIGN.md", "docs/specs/0000-template.md"]
+synapses: ["DESIGN.md"]
 ---
 
 # Design Spec: [Component Name]
 
 - **Status**: Active | Experimental | Deprecated
-- **Parent Reference**: [DESIGN.md](../../DESIGN.md)
 - **Target Platform**: Web | Mobile | Desktop | CLI
-- **Associated Specs**: [docs/specs/0000-template.md](../specs/0000-template.md)
 
 ## Overview & Usage Intent
 - **When to Use**: Situations and domain contexts where this component or pattern is recommended.

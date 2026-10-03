@@ -2,10 +2,10 @@
 title: [Subsystem or Feature Name]
 status: draft
 tags: [spec, template]
-synapses: []
+synapses: ["CONTEXT.md"]
 ---
 
-# Specification: [Subsystem or Feature Name]
+# Specification: [Subsystem Name]
 
 - **Status**: Active | Draft
 - **Last Verified**: [YYYY-MM-DD or Git Commit Hash]

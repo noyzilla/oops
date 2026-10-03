@@ -36,7 +36,7 @@ Do NOT use this workflow when:
 - Verify the change classification against the Change Taxonomy in `.agents/rules/jarn-governance.md`.
 - Ensure the task is Spec-Altering (introduces or changes observable behavior).
 - Check `docs/specs/` to determine if a specification for this subsystem already exists.
-- If it exists, identify it as the proposed update target. If new, identify `docs/specs/<feature-slug>.md` as the proposed file path using [docs/specs/0000-template.md](../../../docs/specs/0000-template.md).
+- If it exists, identify it as the proposed update target. If new, identify `docs/specs/<feature-slug>.md` as the proposed file path using [.agents/templates/docs/spec.md](../../templates/docs/spec.md).
 
 ### Phase: Interactive Design Debate
 Before writing specification details or code, conduct an architectural debate with the human lead:
@@ -46,7 +46,7 @@ Before writing specification details or code, conduct an architectural debate wi
 - Present at least two viable architectural or technical options with concrete trade-offs when significant uncertainty exists.
 
 ### Phase: Specification Synthesis
-Draft the specification following the structure defined in [docs/specs/0000-template.md](../../../docs/specs/0000-template.md):
+Draft the specification following the structure defined in [.agents/templates/docs/spec.md](../../templates/docs/spec.md):
 - **Overview & Scope**: Problem statement and subsystem boundaries.
 - **Domain Context & Ubiquitous Language**: Canonical definitions and forbidden synonyms.
 - **Business Rules & Logic Invariants**: Explicit calculation methods, validation constraints, and edge handling.

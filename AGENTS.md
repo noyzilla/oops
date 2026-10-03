@@ -48,9 +48,10 @@ When modifying specific layers or subsystems, update the designated locations an
 
 | Change Area | Primary Files to Update | Verification Command |
 | :--- | :--- | :--- |
-| **Domain Logic & Services** | `src/domain/`, `src/services/`, `docs/specs/` | Run unit tests for affected package |
-| **API & Routing Layer** | `src/api/`, `src/controllers/`, `routes/`, `docs/specs/` | Run API / integration tests and linter |
-| **Data Schema & Migrations** | `migrations/`, `db/`, `models/`, `docs/specs/` | Run migration scripts and database test suite |
+| **CLI & Command Routing** | `cmd/`, `docs/specs/` | `go test -v -race ./cmd/...` |
+| **Domain Logic & Orchestration** | `internal/orchestrator/`, `internal/docker/`, `docs/specs/` | `go test -v -race ./internal/...` |
+| **Database & Backup Services** | `internal/db/`, `internal/backup/`, `docs/specs/` | `go test -v -race ./internal/db/... ./internal/backup/...` |
+| **Webhook Server Layer** | `internal/webhook/`, `docs/specs/` | `go test -v -race ./internal/webhook/...` |
 | **CLI Output & Logging** | `DESIGN.md`, `docs/design/` | `git diff --check` and verify log formatting rules |
 | **Living Specifications** | `docs/specs/` | `git diff --check` and verify spec contract alignment |
 | **Architectural Decisions (ADR)** | `docs/adr/` | `git diff --check` and verify filename status lifecycle |
@@ -73,7 +74,7 @@ When modifying specific layers or subsystems, update the designated locations an
 
 - **Project Name**: oops
 - **Primary Language / Runtime**: go
-- **Architecture Pattern**: webhook handler
+- **Architecture Pattern**: cli & webhook daemon
 
 ## Available Modular Skills
 
