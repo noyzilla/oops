@@ -89,6 +89,7 @@ All environment variables follow the **[Topic] -> [Modifier] -> [Unit]** standar
 | `OOPS_DOMAIN` | `CONFIG.SERVER.DOMAIN` | `string` | `""` | Optional ingress FQDN for webhook daemon |
 | `OOPS_PORT` | `CONFIG.SERVER.PORT` | `int / string` | `8080` | Webhook HTTP daemon listening port (fallback: `PORT`) |
 | `OOPS_SECRET` | `CONFIG.WEBHOOK.SECRET` | `string` | `""` | Global fallback webhook secret token |
+| `OOPS_DNS_UPSTREAM` | `CONFIG.DNS.UPSTREAM` | `string` | `1.1.1.1:53,8.8.8.8:53` | Upstream DNS relays for non-local domain queries |
 | `OOPS_HEALTHCHECK_TIMEOUT` | `CONFIG.HEALTHCHECK.TIMEOUT` | `duration` | `10m` | Maximum wait time for container to become healthy (fallback: `HEALTHCHECK_TIMEOUT_SECONDS`) |
 | `OOPS_HEALTHCHECK_INTERVAL`| `CONFIG.HEALTHCHECK.INTERVAL`| `duration` | `3s` | Polling interval between health checks (fallback: `HEALTHCHECK_INTERVAL_SECONDS`) |
 | `OOPS_STOP_TIMEOUT` | `CONFIG.CONTAINER.STOP_TIMEOUT`| `duration` | `30s` | Default timeout for graceful container stop (fallback: `STOP_TIMEOUT_SECONDS`) |

@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/docker/docker/client"
+	"github.com/noyzilla/oops/internal/dns"
 	"github.com/noyzilla/oops/internal/webhook"
 	"github.com/spf13/cobra"
 )
@@ -16,7 +19,7 @@ func newServerCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "server",
-		Short: "Starts the webhook deployment daemon",
+		Short: "Starts the webhook deployment and DNS discovery daemon",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if port == "" {
 				port = os.Getenv("OOPS_PORT")
@@ -25,6 +28,18 @@ func newServerCmd() *cobra.Command {
 					if port == "" {
 						port = "8080"
 					}
+				}
+			}
+
+			// Initialize Docker client and Native DNS Daemon
+			dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+			if err != nil {
+				log.Printf("[Server] Warning: Failed to connect to Docker daemon for DNS watcher: %v", err)
+			} else {
+				resolver := dns.NewResolver()
+				go dns.WatchDockerEvents(context.Background(), dockerCli, resolver)
+				if err := dns.StartDNSDaemon(context.Background(), ":53", resolver, nil); err != nil {
+					log.Printf("[Server] Warning: Failed to start DNS daemon: %v", err)
 				}
 			}
 
