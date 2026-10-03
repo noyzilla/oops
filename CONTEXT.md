@@ -96,8 +96,7 @@ All environment variables follow the **[Topic] -> [Modifier] -> [Unit]** standar
 | `OOPS_BACKUP_RETENTION` | `CONFIG.BACKUP.RETENTION` | `duration` | `7d` | Retention window for database dump archives (fallback: `BACKUP_RETENTION_DAYS`) |
 | `OOPS_BACKUP_DIR` | `CONFIG.BACKUP.DIR` | `string` | `./backups` | Target directory for backup files (fallback: `BACKUP_DIR`) |
 | `MYSQL_ROOT_PASSWORD` | `CONFIG.MYSQL.ROOT_PASSWORD` | `string` | `""` | Root password for MySQL container exec |
-| `POSTGRES_USER` | `CONFIG.POSTGRES.USER` | `string` | `"app_user"`| Superuser / admin user for Postgres exec |
-| `POSTGRES_DB` | `CONFIG.POSTGRES.DB` | `string` | `"app_db"`| Default maintenance database for Postgres exec |
+| `POSTGRES_USER` | `CONFIG.POSTGRES.USER` | `string` | `"postgres"`| Superuser / admin user for Postgres exec |
 | `POSTGRES_PASSWORD` | `CONFIG.POSTGRES.PASSWORD` | `string` | `""` | Admin password for Postgres exec |
 
 ---
