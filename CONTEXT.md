@@ -31,7 +31,7 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ### Entity: Config
 - **Canonical Term**: `Config`
-- **Definition**: Version-controlled system and service configurations residing in `config/` (e.g. `config/oops/hosts`, `config/caddy/Caddyfile`, `config/mysql/my.cnf`). Tracked in Git and separate from raw binary database storage (`data/`).
+- **Definition**: Version-controlled service configurations residing modularly inside each stack (`stacks/<stack>/config/<service>/`, e.g. `stacks/utils/config/oops/hosts`, `stacks/edge/config/caddy/Caddyfile`, `stacks/db/config/mysql/my.cnf`). Tracked in Git and separate from raw binary database storage (`data/`).
 
 ### Entity: Storage
 - **Canonical Term**: `Storage`
@@ -41,7 +41,7 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ### Entity: Service
 - **Canonical Term**: `Service`
-- **Definition**: A named workload definition inside a `docker-compose.yml` file (e.g. `caddy`, `mysql`, `app1`).
+- **Definition**: A named workload definition inside a `compose.yml` file (e.g. `caddy`, `mysql`, `app1`).
 - **Permitted Synonyms**: `compose_service`
 - **Avoid**: `module`, `microservice`, `app_instance`
 

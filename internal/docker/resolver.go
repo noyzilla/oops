@@ -51,12 +51,12 @@ func MatchWildcard(pattern, candidate string) bool {
 	return false
 }
 
-// DiscoverStacks finds all stack directories in workDir (under stacks/ or directly) containing docker-compose files
+// DiscoverStacks finds all stack directories in workDir (under stacks/ or directly) containing compose files
 func DiscoverStacks(workDir string) ([]string, map[string]string, error) {
 	composeMap := make(map[string]string)
 	discovered := make(map[string]bool)
 
-	rootCandidates := []string{"docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"}
+	rootCandidates := []string{"compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"}
 
 	// 1. Primary Discovery: Check stacks/ subdirectory
 	stacksDir := filepath.Join(workDir, "stacks")

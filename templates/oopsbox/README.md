@@ -7,20 +7,21 @@ This blueprint provides a production-ready, modular multi-stack Docker Compose e
 ```text
 ~/oopsbox/                # Standard Root Directory (or /opt/oopsbox on production)
 ├── .env                  # Environment variables & secrets (copy from .env.example)
-├── stacks/               # All Docker Compose Stacks
+├── stacks/               # All Multi-Stack Definitions
 │   ├── edge/             # Stack: Ingress Reverse Proxy & Auto-SSL (net-edge)
-│   │   └── docker-compose.yml
+│   │   ├── compose.yml
+│   │   └── config/
+│   │       └── caddy/Caddyfile
 │   ├── db/               # Stack: Persistence & Cache (net-db - isolated from edge)
-│   │   └── docker-compose.yml
-│   ├── apps/             # Stack: Application Services (web-app: net-edge+net-db, worker: net-db only)
-│   │   └── docker-compose.yml
+│   │   ├── compose.yml
+│   │   └── config/
+│   │       └── mysql/my.cnf
+│   ├── apps/             # Stack: Application Services (web-app, worker)
+│   │   └── compose.yml
 │   └── utils/            # Stack: Oops Webhook Engine & Utilities (net-edge+net-db)
-│       └── docker-compose.yml
-├── config/               # Service & runtime configurations (Tracked in Git)
-│   ├── oops/
-│   │   └── hosts         # Custom Static DNS mappings (Colima, hostmac, local.dev)
-│   ├── caddy/
-│   └── mysql/
+│       ├── compose.yml
+│       └── config/
+│           └── oops/hosts    # Custom Static DNS (hostmac, colima, local.dev)
 ├── data/                 # Live realtime container storage (High-IOPS persistent volume)
 └── backups/              # Secondary backup storage (Cold storage / database dumps)
 ```

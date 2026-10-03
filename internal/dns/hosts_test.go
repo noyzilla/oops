@@ -72,8 +72,7 @@ func TestLoadCustomHosts_EnvRecords(t *testing.T) {
 	os.Setenv("OOPS_DNS_RECORDS", "colima=192.168.64.1, .test=127.0.0.1")
 	defer os.Unsetenv("OOPS_DNS_RECORDS")
 
-	resolver := dns.NewResolver()
-	dns.LoadCustomHosts("/nonexistent", resolver)
+	resolver := dns.LoadCustomHosts("/nonexistent")
 
 	if ip, ok := resolver.Resolve("colima"); !ok || !ip.Equal(net.ParseIP("192.168.64.1")) {
 		t.Errorf("expected colima to resolve to 192.168.64.1, got %v", ip)

@@ -20,8 +20,8 @@ Oops provides an operator CLI binary (`oops <command>`) designed to manage multi
 ## Domain Context & Ubiquitous Language
 
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
-- **Stack**: A cohesive group of services defined in a `docker-compose.yml` under `stacks/<stack>/` (e.g. `/edge`, `/db`, `/apps`, `/utils`, or custom sub-directories).
-- **Service**: A named compose service in `docker-compose.yml`.
+- **Stack**: A cohesive group of services defined in a `compose.yml` (or compose file) under `stacks/<stack>/` (e.g. `/edge`, `/db`, `/apps`, `/utils`, or custom sub-directories).
+- **Service**: A named compose service in `compose.yml`.
 - **Target**: Explicit stack (`/db`, `/apps`), scoped service (`/db/mysql`, `/apps/api`), exact service name (`caddy`, `mysql`), or Double Dot wildcard (`app..`, `..worker`, `..api..`).
 - **Rolling Update**: Sequential pull -> stop hook -> recreate -> health poll workflow.
 
@@ -30,7 +30,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 ### Smart Target Resolution & Double Dot (`..`) Wildcard Protocol
 Target strings are resolved using an explicit, shell-safe notation that eliminates quoting overhead on physical and virtual keyboards:
 - **Stack Target (`/<stack>`)**:
-  - Any target starting with a leading slash `/` without further subpaths (e.g., `/edge`, `/db`, `/apps`, `/utils`) targets the entire stack and executes on that stack's `docker-compose.yml` (located under `stacks/<stack>/`).
+  - Any target starting with a leading slash `/` without further subpaths (e.g., `/edge`, `/db`, `/apps`, `/utils`) targets the entire stack and executes on that stack's `compose.yml` (located under `stacks/<stack>/`).
 - **Scoped Service Target (`/<stack>/<service>`)**:
   - Path notation (e.g., `/db/mysql`, `/apps/web`) targets only the specified service strictly inside the designated stack.
 - **Exact Service Name (Bare string without `..`)**:

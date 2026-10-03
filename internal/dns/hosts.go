@@ -64,8 +64,10 @@ func LoadHostsFile(filePath string, resolver *Resolver) (int, error) {
 	return count, nil
 }
 
-// LoadCustomHosts discovers and loads custom static hosts from config/oops/hosts and env
-func LoadCustomHosts(workDir string, resolver *Resolver) {
+// LoadCustomHosts discovers and loads custom static hosts from stack config and env
+func LoadCustomHosts(workDir string) *Resolver {
+	resolver := NewResolver()
+
 	// 1. Check custom file path from env
 	if customFile := os.Getenv("OOPS_HOSTS_FILE"); customFile != "" {
 		if count, err := LoadHostsFile(customFile, resolver); err == nil {
@@ -73,11 +75,19 @@ func LoadCustomHosts(workDir string, resolver *Resolver) {
 		}
 	}
 
-	// 2. Check standard config/oops/hosts path
-	hostsPath := filepath.Join(workDir, "config", "oops", "hosts")
-	if fi, err := os.Stat(hostsPath); err == nil && !fi.IsDir() {
-		if count, err := LoadHostsFile(hostsPath, resolver); err == nil {
-			log.Printf("[DNS] Loaded %d custom static DNS records from %s", count, hostsPath)
+	// 2. Check standard stack config paths: stacks/utils/config/oops/hosts, stacks/edge/config/oops/hosts, config/oops/hosts
+	candidatePaths := []string{
+		filepath.Join(workDir, "stacks", "utils", "config", "oops", "hosts"),
+		filepath.Join(workDir, "stacks", "edge", "config", "oops", "hosts"),
+		filepath.Join(workDir, "config", "oops", "hosts"),
+	}
+
+	for _, hostsPath := range candidatePaths {
+		if fi, err := os.Stat(hostsPath); err == nil && !fi.IsDir() {
+			if count, err := LoadHostsFile(hostsPath, resolver); err == nil {
+				log.Printf("[DNS] Loaded %d custom static DNS records from %s", count, hostsPath)
+				break
+			}
 		}
 	}
 
@@ -107,4 +117,6 @@ func LoadCustomHosts(workDir string, resolver *Resolver) {
 			log.Printf("[DNS] Loaded %d custom DNS records from OOPS_DNS_RECORDS", envCount)
 		}
 	}
+
+	return resolver
 }

@@ -38,8 +38,7 @@ func newServerCmd() *cobra.Command {
 			if err != nil {
 				log.Printf("[Server] Warning: Failed to connect to Docker daemon for DNS watcher: %v", err)
 			} else {
-				resolver := dns.NewResolver()
-				dns.LoadCustomHosts(workDir, resolver)
+				resolver := dns.LoadCustomHosts(workDir)
 				go dns.WatchDockerEvents(context.Background(), dockerCli, resolver)
 				if err := dns.StartDNSDaemon(context.Background(), ":53", resolver, nil); err != nil {
 					log.Printf("[Server] Warning: Failed to start DNS daemon: %v", err)
