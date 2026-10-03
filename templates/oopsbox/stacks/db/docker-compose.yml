@@ -7,7 +7,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
     volumes:
-      - mysql_data:/var/lib/mysql
+      - ../../data/mysql:/var/lib/mysql
+      # - mysql_data:/var/lib/mysql
     networks:
       - net-db
     healthcheck:
@@ -24,7 +25,8 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ../../data/postgres:/var/lib/postgresql/data
+      # - postgres_data:/var/lib/postgresql/data
     networks:
       - net-db
     healthcheck:
@@ -39,7 +41,8 @@ services:
     hostname: redis.oops
     restart: unless-stopped
     volumes:
-      - redis_data:/data
+      - ../../data/redis:/data
+      # - redis_data:/data
     networks:
       - net-db
     healthcheck:
@@ -48,10 +51,11 @@ services:
       timeout: 3s
       retries: 5
 
-volumes:
-  mysql_data:
-  postgres_data:
-  redis_data:
+# Optional: Enable named volumes if not using host data/ bind mounts
+# volumes:
+#   mysql_data:
+#   postgres_data:
+#   redis_data:
 
 networks:
   net-db:
