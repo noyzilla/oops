@@ -114,7 +114,7 @@ oops db pg drop myapp_db myapp_user
 ```
 
 ### Database Backup & Retention
-Execute automated dumps and prune archives older than `BACKUP_RETENTION_DAYS`:
+Execute automated dumps and prune archives older than `OOPS_BACKUP_RETENTION` (default `7d`):
 ```bash
 oops db-backup
 oops db-backup mysql

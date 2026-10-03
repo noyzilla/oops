@@ -86,17 +86,16 @@ All environment variables follow the **[Topic] -> [Modifier] -> [Unit]** standar
 
 | Environment Variable | Internal Config Path | Type | Default | Description |
 | :--- | :--- | :---: | :---: | :--- |
-| `PORT` | `CONFIG.PORT` | `int` | `8080` | Webhook HTTP daemon listening port |
+| `OOPS_PORT` | `CONFIG.SERVER.PORT` | `int / string` | `8080` | Webhook HTTP daemon listening port (fallback: `PORT`) |
 | `OOPS_SECRET` | `CONFIG.WEBHOOK.SECRET` | `string` | `""` | Global fallback webhook secret token |
-| `HEALTHCHECK_TIMEOUT_SECONDS` | `CONFIG.HEALTHCHECK.TIMEOUT_SECONDS` | `int` | `600` | Maximum wait time for container to become healthy |
-| `HEALTHCHECK_INTERVAL_SECONDS`| `CONFIG.HEALTHCHECK.INTERVAL_SECONDS`| `int` | `3` | Polling interval between health checks |
-| `DELAY_SECONDS` | `CONFIG.ORCHESTRATION.DELAY_SECONDS` | `int` | `0` | Delay gap between consecutive service operations |
-| `STOP_TIMEOUT_SECONDS` | `CONFIG.CONTAINER.STOP_TIMEOUT_SECONDS`| `int` | `30` | Default timeout for graceful container stop |
-| `BACKUP_RETENTION_DAYS` | `CONFIG.BACKUP.RETENTION_DAYS` | `int` | `7` | Retention window for database dump archives |
-| `BACKUP_DIR` | `CONFIG.BACKUP.DIR` | `string` | `./backups` | Target directory for backup files |
+| `OOPS_HEALTHCHECK_TIMEOUT` | `CONFIG.HEALTHCHECK.TIMEOUT` | `duration` | `10m` | Maximum wait time for container to become healthy (fallback: `HEALTHCHECK_TIMEOUT_SECONDS`) |
+| `OOPS_HEALTHCHECK_INTERVAL`| `CONFIG.HEALTHCHECK.INTERVAL`| `duration` | `3s` | Polling interval between health checks (fallback: `HEALTHCHECK_INTERVAL_SECONDS`) |
+| `OOPS_STOP_TIMEOUT` | `CONFIG.CONTAINER.STOP_TIMEOUT`| `duration` | `30s` | Default timeout for graceful container stop (fallback: `STOP_TIMEOUT_SECONDS`) |
+| `OOPS_BACKUP_RETENTION` | `CONFIG.BACKUP.RETENTION` | `duration` | `7d` | Retention window for database dump archives (fallback: `BACKUP_RETENTION_DAYS`) |
+| `OOPS_BACKUP_DIR` | `CONFIG.BACKUP.DIR` | `string` | `./backups` | Target directory for backup files (fallback: `BACKUP_DIR`) |
 | `MYSQL_ROOT_PASSWORD` | `CONFIG.MYSQL.ROOT_PASSWORD` | `string` | `""` | Root password for MySQL container exec |
 | `POSTGRES_USER` | `CONFIG.POSTGRES.USER` | `string` | `"app_user"`| Superuser / admin user for Postgres exec |
-| `POSTGRES_DB` | `CONFIG.POSTGRES.DB` | `string` | `"postgres"`| Default maintenance database for Postgres exec |
+| `POSTGRES_DB` | `CONFIG.POSTGRES.DB` | `string` | `"app_db"`| Default maintenance database for Postgres exec |
 | `POSTGRES_PASSWORD` | `CONFIG.POSTGRES.PASSWORD` | `string` | `""` | Admin password for Postgres exec |
 
 ---

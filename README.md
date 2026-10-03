@@ -50,7 +50,7 @@ cd oops
 docker compose up -d --build
 ```
 
-> Oops will listen for webhooks on port `8080` (or the port configured via `PORT` environment variable).
+> Oops will listen for webhooks on port `8080` (or the port configured via `OOPS_PORT` / `PORT` environment variable).
 
 ---
 
@@ -65,7 +65,7 @@ To allow Oops to manage a specific container, add the following labels to the ta
 | `oops.enable` | Yes | Must be set to `true` to authorize the Oops to manage this container. |
 | `oops.secret` | Yes | Project-specific secret. The webhook token must match this secret exactly for the update to proceed. |
 | `oops.stop.cmd` | No | **(Optional)** Command to execute inside the container **before** it is stopped (useful for graceful shutdowns). |
-| `oops.stop.timeout` | No | **(Optional)** Maximum time (in seconds) to wait for the stop command to complete. Default is `60` seconds. |
+| `oops.stop.timeout` | No | **(Optional)** Maximum duration (e.g. `30s`, `1m`) to wait for the stop command to complete. Default is `30s` (or `$OOPS_STOP_TIMEOUT`). |
 | `oops.git.dir` | **Yes (Git Mode)** | The absolute path inside the container where the source code is mounted (e.g. `/app`). |
 | `oops.git.url` | **Yes (Git Mode)** | The Git repository URL of the project. Validated against the webhook `url` to prevent accidental deployments to the wrong container, and used to auto-clone if `.git` does not exist. |
 | `oops.tool.image` | No | **(Optional)** Image to run as a tool container after git pull. |

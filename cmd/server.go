@@ -19,9 +19,12 @@ func newServerCmd() *cobra.Command {
 		Short: "Starts the webhook deployment daemon",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if port == "" {
-				port = os.Getenv("PORT")
+				port = os.Getenv("OOPS_PORT")
 				if port == "" {
-					port = "8080"
+					port = os.Getenv("PORT")
+					if port == "" {
+						port = "8080"
+					}
 				}
 			}
 
@@ -37,7 +40,7 @@ func newServerCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&port, "port", "p", "", "Webhook server listening port (default: 8080 or $PORT)")
+	cmd.Flags().StringVarP(&port, "port", "p", "", "Webhook server listening port (default: 8080 or $OOPS_PORT)")
 	cmd.Flags().StringVarP(&configPath, "config", "c", "", "Path to configuration file")
 
 	return cmd

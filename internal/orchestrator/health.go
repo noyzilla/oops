@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +12,24 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 )
+
+// GetHealthcheckTimeout reads OOPS_HEALTHCHECK_TIMEOUT with fallback to HEALTHCHECK_TIMEOUT_SECONDS (default 10m)
+func GetHealthcheckTimeout() time.Duration {
+	val := os.Getenv("OOPS_HEALTHCHECK_TIMEOUT")
+	if val == "" {
+		val = os.Getenv("HEALTHCHECK_TIMEOUT_SECONDS")
+	}
+	return ParseDurationWithDefault(val, 10*time.Minute)
+}
+
+// GetHealthcheckInterval reads OOPS_HEALTHCHECK_INTERVAL with fallback to HEALTHCHECK_INTERVAL_SECONDS (default 3s)
+func GetHealthcheckInterval() time.Duration {
+	val := os.Getenv("OOPS_HEALTHCHECK_INTERVAL")
+	if val == "" {
+		val = os.Getenv("HEALTHCHECK_INTERVAL_SECONDS")
+	}
+	return ParseDurationWithDefault(val, 3*time.Second)
+}
 
 // ParseDelay parses standard duration strings (5s, 10s, 1m) or pure integers (5 -> 5s)
 func ParseDelay(delayStr string) (time.Duration, error) {
@@ -79,10 +98,10 @@ func CheckContainerHealth(ctx context.Context, cli *client.Client, containerID s
 // WaitForHealth polls container health until healthy, unhealthy, or timed out
 func WaitForHealth(ctx context.Context, cli *client.Client, containerID string, healthURL string, timeout time.Duration, interval time.Duration) error {
 	if timeout <= 0 {
-		timeout = 600 * time.Second
+		timeout = GetHealthcheckTimeout()
 	}
 	if interval <= 0 {
-		interval = 3 * time.Second
+		interval = GetHealthcheckInterval()
 	}
 
 	deadline := time.Now().Add(timeout)

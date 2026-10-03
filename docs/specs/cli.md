@@ -60,13 +60,13 @@ When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down
 ### Sequential Rolling Update Algorithm (`oops update <targets...>`)
 For each matched service in target order:
 - **Step 1 - Pull**: Run `docker compose -f <layer_compose> pull <service>`.
-- **Step 2 - Stop Hook (if defined)**: If container has label `oops.stop.cmd`, execute the command inside the running container with timeout `oops.stop.timeout` (default 30s).
+- **Step 2 - Stop Hook (if defined)**: If container has label `oops.stop.cmd`, execute the command inside the running container with timeout `oops.stop.timeout` (default `OOPS_STOP_TIMEOUT` or 30s).
 - **Step 3 - Recreate**: Run `docker compose -f <layer_compose> up -d --no-deps <service>`.
 - **Step 4 - Health Polling**:
-  - Poll Docker container inspection state `.State.Health.Status` every `HEALTHCHECK_INTERVAL_SECONDS` (default 3s).
+  - Poll Docker container inspection state `.State.Health.Status` every `OOPS_HEALTHCHECK_INTERVAL` (default 3s).
   - If `.State.Health.Status == "healthy"`: Service update succeeded. If `-d` / `--delay` is set, pause for the delay gap before advancing to next service.
   - If container has no native healthcheck but has `oops.health.url`: Send HTTP GET requests until 200 OK is received.
-  - If status is `"unhealthy"` or polling exceeds `HEALTHCHECK_TIMEOUT_SECONDS` (default 600s): Abort the update sequence immediately, print container logs, and exit with Code 1.
+  - If status is `"unhealthy"` or polling exceeds `OOPS_HEALTHCHECK_TIMEOUT` (default 10m / 600s): Abort the update sequence immediately, print container logs, and exit with Code 1.
 
 ### Database Management (`oops db <engine>[:<target>] <action>`)
 - **Syntax**: `oops db mysql[:<target>] <create|passwd|list|drop> [args...]` (also accepts shorthand `mysql/create`, `mysql-create`, `mysql passwd`, `mysql password`).

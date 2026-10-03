@@ -106,7 +106,7 @@ func (o *Orchestrator) Update(ctx context.Context, targets []docker.ResolvedTarg
 		} else {
 			healthURL := target.Labels["oops.health.url"]
 			log.Printf("[%s] Polling health status (Health URL: %s)...", target.ServiceName, healthURL)
-			if err := WaitForHealth(ctx, o.dockerCli, newCID, healthURL, 600*time.Second, 3*time.Second); err != nil {
+			if err := WaitForHealth(ctx, o.dockerCli, newCID, healthURL, 0, 0); err != nil {
 				return fmt.Errorf("service %s health check failed: %w", target.ServiceName, err)
 			}
 			log.Printf("[%s] Service is healthy!", target.ServiceName)
