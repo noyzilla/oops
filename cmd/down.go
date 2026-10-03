@@ -15,22 +15,22 @@ func newDownCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "down",
-		Short: "Tears down all layers in reverse dependency order",
+		Short: "Tears down all stacks in reverse dependency order",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			d, err := orchestrator.ParseDelay(delay)
 			if err != nil {
 				return err
 			}
 
-			orderedLayers, composeMap, err := docker.DiscoverLayers(".")
+			orderedStacks, composeMap, err := docker.DiscoverStacks(".")
 			if err != nil {
 				return err
 			}
 
 			// Reverse order for teardown (apps -> utils -> db -> edge)
-			var reverseLayers []string
-			for i := len(orderedLayers) - 1; i >= 0; i-- {
-				reverseLayers = append(reverseLayers, orderedLayers[i])
+			var reverseStacks []string
+			for i := len(orderedStacks) - 1; i >= 0; i-- {
+				reverseStacks = append(reverseStacks, orderedStacks[i])
 			}
 
 			orch, err := orchestrator.New()
@@ -52,15 +52,15 @@ func newDownCmd() *cobra.Command {
 				}
 			}
 
-			for i, layer := range reverseLayers {
-				composePath := composeMap[layer]
-				log.Printf("==> Tearing down layer /%s...", layer)
+			for i, stack := range reverseStacks {
+				composePath := composeMap[stack]
+				log.Printf("==> Tearing down stack /%s...", stack)
 				if err := orchestrator.RunComposeCommand(composePath, "down"); err != nil {
-					log.Printf("Warning: down failed for /%s: %v", layer, err)
+					log.Printf("Warning: down failed for /%s: %v", stack, err)
 				}
 
-				if d > 0 && i < len(reverseLayers)-1 {
-					log.Printf("Pausing %v before tearing down next layer...", d)
+				if d > 0 && i < len(reverseStacks)-1 {
+					log.Printf("Pausing %v before tearing down next stack...", d)
 					time.Sleep(d)
 				}
 			}

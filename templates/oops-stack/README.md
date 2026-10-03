@@ -1,20 +1,23 @@
 # Oops Stack Blueprint Template
 
-This blueprint provides a production-ready, modular 4-layer Docker Compose stack designed for orchestration via **Oops** (`ghcr.io/noyzilla/oops:latest`).
+This blueprint provides a production-ready, modular multi-stack Docker Compose layout designed for orchestration via **Oops** (`ghcr.io/noyzilla/oops:latest`).
 
 ## Directory Topology
 
 ```text
 my-stack/
 ├── .env                  # Environment variables & secrets (copy from .env.example)
-├── edge/                 # Layer: Ingress Reverse Proxy & Auto-SSL (net-edge)
-│   └── docker-compose.yml
-├── db/                   # Layer: Persistence & Cache (net-db - isolated from edge)
-│   └── docker-compose.yml
-├── apps/                 # Layer: Application Services (web-app: net-edge+net-db, worker: net-db only)
-│   └── docker-compose.yml
-└── utils/                # Layer: Oops Webhook Engine & Utilities (net-edge+net-db)
-    └── docker-compose.yml
+├── stacks/               # All Docker Compose Stacks
+│   ├── edge/             # Stack: Ingress Reverse Proxy & Auto-SSL (net-edge)
+│   │   └── docker-compose.yml
+│   ├── db/               # Stack: Persistence & Cache (net-db - isolated from edge)
+│   │   └── docker-compose.yml
+│   ├── apps/             # Stack: Application Services (web-app: net-edge+net-db, worker: net-db only)
+│   │   └── docker-compose.yml
+│   └── utils/            # Stack: Oops Webhook Engine & Utilities (net-edge+net-db)
+│       └── docker-compose.yml
+├── data/                 # Live realtime container storage (High-IOPS persistent volume)
+└── backups/              # Secondary backup storage (Cold storage / database dumps)
 ```
 
 ---
@@ -25,7 +28,7 @@ Oops Stack enforces the **Principle of Least Privilege & Network Isolation**:
 
 ```mermaid
 graph TD
-    Internet((Internet / Clients)) -->|Ports 80/443| Edge["Edge Layer (Caddy / Traefik / Nginx)"]
+    Internet((Internet / Clients)) -->|Ports 80/443| Edge["Edge Stack (Caddy / Traefik / Nginx)"]
     
     subgraph "net-edge (Ingress Only)"
         Edge -->|Reverse Proxy| WebApp["apps: web-app"]
@@ -71,7 +74,7 @@ alias oops='docker run --rm -it \
 # Start entire stack
 oops up
 
-# Start specific layers (in dependency order)
+# Start specific stacks (in dependency order)
 oops up /edge
 oops up /db
 oops up /utils

@@ -88,7 +88,7 @@ func TestHelpOutput(t *testing.T) {
 	}
 
 	out := buf.String()
-	if !strings.Contains(out, "managing multi-layer Docker Compose stacks") {
+	if !strings.Contains(out, "managing multi-stack Docker Compose deployments") {
 		t.Errorf("help output missing expected description: %s", out)
 	}
 }

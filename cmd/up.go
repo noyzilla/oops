@@ -14,8 +14,8 @@ func newUpCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "up [targets...]",
-		Short: "Starts stack, layer, or targeted services",
-		Long:  "Starts stack layers or specific services. Target can be a layer (e.g. /apps, /db), scoped service (e.g. /db/mysql), service name (e.g. mysql), or wildcard (e.g. app..).",
+		Short: "Starts stack or targeted services",
+		Long:  "Starts stack or specific services. Target can be a whole stack (e.g. /apps, /db), scoped service (e.g. /db/mysql), service name (e.g. mysql), or wildcard (e.g. app..).",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			d, err := orchestrator.ParseDelay(delay)
 			if err != nil {
@@ -27,31 +27,31 @@ func newUpCmd() *cobra.Command {
 				return err
 			}
 
-			// Group targets by layer to start layers cleanly
-			layerServiceMap := make(map[string][]string)
-			layerComposeMap := make(map[string]string)
-			var orderedLayers []string
+			// Group targets by stack to start stacks cleanly
+			stackServiceMap := make(map[string][]string)
+			stackComposeMap := make(map[string]string)
+			var orderedStacks []string
 
 			for _, t := range targets {
-				if _, exists := layerServiceMap[t.LayerName]; !exists {
-					orderedLayers = append(orderedLayers, t.LayerName)
-					layerComposeMap[t.LayerName] = t.ComposePath
+				if _, exists := stackServiceMap[t.StackName]; !exists {
+					orderedStacks = append(orderedStacks, t.StackName)
+					stackComposeMap[t.StackName] = t.ComposePath
 				}
-				layerServiceMap[t.LayerName] = append(layerServiceMap[t.LayerName], t.ServiceName)
+				stackServiceMap[t.StackName] = append(stackServiceMap[t.StackName], t.ServiceName)
 			}
 
-			for i, layer := range orderedLayers {
-				services := layerServiceMap[layer]
-				composePath := layerComposeMap[layer]
+			for i, stack := range orderedStacks {
+				services := stackServiceMap[stack]
+				composePath := stackComposeMap[stack]
 
-				log.Printf("==> Starting layer /%s (Services: %v)...", layer, services)
+				log.Printf("==> Starting stack /%s (Services: %v)...", stack, services)
 				cmdArgs := append([]string{"up", "-d"}, services...)
 				if err := orchestrator.RunComposeCommand(composePath, cmdArgs...); err != nil {
 					return err
 				}
 
-				if d > 0 && i < len(orderedLayers)-1 {
-					log.Printf("Pausing %v before starting next layer...", d)
+				if d > 0 && i < len(orderedStacks)-1 {
+					log.Printf("Pausing %v before starting next stack...", d)
 					time.Sleep(d)
 				}
 			}

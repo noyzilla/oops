@@ -1,0 +1,10 @@
+# Environment variables
+.env
+
+# Physical storage data (Live realtime data)
+/data/*
+!/data/.gitkeep
+
+# Physical storage backups (Dump files)
+/backups/*
+!/backups/.gitkeep

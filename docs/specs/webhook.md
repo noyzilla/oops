@@ -49,8 +49,8 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
     - **Git Action (`action: "git"`)**: Matches containers whose `oops.git.url` label matches `payload.url` (normalized). Requires non-empty `payload.tag`.
   - **Unified Target Selector (`payload.target`)**:
     - Optional selector supporting:
-      - **Layer Target (`/<layer>`)**: Matches all containers in the layer (e.g. `/apps`).
-      - **Scoped Service (`/<layer>/<service>`)**: Matches specific service in layer (e.g. `/apps/web`).
+      - **Stack Target (`/<stack>`)**: Matches all containers in the stack (e.g. `/apps`).
+      - **Scoped Service (`/<stack>/<service>`)**: Matches specific service in stack (e.g. `/apps/web`).
       - **Exact Name (`<service>`)**: Matches container with exact service/container name.
       - **Double Dot Wildcard (`<prefix>..`, `..<suffix>`, `..<keyword>..`)**: Matches containers matching the pattern (e.g. `app..`, `..worker`).
 - If no matching authorized containers are found, responds with `404 Not Found`.

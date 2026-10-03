@@ -15,25 +15,24 @@ synapses: ["ARCHITECTURE.md", "CONTEXT.md", "DESIGN.md", "docs/specs/webhook.md"
 
 ## Overview & Scope
 
-Oops provides an operator CLI binary (`oops <command>`) designed to manage multi-layer Docker Compose environments (`edge`, `db`, `apps`, `utils`), execute sequential rolling updates with health check polling, enforce graceful lifecycle shutdown hooks, provision least-privilege database credentials, and manage automated database backups.
+Oops provides an operator CLI binary (`oops <command>`) designed to manage multi-stack Docker Compose environments (`stacks/edge`, `stacks/db`, `stacks/apps`, `stacks/utils`), execute sequential rolling updates with health check polling, enforce graceful lifecycle shutdown hooks, provision least-privilege database credentials, and manage automated database backups.
 
 ## Domain Context & Ubiquitous Language
 
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
-- **Stack**: The complete multi-layer setup in the active working directory.
-- **Layer**: One of `/edge`, `/db`, `/apps`, `/utils`, or custom sub-directories containing compose files (prefixed with `/`).
+- **Stack**: A cohesive group of services defined in a `docker-compose.yml` under `stacks/<stack>/` (e.g. `/edge`, `/db`, `/apps`, `/utils`, or custom sub-directories).
 - **Service**: A named compose service in `docker-compose.yml`.
-- **Target**: Explicit layer (`/db`, `/apps`), scoped service (`/db/mysql`, `/apps/api`), exact service name (`caddy`, `mysql`), or Double Dot wildcard (`app..`, `..worker`, `..api..`).
+- **Target**: Explicit stack (`/db`, `/apps`), scoped service (`/db/mysql`, `/apps/api`), exact service name (`caddy`, `mysql`), or Double Dot wildcard (`app..`, `..worker`, `..api..`).
 - **Rolling Update**: Sequential pull -> stop hook -> recreate -> health poll workflow.
 
 ## Business Rules & Logic Invariants
 
 ### Smart Target Resolution & Double Dot (`..`) Wildcard Protocol
 Target strings are resolved using an explicit, shell-safe notation that eliminates quoting overhead on physical and virtual keyboards:
-- **Layer Target (`/<layer>`)**:
-  - Any target starting with a leading slash `/` without further subpaths (e.g., `/edge`, `/db`, `/apps`, `/utils`) targets the entire layer and executes on that layer's `docker-compose.yml`.
-- **Scoped Service Target (`/<layer>/<service>`)**:
-  - Path notation (e.g., `/db/mysql`, `/apps/web`) targets only the specified service strictly inside the designated layer.
+- **Stack Target (`/<stack>`)**:
+  - Any target starting with a leading slash `/` without further subpaths (e.g., `/edge`, `/db`, `/apps`, `/utils`) targets the entire stack and executes on that stack's `docker-compose.yml` (located under `stacks/<stack>/`).
+- **Scoped Service Target (`/<stack>/<service>`)**:
+  - Path notation (e.g., `/db/mysql`, `/apps/web`) targets only the specified service strictly inside the designated stack.
 - **Exact Service Name (Bare string without `..`)**:
   - A bare string without `..` (e.g., `mysql`, `caddy`) strictly matches only an exact service name. If no exact match exists, an error is returned.
 - **Double Dot (`..`) Wildcard Matcher**:
@@ -41,12 +40,12 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
   - **Suffix Match (`..<suffix>`)**: e.g., `..worker` matches all services ending with `worker` (e.g. `mail-worker`, `job-worker`).
   - **Contains Match (`..<keyword>..`)**: e.g., `..api..` matches any service name containing `api`.
 - **Global Stack (Omitted Target)**:
-  - If no target is specified, operations execute across all layers in deterministic dependency order:
-    - **Startup (`oops up`)**: `/edge` -> `/db` -> `/utils` -> `/apps` -> `[custom layers...]`
-    - **Teardown (`oops down`)**: `[custom layers...]` -> `/apps` -> `/utils` -> `/db` -> `/edge`
+  - If no target is specified, operations execute across all stacks in deterministic dependency order:
+    - **Startup (`oops up`)**: `/edge` -> `/db` -> `/utils` -> `/apps` -> `[custom stacks...]`
+    - **Teardown (`oops down`)**: `[custom stacks...]` -> `/apps` -> `/utils` -> `/db` -> `/edge`
 
 ### Sequential Lifecycle Hooks & Inter-Service Delay Protocol
-When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down`, or `oops up` targeting wildcards such as `app..` or whole layers):
+When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down`, or `oops up` targeting wildcards such as `app..` or whole stacks):
 - **Sequential Service Execution**: Matched services are processed sequentially one by one in resolved dependency or lexicographical order.
 - **Graceful Pre-Stop Hook (`oops.stop.cmd`)**:
   - Before stopping or restarting any running container, inspect for the `oops.stop.cmd` label.

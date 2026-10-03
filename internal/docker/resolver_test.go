@@ -42,17 +42,18 @@ func TestMatchWildcard(t *testing.T) {
 	}
 }
 
-func TestResolveTargetsMultiLayer(t *testing.T) {
+func TestResolveTargetsMultiStack(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "oops-resolver-test-*")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Create layers: edge, db, apps
-	edgeDir := filepath.Join(tmpDir, "edge")
-	dbDir := filepath.Join(tmpDir, "db")
-	appsDir := filepath.Join(tmpDir, "apps")
+	// Create stacks: edge, db, apps under stacks/
+	stacksDir := filepath.Join(tmpDir, "stacks")
+	edgeDir := filepath.Join(stacksDir, "edge")
+	dbDir := filepath.Join(stacksDir, "db")
+	appsDir := filepath.Join(stacksDir, "apps")
 
 	os.MkdirAll(edgeDir, 0755)
 	os.MkdirAll(dbDir, 0755)
@@ -94,8 +95,11 @@ services:
 	if all[0].ServiceName != "caddy" || all[1].ServiceName != "mysql" || all[2].ServiceName != "redis" {
 		t.Errorf("unexpected ordering for all targets: %+v", all)
 	}
+	if all[0].StackName != "edge" || all[1].StackName != "db" || all[3].StackName != "apps" {
+		t.Errorf("unexpected stack names for targets: %+v", all)
+	}
 
-	// 2. Resolve layer target /apps
+	// 2. Resolve stack target /apps
 	apps, err := docker.ResolveTargets(tmpDir, []string{"/apps"})
 	if err != nil {
 		t.Fatalf("unexpected error resolving /apps: %v", err)

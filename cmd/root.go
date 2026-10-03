@@ -10,7 +10,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "oops",
 	Short: "Oops: Unified DevOps Orchestration & Container Platform",
-	Long:  "Oops is a unified binary for managing multi-layer Docker Compose stacks and webhook deployments.",
+	Long:  "Oops is a unified binary for managing multi-stack Docker Compose deployments and webhook automation.",
 }
 
 // Execute runs the root command.

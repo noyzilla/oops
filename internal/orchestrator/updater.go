@@ -73,7 +73,7 @@ func RunComposeCommand(composePath string, args ...string) error {
 // Update executes sequential rolling updates across matched targets
 func (o *Orchestrator) Update(ctx context.Context, targets []docker.ResolvedTarget, delay time.Duration) error {
 	for i, target := range targets {
-		log.Printf("==> [%d/%d] Rolling update service %s (Layer: %s)...", i+1, len(targets), target.ServiceName, target.LayerName)
+		log.Printf("==> [%d/%d] Rolling update service %s (Stack: %s)...", i+1, len(targets), target.ServiceName, target.StackName)
 
 		// Step 1 - Pull latest image
 		log.Printf("[%s] Pulling image for %s...", target.ServiceName, target.ServiceName)
@@ -125,7 +125,7 @@ func (o *Orchestrator) Update(ctx context.Context, targets []docker.ResolvedTarg
 // Stop executes graceful stopping across matched targets sequentially
 func (o *Orchestrator) Stop(ctx context.Context, targets []docker.ResolvedTarget, delay time.Duration) error {
 	for i, target := range targets {
-		log.Printf("==> [%d/%d] Stopping service %s (Layer: %s)...", i+1, len(targets), target.ServiceName, target.LayerName)
+		log.Printf("==> [%d/%d] Stopping service %s (Stack: %s)...", i+1, len(targets), target.ServiceName, target.StackName)
 
 		cID, err := o.FindContainerID(ctx, target)
 		if err == nil && cID != "" {
@@ -151,7 +151,7 @@ func (o *Orchestrator) Stop(ctx context.Context, targets []docker.ResolvedTarget
 // Restart executes graceful restart across matched targets sequentially
 func (o *Orchestrator) Restart(ctx context.Context, targets []docker.ResolvedTarget, delay time.Duration) error {
 	for i, target := range targets {
-		log.Printf("==> [%d/%d] Restarting service %s (Layer: %s)...", i+1, len(targets), target.ServiceName, target.LayerName)
+		log.Printf("==> [%d/%d] Restarting service %s (Stack: %s)...", i+1, len(targets), target.ServiceName, target.StackName)
 
 		cID, err := o.FindContainerID(ctx, target)
 		if err == nil && cID != "" {

@@ -14,21 +14,21 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ### Entity: Stack
 - **Canonical Term**: `Stack`
-- **Definition**: The complete collection of containerized services organized across modular layers (`edge`, `db`, `apps`, `utils`) managed by Oops.
-- **Permitted Synonyms**: `project_stack`
-- **Avoid**: `bundle`, `cluster`, `environment`, `pod`
-
-### Entity: Layer
-- **Canonical Term**: `Layer`
-- **Definition**: A distinct functional tier within a stack containing a dedicated `docker-compose.yml` file.
+- **Definition**: A distinct functional tier and docker compose setup residing in `stacks/<stack>/` (or top-level compose) containing a dedicated `docker-compose.yml` file.
 - **Permitted Canonical Values**:
   - `edge`: Ingress reverse proxy and SSL termination (e.g. Caddy, Traefik).
   - `db`: Persistence and cache databases (e.g. MySQL, PostgreSQL, Redis).
   - `utils`: Auxiliary daemons, sidecars, proxies, queues, and oops webhook engine.
   - `apps`: Core application services and web backends.
-  - `[custom]`: Dynamic custom layers (e.g. `monitoring`, `analytics`, `ai`).
+  - `[custom]`: Dynamic custom stacks (e.g. `monitoring`, `analytics`, `ai`).
 - **Dependency Startup Order**: `edge` -> `db` -> `utils` -> `apps` -> `[custom...]`
-- **Avoid**: `databases` (use `db`), `utilities` (use `utils`), `ingress`, `frontend`
+- **Avoid**: `bundle`, `cluster`, `environment`, `layer` (legacy term), `pod`
+
+### Entity: Storage
+- **Canonical Term**: `Storage`
+- **Definition**: Physical host storage partitioned into two distinct persistence tiers:
+  - `data/`: High-IOPS live realtime container data (NVMe / SSD persistent volumes).
+  - `backups/`: Secondary backup storage (Cold storage / database dumps).
 
 ### Entity: Service
 - **Canonical Term**: `Service`
@@ -38,7 +38,7 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ### Entity: Target
 - **Canonical Term**: `Target`
-- **Definition**: The user-supplied identifier passed to CLI commands or Webhook payloads, resolving to layers via slash prefix (`/apps`, `/db`), scoped services via path (`/db/mysql`), exact service names (`mysql`), or Double Dot wildcards (e.g. `app..`, `..worker`, `..api..`).
+- **Definition**: The user-supplied identifier passed to CLI commands or Webhook payloads, resolving to stacks via slash prefix (`/apps`, `/db`), scoped services via path (`/db/mysql`), exact service names (`mysql`), or Double Dot wildcards (e.g. `app..`, `..worker`, `..api..`).
 - **Permitted Synonyms**: `target_pattern`, `target_selector`
 - **Avoid**: `regex_pattern`, `filter_query`
 
