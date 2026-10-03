@@ -38,7 +38,7 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ### Entity: Target
 - **Canonical Term**: `Target`
-- **Definition**: The user-supplied identifier passed to CLI commands or Webhook payloads, resolving to one or more services or layers via exact match or Shell Globbing (e.g. `app*`, `db`, `mysql`).
+- **Definition**: The user-supplied identifier passed to CLI commands or Webhook payloads, resolving to layers via slash prefix (`/apps`, `/db`), scoped services via path (`/db/mysql`), exact service names (`mysql`), or Double Dot wildcards (e.g. `app..`, `..worker`, `..api..`).
 - **Permitted Synonyms**: `target_pattern`, `target_selector`
 - **Avoid**: `regex_pattern`, `filter_query`
 
@@ -60,7 +60,7 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ### Concept: Backup & Retention
 - **Canonical Term**: `Backup`
-- **Definition**: Compressed database dump archive (`.sql.gz` or `.rdb.gz`) saved under `BACKUP_DIR` with automated cleanup based on `BACKUP_RETENTION_DAYS`.
+- **Definition**: Operations managed by `oops db-backup [targets...] [-r <retention>]` to create compressed database dump archives (`.sql.gz` or `.rdb.gz`) saved under `BACKUP_DIR` with automated cleanup based on retention policy (`-r`, `--retention`).
 - **Permitted Synonyms**: `snapshot`, `dump`
 - **Avoid**: `export`, `replica`
 
@@ -90,6 +90,7 @@ All environment variables follow the **[Topic] -> [Modifier] -> [Unit]** standar
 | `OOPS_SECRET` | `CONFIG.WEBHOOK.SECRET` | `string` | `""` | Global fallback webhook secret token |
 | `HEALTHCHECK_TIMEOUT_SECONDS` | `CONFIG.HEALTHCHECK.TIMEOUT_SECONDS` | `int` | `600` | Maximum wait time for container to become healthy |
 | `HEALTHCHECK_INTERVAL_SECONDS`| `CONFIG.HEALTHCHECK.INTERVAL_SECONDS`| `int` | `3` | Polling interval between health checks |
+| `DELAY_SECONDS` | `CONFIG.ORCHESTRATION.DELAY_SECONDS` | `int` | `0` | Delay gap between consecutive service operations |
 | `STOP_TIMEOUT_SECONDS` | `CONFIG.CONTAINER.STOP_TIMEOUT_SECONDS`| `int` | `30` | Default timeout for graceful container stop |
 | `BACKUP_RETENTION_DAYS` | `CONFIG.BACKUP.RETENTION_DAYS` | `int` | `7` | Retention window for database dump archives |
 | `BACKUP_DIR` | `CONFIG.BACKUP.DIR` | `string` | `./backups` | Target directory for backup files |

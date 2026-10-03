@@ -18,7 +18,7 @@ This document provides the high-level architecture, module boundaries, and desig
 
 ## System Documentation & Deep-Dives
 In accordance with the Mirror Index Pattern and system documentation taxonomy in [docs/README.md](docs/README.md):
-- [Living Specifications: Orchestration Engine](docs/specs/orchestration.md) (`docs/specs/`) - Feature and subsystem contracts combining domain rules, API schemas, and dependency blast-radius matrices.
+- [Living Specifications: CLI Orchestration](docs/specs/cli.md) & [Webhook Daemon](docs/specs/webhook.md) (`docs/specs/`) - Feature and subsystem contracts combining domain rules, API schemas, and dependency blast-radius matrices.
 - [Architectural Decisions](docs/adr/0000-template.md) (`docs/adr/`) - Strategic architectural decision records (ADR) with explicit `.deprecated.md` and `.superseded.md` lifecycle naming.
 - [Architecture Deep-Dives](docs/architecture/0000-template.md) (`docs/architecture/`) - Subsystem topologies, component interaction diagrams, and system data flows.
 - [Design Specifications](docs/design/0000-template.md) (`docs/design/`) - Reusable component tokens, form styling, and accessibility standards.
