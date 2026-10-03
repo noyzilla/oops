@@ -29,6 +29,10 @@ This document establishes the official domain glossary and ubiquitous language f
 - **Dependency Startup Order**: `edge` -> `db` -> `utils` -> `apps` -> `[custom...]`
 - **Avoid**: `bundle`, `cluster`, `environment`, `layer` (legacy term), `pod`
 
+### Entity: Config
+- **Canonical Term**: `Config`
+- **Definition**: Version-controlled system and service configurations residing in `config/` (e.g. `config/oops/hosts`, `config/caddy/Caddyfile`, `config/mysql/my.cnf`). Tracked in Git and separate from raw binary database storage (`data/`).
+
 ### Entity: Storage
 - **Canonical Term**: `Storage`
 - **Definition**: Physical host storage partitioned into two distinct persistence tiers:

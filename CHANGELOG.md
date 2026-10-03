@@ -15,6 +15,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Automated database dump and retention pruning manager (`oops db-backup [targets...] [-r 7d]`).
 - Synchronized Webhook deployment daemon with unified target selector (`target: "app.."`) and delay support.
 - Native embedded event-driven DNS discovery daemon (`internal/dns/`) resolving wildcard hostnames (`.web.oops`), exact hostnames (`mail.test`), and upstream forwarding via `OOPS_DNS_UPSTREAM`.
+- Custom static DNS hosts loader (`config/oops/hosts` & `OOPS_DNS_RECORDS`) supporting host machine/Colima IP mappings (`hostmac`, `host.docker.internal`).
+- Version-controlled `config/` directory separation (`config/oops/hosts`, `config/caddy/`, `config/mysql/`) alongside `stacks/`, `data/`, and `backups/`.
 - Working directory auto-discovery and path parity via `-C, --dir <path>`, `OOPS_DIR` environment variable, and fallback probing for `~/oopsbox` and `/opt/oopsbox`.
 - Oopsbox blueprint template (`templates/oopsbox/`).
 

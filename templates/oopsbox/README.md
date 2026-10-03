@@ -16,6 +16,11 @@ This blueprint provides a production-ready, modular multi-stack Docker Compose e
 │   │   └── docker-compose.yml
 │   └── utils/            # Stack: Oops Webhook Engine & Utilities (net-edge+net-db)
 │       └── docker-compose.yml
+├── config/               # Service & runtime configurations (Tracked in Git)
+│   ├── oops/
+│   │   └── hosts         # Custom Static DNS mappings (Colima, hostmac, local.dev)
+│   ├── caddy/
+│   └── mysql/
 ├── data/                 # Live realtime container storage (High-IOPS persistent volume)
 └── backups/              # Secondary backup storage (Cold storage / database dumps)
 ```

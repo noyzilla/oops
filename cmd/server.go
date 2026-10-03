@@ -31,12 +31,15 @@ func newServerCmd() *cobra.Command {
 				}
 			}
 
+			workDir := ResolveWorkDir(targetDir)
+
 			// Initialize Docker client and Native DNS Daemon
 			dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 			if err != nil {
 				log.Printf("[Server] Warning: Failed to connect to Docker daemon for DNS watcher: %v", err)
 			} else {
 				resolver := dns.NewResolver()
+				dns.LoadCustomHosts(workDir, resolver)
 				go dns.WatchDockerEvents(context.Background(), dockerCli, resolver)
 				if err := dns.StartDNSDaemon(context.Background(), ":53", resolver, nil); err != nil {
 					log.Printf("[Server] Warning: Failed to start DNS daemon: %v", err)

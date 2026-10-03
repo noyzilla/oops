@@ -1,0 +1,9 @@
+# Global options
+{
+    admin off
+}
+
+# Example proxy configuration
+# my-app.web.oops {
+#     reverse_proxy web-app:3000
+# }

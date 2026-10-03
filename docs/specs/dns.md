@@ -35,12 +35,18 @@ DNS `A` record queries are matched against active container hostnames in the fol
    - Action: Return `A` record with IPv4 address of the matching container (TTL: 5s).
    - Example: `hostname: mail.test` matches `mail.test`.
 
-3. **Fallback & No Hostname**:
+3. **Custom Static Hosts Resolution (`config/oops/hosts` & `OOPS_DNS_RECORDS`)**:
+   - Condition: Static mappings defined in `config/oops/hosts` (standard `/etc/hosts` format) or `OOPS_DNS_RECORDS` env var.
+   - Matching: Exact hostnames (e.g. `hostmac`, `host.docker.internal`, `colima`) or wildcard suffixes (e.g. `.local.dev`).
+   - Action: Return static mapped IPv4 address.
+   - Example: `192.168.5.2 hostmac host.docker.internal hostdocker` maps Colima/host machine gateway.
+
+4. **Fallback & No Hostname**:
    - If a container does not specify a domain-formatted hostname, Oops DNS does not invent arbitrary names.
-   - If a query does not match any registered container hostname, it proceeds to Upstream Forwarding.
+   - If a query does not match any registered container hostname or static host mapping, it proceeds to Upstream Forwarding.
 
 ### 2. Upstream DNS Relay Protocol
-- If query does not match any local container hostname:
+- If query does not match any local container hostname or custom static record:
   - Relay the query to upstream DNS servers defined in `OOPS_DNS_UPSTREAM` (default: `1.1.1.1:53,8.8.8.8:53`).
   - Return the upstream response directly to the client.
   - If upstream resolution fails or times out, return `NXDOMAIN` (Rcode 3) or `SERVFAIL`.
