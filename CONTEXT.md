@@ -1,38 +1,103 @@
 # Domain Context & Ubiquitous Language
 
-This document establishes the official domain glossary and ubiquitous language for this project. Both human engineers and AI coding assistants must adhere to these definitions across source code, database schemas, API contracts, tests, and documentation.
+This document establishes the official domain glossary and ubiquitous language for the **oops** project. Both human engineers and AI coding assistants must adhere to these definitions across source code, CLI subcommands, database helpers, webhook APIs, tests, and documentation.
 
 ## Purpose & Authority
 
 - **Eliminate Naming Drift**: Prevent AI agents and contributors from introducing conflicting terms or synonyms for the same domain entity.
-- **Consistent Code Identifiers**: Variable names, function identifiers, database columns, and API parameters must strictly mirror the terms defined here.
+- **Consistent Code Identifiers**: Variable names, function identifiers, CLI flags, configuration fields, and API parameters must strictly mirror the terms defined here.
 - **Single Source of Truth**: When domain requirements evolve, update this document before refactoring codebase identifiers.
-
-## Domain Glossary Format
-
-Every domain concept is documented using the following structure:
-
-- **Term Name**: The exact canonical noun or verb phrase representing the entity or operation.
-- **Definition**: The precise functional meaning, boundary, and lifecycle of the entity within this system.
-- **Permitted Synonyms**: Rare, approved alternate contexts where a variant may appear (e.g., UI labels versus database columns).
-- **Avoid (Prohibited Synonyms)**: Ambiguous, deprecated, or misleading terms that must never be used in code, APIs, or schemas.
 
 ---
 
-## Core Domain Entities
+## Core Domain Entities & Concepts
 
-*(Define your project-specific domain entities here following the format above. For example:)*
+### Entity: Stack
+- **Canonical Term**: `Stack`
+- **Definition**: The complete collection of containerized services organized across modular layers (`edge`, `db`, `apps`, `utils`) managed by Oops.
+- **Permitted Synonyms**: `project_stack`
+- **Avoid**: `bundle`, `cluster`, `environment`, `pod`
 
-### Entity: User
-- **Canonical Identifier**: `user_id`
-- **Definition**: An authenticated human identity holding login credentials and account ownership.
-- **Permitted Synonyms**: `account_owner` (in billing context only)
-- **Avoid**: `member`, `client`, `person`, `actor`, `profile`
+### Entity: Layer
+- **Canonical Term**: `Layer`
+- **Definition**: A distinct functional tier within a stack containing a dedicated `docker-compose.yml` file.
+- **Permitted Canonical Values**:
+  - `edge`: Ingress reverse proxy and SSL termination (e.g. Caddy, Traefik).
+  - `db`: Persistence and cache databases (e.g. MySQL, PostgreSQL, Redis).
+  - `apps`: Core application services and web backends.
+  - `utils`: Auxiliary daemons, sidecars, proxies, and oops webhook engine.
+- **Avoid**: `databases` (use `db`), `utilities` (use `utils`), `ingress`, `frontend`
+
+### Entity: Service
+- **Canonical Term**: `Service`
+- **Definition**: A named workload definition inside a `docker-compose.yml` file (e.g. `caddy`, `mysql`, `app1`).
+- **Permitted Synonyms**: `compose_service`
+- **Avoid**: `module`, `microservice`, `app_instance`
+
+### Entity: Target
+- **Canonical Term**: `Target`
+- **Definition**: The user-supplied identifier passed to CLI commands or Webhook payloads, resolving to one or more services or layers via exact match or Shell Globbing (e.g. `app*`, `db`, `mysql`).
+- **Permitted Synonyms**: `target_pattern`, `target_selector`
+- **Avoid**: `regex_pattern`, `filter_query`
+
+### Concept: Rolling Update
+- **Canonical Term**: `Rolling Update`
+- **Definition**: Sequential zero-downtime deployment process where each matching service is pulled, recreated with `--no-deps`, and polled until its container health status is `healthy` before proceeding to the next service.
+- **Permitted Synonyms**: `sequential_update`, `rolling_upgrade`
+- **Avoid**: `blue_green`, `hot_swap`, `batch_restart`
+
+### Concept: Database Action
+- **Canonical Term**: `Database Action`
+- **Definition**: Operations managed by `oops db <engine>[:<target>] <action>` to create, list, or drop isolated databases and users with least-privilege credentials.
+- **Permitted Canonical Values**:
+  - `create`: Provision database and dedicated user with auto-generated secure password if omitted.
+  - `list`: Inspect active databases and role grants.
+  - `drop`: Safely remove database and associated user.
+- **Avoid**: `add_db`, `remove_db`, `grant_user`
+
+### Concept: Backup & Retention
+- **Canonical Term**: `Backup`
+- **Definition**: Compressed database dump archive (`.sql.gz` or `.rdb.gz`) saved under `BACKUP_DIR` with automated cleanup based on `BACKUP_RETENTION_DAYS`.
+- **Permitted Synonyms**: `snapshot`, `dump`
+- **Avoid**: `export`, `replica`
+
+---
+
+## Docker Labels Taxonomy
+
+All Oops-managed container metadata is configured via Docker labels under the `oops.` namespace:
+
+| Label Name | Type | Canonical Purpose |
+| :--- | :---: | :--- |
+| `oops.enable` | `bool` | Authorizes Oops to orchestrate, stop, and update this container (`"true"` / `"false"`). |
+| `oops.secret` | `string` | Secret authentication token required for webhook deployments of this specific target. |
+| `oops.stop.cmd` | `string` | Custom command executed inside the container prior to stopping. |
+| `oops.stop.timeout` | `int` | Grace period in seconds to wait for `oops.stop.cmd` before sending `SIGTERM`. |
+| `oops.health.url` | `string` | HTTP endpoint URL polled for 200 OK when native Docker healthcheck is absent. |
+
+---
+
+## Configuration & Environment Variables Parity
+
+All environment variables follow the **[Topic] -> [Modifier] -> [Unit]** standard from `jarn-naming.md`:
+
+| Environment Variable | Internal Config Path | Type | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `PORT` | `CONFIG.PORT` | `int` | `8080` | Webhook HTTP daemon listening port |
+| `OOPS_SECRET` | `CONFIG.WEBHOOK.SECRET` | `string` | `""` | Global fallback webhook secret token |
+| `HEALTHCHECK_TIMEOUT_SECONDS` | `CONFIG.HEALTHCHECK.TIMEOUT_SECONDS` | `int` | `600` | Maximum wait time for container to become healthy |
+| `HEALTHCHECK_INTERVAL_SECONDS`| `CONFIG.HEALTHCHECK.INTERVAL_SECONDS`| `int` | `3` | Polling interval between health checks |
+| `STOP_TIMEOUT_SECONDS` | `CONFIG.CONTAINER.STOP_TIMEOUT_SECONDS`| `int` | `30` | Default timeout for graceful container stop |
+| `BACKUP_RETENTION_DAYS` | `CONFIG.BACKUP.RETENTION_DAYS` | `int` | `7` | Retention window for database dump archives |
+| `BACKUP_DIR` | `CONFIG.BACKUP.DIR` | `string` | `./backups` | Target directory for backup files |
+| `MYSQL_ROOT_PASSWORD` | `CONFIG.MYSQL.ROOT_PASSWORD` | `string` | `""` | Root password for MySQL container exec |
+| `POSTGRES_USER` | `CONFIG.POSTGRES.USER` | `string` | `"app_user"`| Superuser / admin user for Postgres exec |
+| `POSTGRES_DB` | `CONFIG.POSTGRES.DB` | `string` | `"postgres"`| Default maintenance database for Postgres exec |
+| `POSTGRES_PASSWORD` | `CONFIG.POSTGRES.PASSWORD` | `string` | `""` | Admin password for Postgres exec |
 
 ---
 
 ## Maintenance Guidelines
 
-- **Consult Before Naming**: When creating a new model, database table, or API endpoint, verify whether a matching concept already exists in this glossary.
-- **Flag Unknown Terms**: If a new requirement introduces a concept not listed here, define it in `CONTEXT.md` during the implementation planning phase.
-- **Enforce Code Reviews**: Reviewers and automated review checks must reject PRs introducing terms listed under the Avoid sections.
+- **Consult Before Naming**: When introducing new CLI commands, flags, or configuration keys, ensure alignment with terms defined in this glossary.
+- **Enforce Code Reviews**: Reject pull requests introducing deprecated synonyms, camelCase CLI flags, or non-standard environment variable prefixes.
