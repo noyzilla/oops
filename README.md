@@ -160,7 +160,28 @@ curl -X POST \
 
 ## Quickstart
 
-### Option A: Use Oopsbox (Recommended)
+### 1-Line Installer (Recommended)
+Install Oopsbox and the global CLI wrapper with one command:
+```bash
+curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash
+```
+
+### Run Oops from Anywhere (Docker Wrapper)
+To run `oops` without installing Go toolchains or in locked-down environments (e.g. Google Container-Optimized OS / COS), point `OOPSBOX_DIR` to your workspace and add this alias to your shell profile (`~/.bashrc` or `~/.zshrc`):
+
+```bash
+export OOPSBOX_DIR="$HOME/oopsbox"
+
+alias oops='docker run --rm -i \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v "${OOPSBOX_DIR:-$HOME/oopsbox}":/workspace \
+  -w /workspace \
+  -e OOPS_DIR=/workspace \
+  -e OOPSBOX_DIR=/workspace \
+  ghcr.io/noyzilla/oops:latest'
+```
+
+### Manual Git Clone Setup
 ```bash
 git clone https://github.com/noyzilla/oops.git
 cd oops/oopsbox
@@ -168,20 +189,11 @@ cd oops/oopsbox
 # Initialize workstation environment (.env, storage, DNS resolver, global PATH)
 ./bin/devoops install
 
-# Start environment
+# Start environment (devoops is now globally available in PATH)
 devoops start
 
 # Install local root SSL certificate for green lock HTTPS (*.web.oops)
 devoops install-cert
-```
-
-### Option B: Run Standalone CLI / Daemon
-```bash
-# Build oops binary locally
-go build -o oops .
-
-# Run webhook & DNS server
-./oops server -p 80
 ```
 
 ---

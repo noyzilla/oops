@@ -30,10 +30,14 @@ func GetRootCommand() *cobra.Command {
 	return rootCmd
 }
 
-// ResolveWorkDir returns the resolved working directory based on -C/--dir, OOPS_DIR, or auto-discovery
+// ResolveWorkDir returns the resolved working directory based on -C/--dir, OOPSBOX_DIR, OOPS_DIR, or auto-discovery
 func ResolveWorkDir(customDir string) string {
 	if customDir != "" {
 		return expandHome(customDir)
+	}
+
+	if envDir := os.Getenv("OOPSBOX_DIR"); envDir != "" {
+		return expandHome(envDir)
 	}
 
 	if envDir := os.Getenv("OOPS_DIR"); envDir != "" {

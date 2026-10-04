@@ -2,6 +2,7 @@ package cmd_test
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 
@@ -122,7 +123,21 @@ func TestResolveWorkDir(t *testing.T) {
 		t.Errorf("ResolveWorkDir(%q) = %q, expected %q", custom, got, custom)
 	}
 
-	// 2. Default fallback
+	// 2. OOPSBOX_DIR env
+	os.Setenv("OOPSBOX_DIR", "/tmp/env-oopsbox")
+	if got := cmd.ResolveWorkDir(""); got != "/tmp/env-oopsbox" {
+		t.Errorf("ResolveWorkDir with OOPSBOX_DIR = %q, expected /tmp/env-oopsbox", got)
+	}
+	os.Unsetenv("OOPSBOX_DIR")
+
+	// 3. OOPS_DIR env
+	os.Setenv("OOPS_DIR", "/tmp/env-oops")
+	if got := cmd.ResolveWorkDir(""); got != "/tmp/env-oops" {
+		t.Errorf("ResolveWorkDir with OOPS_DIR = %q, expected /tmp/env-oops", got)
+	}
+	os.Unsetenv("OOPS_DIR")
+
+	// 4. Default fallback
 	fallback := cmd.ResolveWorkDir("")
 	if fallback == "" {
 		t.Errorf("ResolveWorkDir(\"\") returned empty string")

@@ -51,6 +51,16 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
     - **Startup (`oops up`)**: `/edge` -> `/db` -> `/tool` -> `/apps` -> `[custom stacks...]`
     - **Teardown (`oops down`)**: `[custom stacks...]` -> `/apps` -> `/tool` -> `/db` -> `/edge`
 
+### Workspace Directory Resolution (`ResolveWorkDir`)
+The Oops CLI determines its working directory (`workDir`) according to the following precedence:
+- **Explicit Flag**: `-C <dir>` or `--dir <dir>` (Highest precedence).
+- **Environment Variables**: `OOPSBOX_DIR` (Primary) or `OOPS_DIR` (Secondary fallback).
+- **Current Directory Content**: Current directory `.` if it contains a `stacks/` directory or compose files (`compose.yml`, `docker-compose.yml`).
+- **Standard Well-Known Locations**:
+  - `$HOME/oopsbox` (if exists and contains compose content)
+  - `/opt/oopsbox` (if exists and contains compose content)
+- **Fallback**: Current working directory `.`.
+
 ### Sequential Lifecycle Hooks & Inter-Service Delay Protocol
 When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down`, or `oops up` targeting wildcards such as `app..` or whole stacks):
 - **Sequential Service Execution**: Matched services are processed sequentially one by one in resolved dependency or lexicographical order.
