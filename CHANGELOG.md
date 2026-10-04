@@ -6,6 +6,13 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-04
+
+### Added
+- One-line curl installer script (`install.sh`) for rapid provisioning of Oopsbox and global CLI wrapper setup (`curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash`).
+- Primary `OOPSBOX_DIR` environment variable support in `ResolveWorkDir` with backward-compatible `OOPS_DIR` fallback.
+- Docker CLI wrapper and shell function documentation for running `oops` from any directory or on Google Container-Optimized OS (COS) and locked-down `noexec` environments.
+
 ## [0.6.0] - 2026-10-04
 
 ### Added
