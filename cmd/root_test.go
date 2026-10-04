@@ -21,8 +21,14 @@ func TestRootCommandSubcommands(t *testing.T) {
 		"logs",
 		"pull",
 		"update",
+		"switch",
 		"db",
-		"db-backup",
+		"backup",
+		"backup-db",
+		"backup-data",
+		"restore",
+		"restore-db",
+		"restore-data",
 	}
 
 	for _, sub := range expectedSubcommands {
@@ -49,14 +55,21 @@ func TestSubcommandFlags(t *testing.T) {
 	}{
 		{"up", "delay", "d"},
 		{"stop", "delay", "d"},
+		{"stop", "except", "x"},
 		{"restart", "delay", "d"},
 		{"down", "delay", "d"},
 		{"update", "delay", "d"},
+		{"switch", "delay", "d"},
 		{"server", "port", "p"},
 		{"server", "config", "c"},
 		{"logs", "tail", "t"},
 		{"logs", "follow", "f"},
-		{"db-backup", "retention", "r"},
+		{"backup", "retention", "r"},
+		{"backup-db", "retention", "r"},
+		{"backup-data", "retention", "r"},
+		{"restore-db", "yes", "y"},
+		{"restore-data", "yes", "y"},
+		{"restore-data", "dry-run", "n"},
 	}
 
 	for _, tt := range tests {
@@ -75,10 +88,12 @@ func TestSubcommandFlags(t *testing.T) {
 		}
 	}
 
-	// Verify db-backup prune subcommand exists
-	pruneCmd, _, err := rootCmd.Find([]string{"db-backup", "prune"})
-	if err != nil || pruneCmd == nil || pruneCmd.Name() != "prune" {
-		t.Errorf("expected db-backup prune subcommand to exist")
+	// Verify prune subcommands exist
+	for _, parent := range []string{"backup", "backup-db", "backup-data"} {
+		pruneCmd, _, err := rootCmd.Find([]string{parent, "prune"})
+		if err != nil || pruneCmd == nil || pruneCmd.Name() != "prune" {
+			t.Errorf("expected %s prune subcommand to exist", parent)
+		}
 	}
 }
 

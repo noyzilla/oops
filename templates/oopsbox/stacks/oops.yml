@@ -48,3 +48,31 @@ groups:
     - /db
     - /utils
     - /apps
+
+# ------------------------------------------------------------------------------
+# 3. Automated Backup Configuration (Database Dumps + Filesystem Data Volumes)
+# Usage:
+#   oops backup             # Full backup (DB + Data)
+#   oops backup-db          # Backup databases only
+#   oops backup-data        # Backup filesystem volumes only
+#   oops backup prune       # Clean all expired backup archives
+# ------------------------------------------------------------------------------
+backups:
+  retention: 7d             # Default retention for all backups (7 days)
+  data:
+    - name: uploads         # Creates: backups/data_uploads_<TIMESTAMP>.tar.gz
+      paths:
+        - data/apps/uploads
+        - data/wordpress/wp-content/uploads
+
+    - name: certs           # Creates: backups/data_certs_<TIMESTAMP>.tar.gz
+      paths:
+        - data/caddy
+
+    - name: storage         # Creates: backups/data_storage_<TIMESTAMP>.tar.gz
+      paths:
+        - data/storage
+
+    - name: redis           # Creates: backups/data_redis_<TIMESTAMP>.tar.gz
+      paths:
+        - data/redis

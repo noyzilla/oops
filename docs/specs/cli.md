@@ -106,18 +106,22 @@ For each matched service in target order:
     ALTER ROLE "<user>" WITH PASSWORD '<new_pass>';
     ```
 
-### Database Backup & Retention (`oops db-backup [targets...]`)
-- **Syntax**: `oops db-backup [targets...] [-r <duration|int>]` and `oops db-backup prune [-r <duration|int>]`.
-- **Target Resolution**:
-  - If targets omitted: Dumps all running database containers discovered in the `db` layer (`mysql`, `postgres`, `redis`).
-  - If target specified (e.g. `mysql`, `pg`, `pg:replica`): Dumps only the matching database container.
-- **Execution**:
-  - `mysql`: `mysqldump --all-databases | gzip > backups/mysql_backup_<TIMESTAMP>.sql.gz`
-  - `postgres`: `pg_dumpall | gzip > backups/postgres_backup_<TIMESTAMP>.sql.gz`
-  - `redis`: Trigger `BGSAVE` and gzip snapshot `dump.rdb`
+### Automated Backup Suite (`oops backup`, `oops backup-db`, `oops backup-data`)
+- **Unified Full Backup (`oops backup [-r <duration|int>]`)**:
+  - Runs full system backup combining database dumps and filesystem volume archives.
+  - Subcommand `oops backup prune` cleans all expired `.sql.gz` and `.tar.gz` files.
+- **Database Backup (`oops backup-db [targets...] [-r <duration|int>]`)**:
+  - Aliases: `oops db-backup`.
+  - Targets: Dumps running database containers (`mysql`, `postgres`, `redis`).
+  - Filename format: `backups/<engine>_backup_<TIMESTAMP>.sql.gz`.
+  - Subcommand `oops backup-db prune` prunes expired database dump archives.
+- **Filesystem & Volume Data Backup (`oops backup-data [names...] [-r <duration|int>]`)**:
+  - Aliases: `oops data-backup`.
+  - Targets: Reads `backups.data` targets from `stacks/oops.yml` (e.g. `uploads`, `certs`, `storage`).
+  - Filename format: `backups/data_<name>_<TIMESTAMP>.tar.gz`.
+  - Subcommand `oops backup-data prune` prunes expired data archive files.
 - **Retention Pruning (`-r, --retention <duration|int>`)**:
-  - Optional flag with shorthand `-r` (default `7d`, accepts `7d`, `30d`, or integer days `7`).
-  - Prunes all backup files matching `<engine>_backup_*.sql.gz` older than the retention threshold.
+  - Optional flag with shorthand `-r` (default `7d`, accepts `7d`, `14d`, `30`, `24h`).
 
 ### Working Directory Auto-Discovery & Path Parity
 Oops commands can be invoked from any terminal directory. The working directory is determined using a 4-tier fallback:
@@ -136,16 +140,21 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | :--- | :--- | :--- |
 | `oops` | `[-C, --dir <path>]` | Global persistent flag to target a specific oopsbox directory |
 | `oops up` | `[targets...] [-d 0s]` | Starts stack or globbed services with optional inter-service delay (`-d`, `--delay`) |
-| `oops stop` | `<targets...> [-d 0s]` | Gracefully stops target services with stop hooks and inter-service delay (`-d`, `--delay`) |
+| `oops stop` | `[targets...] [-x, --except, --exclude <tgt>] [-d 0s]` | Gracefully stops target services, or stops all other services except specified exclusion targets |
 | `oops restart`| `[targets...] [-d 0s] [-i, --image <img/alias>]` | Restarts target services with stop hooks, delay gap, or image matching |
 | `oops down` | `[-d 0s]` | Tears down all stacks with stop hooks and inter-service delay (`-d`, `--delay`) |
+| `oops switch` | `<target> [-d 0s]` | Switches active profile: starts target group/stack and stops all other running services |
 | `oops status` | `[targets...]` | Formatted table of containers, health, and ports |
 | `oops logs` | `[targets...] [--tail 100] [-f]` | Tail service logs across target services or stacks |
 | `oops pull` | `[targets...] [--all]` | Pulls images for targets, default group, all stacks, or registry aliases |
 | `oops update` | `[targets...] [--all] [-i, --image <img/alias>] [-d 0s]` | Executes sequential rolling update with health check and delay gap |
 | `oops db` | `<engine>[:<target>] <action>` | DB provisioning (`create`, `passwd`, `list`, `drop`) |
-| `oops db-backup`| `[targets...] [-r 7d]` | Executes DB dump and retention prune (`-r`, `--retention`) |
-| `oops db-backup prune`| `[-r 7d]` | Prunes expired backup archives without triggering a new dump |
+| `oops backup` | `[-r 7d]` | Executes unified full backup (DB dumps + data volumes) and retention prune |
+| `oops backup prune` | `[-r 7d]` | Prunes all expired backup archives (DB and data) |
+| `oops backup-db` | `[targets...] [-r 7d]` | Executes DB dump and retention prune (alias: `db-backup`) |
+| `oops backup-db prune` | `[-r 7d]` | Prunes expired DB dump archives |
+| `oops backup-data` | `[targets...] [-r 7d]` | Executes data volume tar archives and retention prune (alias: `data-backup`) |
+| `oops backup-data prune` | `[-r 7d]` | Prunes expired data volume archives |
 | `oops server` | `[-p, --port 80] [-c, --config <path>]` | Starts webhook deployment and DNS discovery daemon (aliases: `webhook`, `daemon`) |
 
 ---

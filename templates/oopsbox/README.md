@@ -123,6 +123,14 @@ oops up @core
 oops stop @pg
 oops restart @minimal
 oops update @core -d 2s
+
+# Switch active profile (starts target profile & stops all other running services):
+oops switch @core
+oops switch @pg
+
+# Stop all services except specified exclusions:
+oops stop -x @core
+oops stop -x /edge -x redis
 ```
 
 ---
@@ -155,6 +163,10 @@ oops up /apps
 oops up mysql
 oops up /db/mysql
 oops up app..
+
+# Switch profiles and stop other services
+oops switch @core
+oops stop -x @core
 ```
 
 ---
@@ -188,13 +200,23 @@ oops db pg list
 oops db pg drop myapp_db myapp_user
 ```
 
-### Database Backup & Retention
-Execute automated dumps and prune archives older than `OOPS_BACKUP_RETENTION` (default `7d`):
+### Automated Backup Suite (Database & Data Volumes)
+Execute automated database dumps, filesystem data packaging, and prune expired archives older than `retention` (default `7d`):
 ```bash
-oops db-backup                      # Backup all databases and prune expired
-oops db-backup mysql                # Backup specific database
-oops db-backup postgres -r 14d      # Backup with custom 14-day retention
-oops db-backup prune                # Prune expired archives only (no dump)
+# 1. Full System Backup (Database Dumps + Data Volumes)
+oops backup                         # Full backup (DB + Data) and prune expired
+oops backup prune                   # Prune all expired archives (no dump)
+
+# 2. Database Backup Only (MySQL, PostgreSQL)
+oops backup-db                      # Backup all databases
+oops backup-db mysql                # Backup specific database
+oops backup-db postgres -r 14d      # Backup with custom 14-day retention
+oops backup-db prune                # Prune expired DB dump archives
+
+# 3. Data Volumes & Filesystem Backup Only (Uploads, Storage, Certs)
+oops backup-data                    # Backup all targets defined in oops.yml
+oops backup-data uploads            # Backup specific data target
+oops backup-data prune              # Prune expired data volume archives
 ```
 
 ### Webhook Automation (CI/CD)

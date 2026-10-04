@@ -10,11 +10,35 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// DataBackupTarget defines a named data backup volume or filesystem target
+type DataBackupTarget struct {
+	Name  string   `yaml:"name"`
+	Path  string   `yaml:"path,omitempty"`
+	Paths []string `yaml:"paths,omitempty"`
+}
+
+// GetPaths returns all designated paths for this data backup target
+func (d *DataBackupTarget) GetPaths() []string {
+	var res []string
+	if d.Path != "" {
+		res = append(res, d.Path)
+	}
+	res = append(res, d.Paths...)
+	return res
+}
+
+// BackupConfig defines backup retention and data backup directories
+type BackupConfig struct {
+	Retention string             `yaml:"retention,omitempty"`
+	Data      []DataBackupTarget `yaml:"data,omitempty"`
+}
+
 // OopsConfig represents the unified configuration in oops.yml / config.yml
 type OopsConfig struct {
 	Registries map[string]string   `yaml:"registries,omitempty"`
 	Aliases    map[string]string   `yaml:"aliases,omitempty"` // alias for registries
 	Groups     map[string][]string `yaml:"groups,omitempty"`
+	Backups    BackupConfig        `yaml:"backups,omitempty"`
 }
 
 // LoadOopsConfig finds and parses oops.yml / config.yml / groups.yml
@@ -69,6 +93,14 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 				if _, exists := cfg.Groups[k]; !exists {
 					cfg.Groups[k] = v
 				}
+			}
+
+			// Merge backups
+			if fileCfg.Backups.Retention != "" && cfg.Backups.Retention == "" {
+				cfg.Backups.Retention = fileCfg.Backups.Retention
+			}
+			if len(fileCfg.Backups.Data) > 0 && len(cfg.Backups.Data) == 0 {
+				cfg.Backups.Data = fileCfg.Backups.Data
 			}
 		}
 	}

@@ -390,3 +390,48 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 func ResolveTargetsByImage(workDir string, imageQuery string) ([]ResolvedTarget, error) {
 	return ResolveTargets(workDir, []string{"img:" + imageQuery})
 }
+
+// ResolveTargetsWithExceptions resolves targets and excludes any services matched by exceptTargets
+func ResolveTargetsWithExceptions(workDir string, targets []string, exceptTargets []string) ([]ResolvedTarget, error) {
+	var baseTargets []ResolvedTarget
+	var err error
+
+	if len(targets) == 0 {
+		baseTargets, err = ResolveTargets(workDir, nil)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		baseTargets, err = ResolveTargets(workDir, targets)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(exceptTargets) == 0 {
+		return baseTargets, nil
+	}
+
+	excluded, err := ResolveTargets(workDir, exceptTargets)
+	if err != nil {
+		return nil, err
+	}
+
+	excludeMap := make(map[string]bool)
+	for _, ex := range excluded {
+		excludeMap[ex.StackName+"/"+ex.ServiceName] = true
+		if ex.ContainerName != "" {
+			excludeMap[ex.ContainerName] = true
+		}
+	}
+
+	var filtered []ResolvedTarget
+	for _, t := range baseTargets {
+		key := t.StackName + "/" + t.ServiceName
+		if !excludeMap[key] && !excludeMap[t.ContainerName] {
+			filtered = append(filtered, t)
+		}
+	}
+
+	return filtered, nil
+}

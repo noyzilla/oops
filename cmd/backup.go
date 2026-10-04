@@ -9,13 +9,66 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newDBBackupCmd() *cobra.Command {
+// newBackupCmd provides unified full system backup (DB + Data)
+func newBackupCmd() *cobra.Command {
 	var retention string
 
 	cmd := &cobra.Command{
-		Use:   "db-backup [targets...]",
-		Short: "Executes database dump and retention prune",
-		Long:  "Executes compressed database backups for mysql, postgres, and redis containers, and prunes old archives.",
+		Use:   "backup",
+		Short: "Executes full backup (database dumps + data volumes) and retention prune",
+		Long:  "Executes full system backup for all database containers and filesystem data paths configured in oops.yml.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ret, backupDir, err := resolveBackupConfig(retention)
+			if err != nil {
+				return err
+			}
+
+			workDir := ResolveWorkDir(targetDir)
+			return backup.ExecuteFullBackup(context.Background(), workDir, backupDir, ret)
+		},
+	}
+
+	cmd.Flags().StringVarP(&retention, "retention", "r", "", "Backup retention period (default: 7d or $OOPS_BACKUP_RETENTION)")
+
+	pruneCmd := &cobra.Command{
+		Use:   "prune",
+		Short: "Prunes all expired database and data backup archives based on retention policy",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ret, backupDir, err := resolveBackupConfig(retention)
+			if err != nil {
+				return err
+			}
+
+			deleted, err := backup.PruneOldBackups(backupDir, ret)
+			if err != nil {
+				return err
+			}
+			cmd.Printf("Pruned %d expired backup archives.\n", len(deleted))
+			for _, f := range deleted {
+				cmd.Printf(" - %s\n", f)
+			}
+			return nil
+		},
+	}
+	pruneCmd.Flags().StringVarP(&retention, "retention", "r", "", "Backup retention period (default: 7d or $OOPS_BACKUP_RETENTION)")
+
+	cmd.AddCommand(pruneCmd)
+	cmd.AddCommand(newBackupInspectCmd())
+	cmd.AddCommand(newBackupDBCmd())
+	cmd.AddCommand(newBackupDataCmd())
+
+	return cmd
+}
+
+// newBackupDBCmd executes database dumps for mysql, postgres, and redis
+func newBackupDBCmd() *cobra.Command {
+	var retention string
+
+	cmd := &cobra.Command{
+		Use:     "backup-db [targets...]",
+		Aliases: []string{"db-backup"},
+		Short:   "Executes database dump and retention prune (mysql, postgres)",
+		Long:    "Executes compressed database backups for mysql, postgres, and redis containers, and prunes old archives.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ret, backupDir, err := resolveBackupConfig(retention)
 			if err != nil {
@@ -37,11 +90,60 @@ func newDBBackupCmd() *cobra.Command {
 				return err
 			}
 
-			deleted, err := backup.PruneOldBackups(backupDir, ret)
+			deleted, err := backup.PruneDBBackups(backupDir, ret)
 			if err != nil {
 				return err
 			}
-			cmd.Printf("Pruned %d expired backup archives.\n", len(deleted))
+			cmd.Printf("Pruned %d expired database backup archives.\n", len(deleted))
+			for _, f := range deleted {
+				cmd.Printf(" - %s\n", f)
+			}
+			return nil
+		},
+	}
+	pruneCmd.Flags().StringVarP(&retention, "retention", "r", "", "Backup retention period (default: 7d or $OOPS_BACKUP_RETENTION)")
+
+	cmd.AddCommand(pruneCmd)
+
+	return cmd
+}
+
+// newBackupDataCmd executes filesystem data archives
+func newBackupDataCmd() *cobra.Command {
+	var retention string
+
+	cmd := &cobra.Command{
+		Use:     "backup-data [targets...]",
+		Aliases: []string{"data-backup"},
+		Short:   "Executes data volume and filesystem archives (uploads, storage) and retention prune",
+		Long:    "Executes compressed tar archives for paths defined in oops.yml (backups.data), and prunes old archives.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ret, backupDir, err := resolveBackupConfig(retention)
+			if err != nil {
+				return err
+			}
+
+			workDir := ResolveWorkDir(targetDir)
+			return backup.ExecuteDataBackup(context.Background(), workDir, backupDir, args, ret)
+		},
+	}
+
+	cmd.Flags().StringVarP(&retention, "retention", "r", "", "Backup retention period (default: 7d or $OOPS_BACKUP_RETENTION)")
+
+	pruneCmd := &cobra.Command{
+		Use:   "prune",
+		Short: "Prunes old data backup archives based on retention policy",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ret, backupDir, err := resolveBackupConfig(retention)
+			if err != nil {
+				return err
+			}
+
+			deleted, err := backup.PruneDataBackups(backupDir, ret)
+			if err != nil {
+				return err
+			}
+			cmd.Printf("Pruned %d expired data backup archives.\n", len(deleted))
 			for _, f := range deleted {
 				cmd.Printf(" - %s\n", f)
 			}

@@ -336,3 +336,66 @@ groups:
 	}
 }
 
+func TestResolveTargetsWithExceptions(t *testing.T) {
+	tmpDir := t.TempDir()
+	stacksDir := filepath.Join(tmpDir, "stacks")
+	_ = os.MkdirAll(filepath.Join(stacksDir, "edge"), 0755)
+	_ = os.MkdirAll(filepath.Join(stacksDir, "db"), 0755)
+	_ = os.MkdirAll(filepath.Join(stacksDir, "apps"), 0755)
+
+	_ = os.WriteFile(filepath.Join(stacksDir, "edge", "compose.yml"), []byte(`
+services:
+  caddy:
+    image: caddy:alpine
+`), 0644)
+
+	_ = os.WriteFile(filepath.Join(stacksDir, "db", "compose.yml"), []byte(`
+services:
+  mysql:
+    image: mysql:8.0
+  redis:
+    image: redis:7-alpine
+`), 0644)
+
+	_ = os.WriteFile(filepath.Join(stacksDir, "apps", "compose.yml"), []byte(`
+services:
+  api:
+    image: my-api:latest
+  worker:
+    image: my-worker:latest
+`), 0644)
+
+	_ = os.WriteFile(filepath.Join(stacksDir, "oops.yml"), []byte(`
+groups:
+  core:
+    - /edge
+    - mysql
+    - redis
+  apps:
+    - /apps
+`), 0644)
+
+	// 1. Resolve all with except @core -> should return only apps (api, worker)
+	allExceptCore, err := docker.ResolveTargetsWithExceptions(tmpDir, nil, []string{"@core"})
+	if err != nil {
+		t.Fatalf("ResolveTargetsWithExceptions failed: %v", err)
+	}
+	if len(allExceptCore) != 2 {
+		t.Fatalf("expected 2 targets (api, worker), got %d: %+v", len(allExceptCore), allExceptCore)
+	}
+	for _, target := range allExceptCore {
+		if target.StackName != "apps" {
+			t.Errorf("expected target to be in stack apps, got %s/%s", target.StackName, target.ServiceName)
+		}
+	}
+
+	// 2. Resolve /db with except /db/mysql -> should return only redis
+	dbExceptMysql, err := docker.ResolveTargetsWithExceptions(tmpDir, []string{"/db"}, []string{"/db/mysql"})
+	if err != nil {
+		t.Fatalf("ResolveTargetsWithExceptions /db except mysql failed: %v", err)
+	}
+	if len(dbExceptMysql) != 1 || dbExceptMysql[0].ServiceName != "redis" {
+		t.Fatalf("expected only redis, got %+v", dbExceptMysql)
+	}
+}
+

@@ -36,8 +36,28 @@ func ParseRetention(retentionStr string) (time.Duration, error) {
 	return d, nil
 }
 
-// PruneOldBackups deletes files in backupDir older than retention threshold
+// PruneOldBackups deletes all backup files in backupDir older than retention threshold
 func PruneOldBackups(backupDir string, retention time.Duration) ([]string, error) {
+	return pruneMatchingBackups(backupDir, retention, func(name string) bool {
+		return strings.HasSuffix(name, ".gz") || strings.HasSuffix(name, ".rdb") || strings.HasSuffix(name, ".tar.gz")
+	})
+}
+
+// PruneDBBackups deletes database backup files in backupDir older than retention threshold
+func PruneDBBackups(backupDir string, retention time.Duration) ([]string, error) {
+	return pruneMatchingBackups(backupDir, retention, func(name string) bool {
+		return strings.HasSuffix(name, ".sql.gz") || strings.HasSuffix(name, ".rdb.gz") || strings.HasSuffix(name, ".rdb")
+	})
+}
+
+// PruneDataBackups deletes data volume/filesystem archives in backupDir older than retention threshold
+func PruneDataBackups(backupDir string, retention time.Duration) ([]string, error) {
+	return pruneMatchingBackups(backupDir, retention, func(name string) bool {
+		return strings.HasPrefix(name, "data_") && strings.HasSuffix(name, ".tar.gz")
+	})
+}
+
+func pruneMatchingBackups(backupDir string, retention time.Duration, filter func(string) bool) ([]string, error) {
 	if _, err := os.Stat(backupDir); os.IsNotExist(err) {
 		return nil, nil
 	}
@@ -56,7 +76,7 @@ func PruneOldBackups(backupDir string, retention time.Duration) ([]string, error
 		}
 
 		name := entry.Name()
-		if !strings.HasSuffix(name, ".gz") && !strings.HasSuffix(name, ".rdb") {
+		if !filter(name) {
 			continue
 		}
 
