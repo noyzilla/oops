@@ -1,0 +1,24 @@
+# ==============================================================================
+# DevOops Workstation Configuration (devoops.yml)
+# ==============================================================================
+# Local developer workstation settings (VM engine, hardware resources, local DNS).
+# This file is git-ignored to allow individual developer overrides.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Runtime Engine Configuration
+# Usage:
+#   devoops start           # Starts environment with specified engine and resources
+# ------------------------------------------------------------------------------
+engine:
+  type: auto                # Runtime engine: auto (detects orbstack -> colima -> docker), orbstack, colima, docker
+  cpu: 4                    # Number of CPU cores allocated to VM (OrbStack / Colima)
+  memory: 4                 # Memory in GB allocated to VM (OrbStack / Colima)
+  disk: 60                  # Disk size in GB allocated to VM (Colima)
+  vm_type: vz               # VM hypervisor engine: vz (recommended) or qemu (Colima)
+
+# ------------------------------------------------------------------------------
+# Local DNS Configuration
+# ------------------------------------------------------------------------------
+dns:
+  tld: oops                 # Top-level domain for local resolution (e.g. oops, anthole, anthill)

@@ -63,7 +63,33 @@ func TestInspectDNSRecordsAndRender(t *testing.T) {
 	if !strings.Contains(out, "OOPS DNS & SERVICE DISCOVERY") {
 		t.Errorf("output missing header: %s", out)
 	}
-	if !strings.Contains(out, "STATIC DNS RECORDS") {
-		t.Errorf("output missing static records section: %s", out)
+	if !strings.Contains(out, "CUSTOM & INFRA DNS RECORDS") {
+		t.Errorf("output missing custom & infra records section: %s", out)
+	}
+}
+
+func TestLookupRecord(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "oops-dns-lookup-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	_, err = dns.SetStaticDNSRecord(tempDir, "myservice.oops", "10.200.0.15")
+	if err != nil {
+		t.Fatalf("failed to set static dns: %v", err)
+	}
+
+	rec, err := dns.LookupRecord(context.Background(), tempDir, "myservice.oops", nil)
+	if err != nil {
+		t.Fatalf("unexpected error looking up record: %v", err)
+	}
+	if rec.IP != "10.200.0.15" {
+		t.Errorf("expected IP 10.200.0.15, got %s", rec.IP)
+	}
+
+	_, err = dns.LookupRecord(context.Background(), tempDir, "nonexistent.oops", nil)
+	if err == nil {
+		t.Errorf("expected error for nonexistent domain, got nil")
 	}
 }

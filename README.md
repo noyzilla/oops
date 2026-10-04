@@ -198,6 +198,6 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) for local development setup, testi
 - [Living Specifications: DevOops Workstation](docs/specs/devoops.md)
 - [Living Specifications: Native DNS Daemon](docs/specs/dns.md)
 - [Living Specifications: Webhook Daemon](docs/specs/webhook.md)
-- [Oopsbox Blueprint Template](templates/oopsbox/README.md)
+- [Oopsbox Master Blueprint](oopsbox/README.md)
 - [System Documentation & Deep-Dives](docs/README.md)
 

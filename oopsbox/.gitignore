@@ -1,9 +1,11 @@
-# Environment variables
+# Environment variables & local workstation config
 .env
+devoops.yml
 
 # Physical storage data (Live realtime data)
 /data/*
 !/data/.gitkeep
+!/data/*/.gitkeep
 
 # Physical storage backups (Dump files)
 /backups/*

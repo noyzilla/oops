@@ -12,6 +12,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/noyzilla/oops/internal/docker"
 )
 
 // RecordType represents the classification of a DNS record
@@ -42,16 +43,17 @@ type DNSReport struct {
 	DynamicRecords []DNSRecord `json:"dynamic_records"`
 }
 
-// CollectStaticRecords parses all static DNS records from file and environment variables
+// CollectStaticRecords parses all static DNS records from file, oops.yml, and environment variables
 func CollectStaticRecords(workDir string) []DNSRecord {
 	var records []DNSRecord
 	seen := make(map[string]bool)
 
 	filePath := FindDNSFilePath(workDir)
 	if fi, err := os.Stat(filePath); err == nil && !fi.IsDir() {
+		relPath, relErr := filepath.Rel(workDir, filePath)
 		sourceLabel := filepath.Base(filePath)
-		if strings.Contains(filePath, "config/oops") {
-			sourceLabel = "config/oops/" + filepath.Base(filePath)
+		if relErr == nil && relPath != "" {
+			sourceLabel = relPath
 		}
 
 		if fileRecords, _, err := ParseDNSFile(filePath); err == nil {
@@ -69,6 +71,37 @@ func CollectStaticRecords(workDir string) []DNSRecord {
 						Type:     recType,
 						Source:   sourceLabel,
 					})
+				}
+			}
+		}
+	}
+
+	// Also load shared infra DNS records from oops.yml
+	if oopsCfg, err := docker.LoadOopsConfig(workDir); err == nil && oopsCfg != nil {
+		for _, rawRecord := range oopsCfg.DNS.Records {
+			rawRecord = strings.TrimSpace(rawRecord)
+			if rawRecord == "" || strings.HasPrefix(rawRecord, "#") {
+				continue
+			}
+			fields := strings.Fields(rawRecord)
+			if len(fields) >= 2 {
+				domain := strings.TrimSpace(fields[0])
+				rawIP := strings.TrimSpace(fields[1])
+				if ip := net.ParseIP(rawIP); ip != nil && domain != "" {
+					key := domain + "=" + rawIP
+					if !seen[key] {
+						seen[key] = true
+						recType := RecordTypeStatic
+						if strings.HasPrefix(domain, ".") {
+							recType = RecordTypeWildcard
+						}
+						records = append(records, DNSRecord{
+							Hostname: domain,
+							IP:       rawIP,
+							Type:     recType,
+							Source:   "oops.yml (infra)",
+						})
+					}
 				}
 			}
 		}
@@ -165,6 +198,7 @@ func CollectContainerRecords(ctx context.Context, cli *client.Client) []DNSRecor
 			Type:      recType,
 			Container: cName,
 			Networks:  strings.Join(networkNames, ", "),
+			Source:    "container (" + cName + ")",
 		})
 	}
 
@@ -175,9 +209,57 @@ func CollectContainerRecords(ctx context.Context, cli *client.Client) []DNSRecor
 	return records
 }
 
+// LookupRecord resolves a domain against active containers, custom static records, and shared infra records
+func LookupRecord(ctx context.Context, workDir string, domain string, dockerCli *client.Client) (*DNSRecord, error) {
+	domain = strings.TrimSpace(domain)
+	if domain == "" {
+		return nil, fmt.Errorf("domain cannot be empty")
+	}
+
+	// 1. Check running containers first
+	if dockerCli != nil {
+		containers := CollectContainerRecords(ctx, dockerCli)
+		for _, c := range containers {
+			if strings.EqualFold(c.Hostname, domain) {
+				return &c, nil
+			}
+			// Wildcard match check
+			if strings.HasPrefix(c.Hostname, ".") {
+				apex := strings.TrimPrefix(c.Hostname, ".")
+				if strings.EqualFold(domain, apex) || strings.HasSuffix(strings.ToLower(domain), strings.ToLower(c.Hostname)) {
+					return &c, nil
+				}
+			}
+		}
+	}
+
+	// 2. Check static and infra records
+	staticRecords := CollectStaticRecords(workDir)
+	for _, r := range staticRecords {
+		if strings.EqualFold(r.Hostname, domain) {
+			return &r, nil
+		}
+		if strings.HasPrefix(r.Hostname, ".") {
+			apex := strings.TrimPrefix(r.Hostname, ".")
+			if strings.EqualFold(domain, apex) || strings.HasSuffix(strings.ToLower(domain), strings.ToLower(r.Hostname)) {
+				return &r, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no DNS record found for %q", domain)
+}
+
 // InspectDNSRecords aggregates both static and dynamic DNS records into a report
 func InspectDNSRecords(ctx context.Context, workDir string, dockerCli *client.Client) (*DNSReport, error) {
 	upstream := os.Getenv("OOPS_DNS_UPSTREAM")
+	if upstream == "" {
+		if oopsCfg, err := docker.LoadOopsConfig(workDir); err == nil && oopsCfg != nil {
+			if upstreams := oopsCfg.DNS.GetUpstreams(); len(upstreams) > 0 {
+				upstream = strings.Join(upstreams, ", ")
+			}
+		}
+	}
 	if upstream == "" {
 		upstream = "1.1.1.1:53, 8.8.8.8:53"
 	}
@@ -192,13 +274,18 @@ func InspectDNSRecords(ctx context.Context, workDir string, dockerCli *client.Cl
 		report.DynamicRecords = CollectContainerRecords(ctx, dockerCli)
 	}
 
-	// Check if resolver file exists on macOS (/etc/resolver/oops)
-	if data, err := os.ReadFile("/etc/resolver/oops"); err == nil {
+	// Check if resolver file exists on macOS (/etc/resolver/<tld>)
+	tld := os.Getenv("OOPS_DNS_TLD")
+	if tld == "" {
+		tld = "oops"
+	}
+	resolverPath := filepath.Join("/etc/resolver", tld)
+	if data, err := os.ReadFile(resolverPath); err == nil {
 		lines := strings.Split(string(data), "\n")
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
 			if strings.HasPrefix(line, "nameserver") {
-				report.LocalResolver = fmt.Sprintf("/etc/resolver/oops -> %s", strings.TrimSpace(strings.TrimPrefix(line, "nameserver")))
+				report.LocalResolver = fmt.Sprintf("%s -> %s", resolverPath, strings.TrimSpace(strings.TrimPrefix(line, "nameserver")))
 				break
 			}
 		}
@@ -221,10 +308,10 @@ func RenderDNSTable(report *DNSReport) string {
 	}
 	buf.WriteString("\n")
 
-	// 1. Static DNS Records
-	buf.WriteString("STATIC DNS RECORDS (config/oops/dns)\n")
+	// Custom & Infra DNS Records
+	buf.WriteString("CUSTOM & INFRA DNS RECORDS (data/oops/dns.records & oops.yml)\n")
 	if len(report.StaticRecords) == 0 {
-		buf.WriteString("  (No static records registered)\n\n")
+		buf.WriteString("  (No custom records registered)\n\n")
 	} else {
 		w := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
 		fmt.Fprintln(w, "  HOSTNAME\tIP\tTYPE\tSOURCE")
@@ -236,8 +323,8 @@ func RenderDNSTable(report *DNSReport) string {
 		buf.WriteString("\n")
 	}
 
-	// 2. Dynamic Container Records
-	buf.WriteString("DYNAMIC CONTAINER RECORDS (Docker Engine)\n")
+	// Dynamic Container Records
+	buf.WriteString("SERVICE CONTAINER RECORDS (Docker Engine — Managed Dynamically)\n")
 	if len(report.DynamicRecords) == 0 {
 		buf.WriteString("  (No active container hostnames discovered)\n")
 	} else {

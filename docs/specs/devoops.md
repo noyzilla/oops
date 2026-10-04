@@ -15,7 +15,7 @@ synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/cli.md", "docs/specs/dns
 
 ## Overview & Scope
 
-`devoops` is the developer workstation suite located in `templates/oopsbox/bin/` (`bin/devoops`, `bin/devoops-mac`, `bin/devoops-linux`). It orchestrates local development environments on macOS and Linux desktop machines, abstracting VM provisioning (Colima / Lima), host firewall packet filtering (`pfctl` / `iptables`), loopback routing, local DNS resolver integration (`/etc/resolver/`), and root CA certificate trust for local TLS wildcard domains (`https://*.web.oops` or `https://*.test`).
+`devoops` is the developer workstation suite located in `oopsbox/bin/` (`bin/devoops`, `bin/devoops-mac`, `bin/devoops-linux`). It orchestrates local development environments on macOS and Linux desktop machines, abstracting VM provisioning (Colima / Lima), host firewall packet filtering (`pfctl` / `iptables`), loopback routing, local DNS resolver integration (`/etc/resolver/`), and root CA certificate trust for local TLS wildcard domains (`https://*.web.oops` or `https://*.test`).
 
 ## Domain Context & Ubiquitous Language
 
@@ -34,11 +34,17 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - On `Linux`, invokes `bin/devoops-linux`.
 - On unsupported operating systems (Windows/WSL without Linux shell), outputs an actionable error message and exits with Code 1.
 
-- **Colima Integration & VM Optimization**: If Docker Desktop is not active, utilizes Colima VM with designated CPU, Memory, and VZ optimizations, configuring internal kernel sysctl, disabling conflicting port 53 listeners, and setting DNS resolvers.
-- **Static DNS Mapping (`config/oops/dns`)**: Auto-generates and maintains `config/oops/dns` mapping `host.oops` to the macOS workstation host IP (gateway) and `vm.oops` to the Colima Linux VM IP.
-- **Direct Bridge / Route**: Configures host-to-VM routing (e.g. `10.200.0.0/16` or Colima interface IP) so containers can be reached directly via IP or reverse proxy.
+### Multi-Engine Runtime & VM Optimization
+- **Multi-Engine Runtime Selection (`engine.type`)**: Configured via `engine.type` in `devoops.yml` (copied from `devoops.yml.example` at root) or `OOPS_ENGINE_TYPE` environment variable:
+  - `auto` (Default): Autodetects available engines in priority order: `orbstack` -> `colima` -> `docker`.
+  - `orbstack`: Launches OrbStack VM (`orb start`), providing native direct container IP routing without requiring `iptables` or manual `route add` configurations.
+  - `colima`: Launches Colima VM with configured CPU, Memory, Disk, and VZ hypervisor, applying internal kernel sysctl, firewall watchers, and subnet route bindings.
+  - `docker`: Directly connects to active Docker daemon or Docker Desktop.
+- **Configurable DNS TLD (`dns.tld`)**: Configured in `devoops.yml` (`dns.tld`) or `OOPS_DNS_TLD` (default: `oops`).
+- **Static DNS Mapping (`data/oops/dns.records`)**: Auto-generates and maintains `data/oops/dns.records` mapping `host.<tld>` to the workstation host IP (gateway) and `vm.<tld>` to the VM/engine IP.
+- **Direct Bridge / Route**: Configures host-to-VM routing (e.g. `10.200.0.0/16` or Colima interface IP) when running under Colima so containers can be reached directly via IP or reverse proxy.
 - **Host Firewall Anchors (`pfctl`)**: Binds local ports (80/443/53) or forwards traffic into the local Docker subnet via dedicated packet filter rules (`/etc/pf.anchors/oopsbox`).
-- **macOS Local DNS Resolver**: Creates `/etc/resolver/test` or `/etc/resolver/oops` pointing to `127.0.0.1:53` or container DNS IP to ensure local subdomains resolve seamlessly without `/etc/hosts` pollution.
+- **macOS Local DNS Resolver**: Creates `/etc/resolver/<tld>` pointing to the container DNS IP to ensure local subdomains resolve seamlessly without `/etc/hosts` pollution.
 - **Keychain Local SSL CA**: Extracts `root.crt` from the Caddy container volume and installs it into macOS System Keychain (`security add-trusted-cert -d -r trustRoot`) to guarantee green HTTPS locks in Google Chrome, Safari, and Curl.
 
 ### Linux Native Dev Rules
@@ -62,14 +68,14 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Upstream Callers**: Developer terminal, onboarding scripts, local dev workflows.
 - **Downstream Dependencies**: Docker Engine, Colima (`colima`), macOS `pfctl`, macOS `security` (Keychain), `sudo`, Caddy PKI volume.
 - **Bounded Blast Radius**:
-  - `templates/oopsbox/bin/devoops`: OS router.
-  - `templates/oopsbox/bin/devoops-mac`: macOS driver.
-  - `templates/oopsbox/bin/devoops-linux`: Linux driver.
-  - `templates/oopsbox/README.md`: Workstation developer documentation.
+  - `oopsbox/bin/devoops`: OS router.
+  - `oopsbox/bin/devoops-mac`: macOS driver.
+  - `oopsbox/bin/devoops-linux`: Linux driver.
+  - `oopsbox/README.md`: Workstation developer documentation.
 
 ## Verification & Acceptance Criteria
 
-- **Syntax Validation**: `sh -n templates/oopsbox/bin/devoops` and `bash -n templates/oopsbox/bin/devoops-mac` and `bash -n templates/oopsbox/bin/devoops-linux` exit with Code 0.
+- **Syntax Validation**: `sh -n oopsbox/bin/devoops` and `bash -n oopsbox/bin/devoops-mac` and `bash -n oopsbox/bin/devoops-linux` exit with Code 0.
 - **Execution Scenarios**:
   - Running `bin/devoops --help` displays all subcommands cleanly.
   - Running `bin/devoops status` inspects OS and passes through status.

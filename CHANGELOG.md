@@ -7,13 +7,20 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
-- Native DNS management CLI (`oops dns` / `oops dns list`, `oops dns add <domain> <ip>`, `oops dns del <domain>`, `oops dns reload`) supporting `.wildcard` domain prefixes.
+- Native DNS management CLI (`oops dns` / `oops dns list`, `oops dns get <domain>`, `oops dns set <domain> <ip>`, `oops dns del <domain>`, `oops dns reload`) supporting `.wildcard` domain prefixes.
+- Active container protection validations preventing `dns set` conflict or `dns del` removal on dynamic Docker service hostnames.
 - Pure file-watcher and atomic safe hot-reload for static DNS records in `oops server` with zero downtime.
-- Canonical 1-row-1-domain static DNS storage format in `config/oops/dns`.
+- Canonical local node dynamic DNS storage in `data/oops/dns.records`.
+- Shared team / infra DNS configuration support (`dns.upstreams: [...]` and `dns.records: [...]`) directly in `oops.yml`.
+- Dedicated workstation configuration file `devoops.yml` (and `devoops.yml.example`) at `oopsbox/` root separating local developer runtime/DNS settings from master `oops.yml` manifest.
+- Multi-engine runtime configuration (`engine.type: auto | orbstack | colima | docker`) in `devoops.yml` with OrbStack native container routing support.
+- Configurable DNS top-level domain (`dns.tld` in `devoops.yml` and `OOPS_DNS_TLD`, default: `oops`) for dynamic macOS `/etc/resolver/<tld>` binding.
 - Healthcheck configuration for `oops` service daemon in `stacks/utils/compose.yml`.
 
 ### Changed
-- Standardized `devoops` DNS and static host provisioning to `config/oops/dns`.
+- Promoted `templates/oopsbox/` to repo root `oopsbox/` blueprint directory.
+- Moved master stack manifest `stacks/oops.yml` to root `oopsbox/oops.yml`.
+- Standardized `devoops` DNS and static host provisioning to `data/oops/dns.records`.
 - Cleaned up command aliases to maintain strict CLI canonical discipline.
 
 ## [0.4.0] - 2026-10-04

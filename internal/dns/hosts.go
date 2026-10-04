@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/noyzilla/oops/internal/docker"
 )
 
 // FindDNSFilePath discovers active static DNS records file path
@@ -22,12 +24,11 @@ func FindDNSFilePath(workDir string) string {
 	}
 
 	candidatePaths := []string{
+		filepath.Join(workDir, "data", "oops", "dns.records"),
+		filepath.Join(workDir, "config", "oops.dns"),
 		filepath.Join(workDir, "config", "oops", "dns"),
-		filepath.Join(workDir, "stacks", "utils", "config", "oops", "dns"),
-		filepath.Join(workDir, "stacks", "edge", "config", "oops", "dns"),
 		filepath.Join(workDir, "config", "oops", "hosts"),
-		filepath.Join(workDir, "stacks", "utils", "config", "oops", "hosts"),
-		filepath.Join(workDir, "stacks", "edge", "config", "oops", "hosts"),
+		filepath.Join(workDir, "config", "hosts"),
 	}
 
 	for _, p := range candidatePaths {
@@ -36,7 +37,7 @@ func FindDNSFilePath(workDir string) string {
 		}
 	}
 
-	return filepath.Join(workDir, "config", "oops", "dns")
+	return filepath.Join(workDir, "data", "oops", "dns.records")
 }
 
 // ParseDNSFile reads static DNS records from file in "<domain> <ip>" format (or legacy hosts format)
@@ -136,6 +137,29 @@ func LoadCustomHosts(workDir string) *Resolver {
 		}
 	}
 
+	// Also load shared infra DNS records from oops.yml
+	if oopsCfg, err := docker.LoadOopsConfig(workDir); err == nil && oopsCfg != nil {
+		infraCount := 0
+		for _, rawRecord := range oopsCfg.DNS.Records {
+			rawRecord = strings.TrimSpace(rawRecord)
+			if rawRecord == "" || strings.HasPrefix(rawRecord, "#") {
+				continue
+			}
+			fields := strings.Fields(rawRecord)
+			if len(fields) >= 2 {
+				domain := strings.TrimSpace(fields[0])
+				rawIP := strings.TrimSpace(fields[1])
+				if ip := net.ParseIP(rawIP); ip != nil && domain != "" {
+					resolver.Register("static", domain, ip)
+					infraCount++
+				}
+			}
+		}
+		if infraCount > 0 {
+			log.Printf("[DNS] Loaded %d shared infra DNS records from oops.yml", infraCount)
+		}
+	}
+
 	// Environment variable fallback (OOPS_DNS_RECORDS)
 	if rawEnv := os.Getenv("OOPS_DNS_RECORDS"); rawEnv != "" {
 		pairs := strings.Split(rawEnv, ",")
@@ -166,8 +190,8 @@ func LoadCustomHosts(workDir string) *Resolver {
 	return resolver
 }
 
-// AddStaticDNSRecord adds or updates a static DNS record in config/oops/dns
-func AddStaticDNSRecord(workDir, domain, ipStr string) (string, error) {
+// SetStaticDNSRecord adds or updates a static DNS record in data/oops/dns.records
+func SetStaticDNSRecord(workDir, domain, ipStr string) (string, error) {
 	domain = strings.TrimSpace(domain)
 	ipStr = strings.TrimSpace(ipStr)
 
@@ -181,7 +205,7 @@ func AddStaticDNSRecord(workDir, domain, ipStr string) (string, error) {
 
 	targetPath := FindDNSFilePath(workDir)
 	if strings.HasSuffix(filepath.Base(targetPath), "hosts") || !fileExists(targetPath) {
-		targetPath = filepath.Join(workDir, "config", "oops", "dns")
+		targetPath = filepath.Join(workDir, "data", "oops", "dns.records")
 	}
 
 	dir := filepath.Dir(targetPath)
@@ -235,7 +259,12 @@ func AddStaticDNSRecord(workDir, domain, ipStr string) (string, error) {
 	return targetPath, nil
 }
 
-// DeleteStaticDNSRecord removes a static DNS record from config/oops/dns
+// AddStaticDNSRecord maintains backward compatibility for SetStaticDNSRecord
+func AddStaticDNSRecord(workDir, domain, ipStr string) (string, error) {
+	return SetStaticDNSRecord(workDir, domain, ipStr)
+}
+
+// DeleteStaticDNSRecord removes a static DNS record from data/oops/dns.records
 func DeleteStaticDNSRecord(workDir, domain string) (string, error) {
 	domain = strings.TrimSpace(domain)
 	if domain == "" {

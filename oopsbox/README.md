@@ -7,7 +7,11 @@ This blueprint provides a production-ready, modular multi-stack Docker Compose e
 ```text
 ~/oopsbox/                # Standard Root Directory (or /opt/oopsbox on production)
 ├── .env                  # Environment variables & secrets (copy from .env.example)
-├── stacks/               # All Multi-Stack Definitions
+├── .env.example          # Credentials template (Committed)
+├── oops.yml              # Center Master Config: registries, groups, backups, shared dns (Committed)
+├── devoops.yml           # Local Workstation Engine & DNS settings (git-ignored)
+├── devoops.yml.example   # Workstation configuration template (Committed)
+├── stacks/               # All Multi-Stack Definitions (Pure IaC, Git-tracked)
 │   ├── edge/             # Stack: Ingress Reverse Proxy & Auto-SSL (net-edge)
 │   │   ├── compose.yml
 │   │   └── config/
@@ -19,14 +23,17 @@ This blueprint provides a production-ready, modular multi-stack Docker Compose e
 │   ├── apps/             # Stack: Application Services (web-app, worker)
 │   │   └── compose.yml
 │   └── utils/            # Stack: Oops Webhook Engine & Utilities (net-edge+net-db)
-│       ├── compose.yml
-│       └── config/
-│           └── oops/hosts    # Custom Static DNS (hostmac, colima, local.dev)
+│       └── compose.yml
 ├── bin/                  # Workstation Dev Tooling (macOS/Linux - Excluded on Prod)
 │   ├── devoops           # Main Dispatcher (Auto-detects OS)
-│   ├── devoops-mac       # macOS + Colima Helper (VM firewall, routes, keychain cert)
+│   ├── devoops-mac       # macOS Helper (VM engine, firewall, routes, keychain cert)
 │   └── devoops-linux     # Linux Desktop Helper
 ├── data/                 # Live realtime container storage (High-IOPS persistent volume)
+│   ├── mysql/            # MySQL storage
+│   ├── postgres/         # PostgreSQL storage
+│   ├── caddy/            # SSL certificates
+│   └── oops/             # Oops Daemon runtime data
+│       └── dns.records   # Local Node Custom DNS Records
 └── backups/              # Secondary backup storage (Cold storage / database dumps)
 ```
 
@@ -64,19 +71,19 @@ graph TD
 
 ## Quickstart (Local Development)
 
-### 1. One-Command Setup (`./bin/devoops install`)
+### One-Command Setup (`./bin/devoops install`)
 Run the automated installation to initialize credentials, storage, macOS DNS resolver, and register `devoops` to global PATH:
 ```bash
 ./bin/devoops install
 ```
 
-### 2. Start Dev Environment (`devoops start`)
+### Start Dev Environment (`devoops start`)
 Starts VM routing (if using Colima) and starts the default core service group (`OOPS_DEFAULT_GROUP=core` in `.env`):
 ```bash
 devoops start
 ```
 
-### 3. Install Trusted Local SSL Certificate (`devoops install-cert`)
+### Install Trusted Local SSL Certificate (`devoops install-cert`)
 Adds Caddy's local root CA certificate to macOS Keychain (enables green lock for `https://*.web.oops`):
 ```bash
 devoops install-cert
@@ -84,13 +91,14 @@ devoops install-cert
 
 ---
 
-## Unified Configuration (`stacks/oops.yml`)
+## Unified Configuration (`oops.yml`)
 
-Define custom profiles and registry aliases in `stacks/oops.yml`:
+Define custom profiles, registry aliases, and shared DNS in `oops.yml`:
 
 ```yaml
 registries:
   gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
+  noyzilla: ghcr.io/noyzilla
   hub: docker.io/myorg
 
 groups:
@@ -115,6 +123,14 @@ groups:
     - /db
     - /utils
     - /apps
+
+dns:
+  upstreams:
+    - 1.1.1.1:53
+    - 8.8.8.8:53
+  records:
+    # - api.internal 10.0.0.5
+    # - .staging.oops 10.0.0.10
 ```
 
 Use `@group` syntax with any `oops` command:
@@ -131,6 +147,31 @@ oops switch @pg
 # Stop all services except specified exclusions:
 oops stop -x @core
 oops stop -x /edge -x redis
+```
+
+---
+
+## DNS Management CLI (`oops dns`)
+
+Inspect, query, and manage DNS resolution directly:
+```bash
+# List all active DNS records (Custom, Infra, and Container Services)
+oops dns
+oops dns list
+
+# Query resolved IP for a domain
+oops dns get host.oops
+oops dns get mysql.oops
+
+# Set or update a custom record (upsert)
+oops dns set my-app.test 127.0.0.1
+oops dns set .wild.test 192.168.1.100
+
+# Delete a custom record
+oops dns del my-app.test
+
+# Validate and reload daemon DNS table
+oops dns reload
 ```
 
 ---
@@ -203,17 +244,17 @@ oops db pg drop myapp_db myapp_user
 ### Automated Backup Suite (Database & Data Volumes)
 Execute automated database dumps, filesystem data packaging, and prune expired archives older than `retention` (default `7d`):
 ```bash
-# 1. Full System Backup (Database Dumps + Data Volumes)
+# Full System Backup (Database Dumps + Data Volumes)
 oops backup                         # Full backup (DB + Data) and prune expired
 oops backup prune                   # Prune all expired archives (no dump)
 
-# 2. Database Backup Only (MySQL, PostgreSQL)
+# Database Backup Only (MySQL, PostgreSQL)
 oops backup-db                      # Backup all databases
 oops backup-db mysql                # Backup specific database
 oops backup-db postgres -r 14d      # Backup with custom 14-day retention
 oops backup-db prune                # Prune expired DB dump archives
 
-# 3. Data Volumes & Filesystem Backup Only (Uploads, Storage, Certs)
+# Data Volumes & Filesystem Backup Only (Uploads, Storage, Certs)
 oops backup-data                    # Backup all targets defined in oops.yml
 oops backup-data uploads            # Backup specific data target
 oops backup-data prune              # Prune expired data volume archives

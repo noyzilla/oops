@@ -5,7 +5,7 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# 1. Registry Aliases (Short prefixes for long image repositories)
+# Registry Aliases (Short prefixes for long image repositories)
 # Usage:
 #   oops pull gar/my-app:v1.0
 #   oops update gar/my-app:v1.0 -d 2s
@@ -13,11 +13,11 @@
 # ------------------------------------------------------------------------------
 registries:
   gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
-  ghcr: ghcr.io/noyzilla
+  noyzilla: ghcr.io/noyzilla
   # ecr: 123456789.dkr.ecr.ap-southeast-1.amazonaws.com
 
 # ------------------------------------------------------------------------------
-# 2. Service Groups / Stack Profiles
+# Service Groups / Stack Profiles
 # Usage:
 #   oops up @core
 #   oops stop @pg
@@ -50,7 +50,7 @@ groups:
     - /apps
 
 # ------------------------------------------------------------------------------
-# 3. Automated Backup Configuration (Database Dumps + Filesystem Data Volumes)
+# Automated Backup Configuration (Database Dumps + Filesystem Data Volumes)
 # Usage:
 #   oops backup             # Full backup (DB + Data)
 #   oops backup-db          # Backup databases only
@@ -78,13 +78,16 @@ backups:
         - data/redis
 
 # ------------------------------------------------------------------------------
-# 4. Workstation VM Configuration (Colima Dev Environment)
+# Shared DNS Engine Configuration (Team / Infra DNS)
 # Usage:
-#   devoops start           # Starts Colima with specified CPU, memory, and vm_type
+#   oops dns                # Inspect active DNS resolution table
+#   oops dns get <domain>   # Query resolved IP for domain
 # ------------------------------------------------------------------------------
-colima:
-  cpu: 4                    # Number of CPU cores allocated to VM
-  memory: 4                 # Memory in GB allocated to VM
-  disk: 60                  # Disk size in GB allocated to VM
-  vm_type: vz               # VM hypervisor engine: vz (recommended) or qemu
+dns:
+  upstreams:
+    - 1.1.1.1:53
+    - 8.8.8.8:53
+  records:
+    # - api.internal 10.0.0.5
+    # - .staging.oops 10.0.0.10
 

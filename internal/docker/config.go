@@ -41,12 +41,37 @@ type ColimaConfig struct {
 	VMType string `yaml:"vm_type,omitempty"`
 }
 
+// DNSConfig defines upstream DNS relays and shared static DNS records in oops.yml
+type DNSConfig struct {
+	Upstreams []string `yaml:"upstreams,omitempty"`
+	Upstream  string   `yaml:"upstream,omitempty"`
+	Records   []string `yaml:"records,omitempty"`
+}
+
+// GetUpstreams returns the list of upstream DNS servers
+func (d *DNSConfig) GetUpstreams() []string {
+	if len(d.Upstreams) > 0 {
+		return d.Upstreams
+	}
+	if d.Upstream != "" {
+		var res []string
+		for _, part := range strings.Split(d.Upstream, ",") {
+			if s := strings.TrimSpace(part); s != "" {
+				res = append(res, s)
+			}
+		}
+		return res
+	}
+	return nil
+}
+
 // OopsConfig represents the unified configuration in oops.yml / config.yml
 type OopsConfig struct {
 	Registries map[string]string   `yaml:"registries,omitempty"`
 	Aliases    map[string]string   `yaml:"aliases,omitempty"` // alias for registries
 	Groups     map[string][]string `yaml:"groups,omitempty"`
 	Backups    BackupConfig        `yaml:"backups,omitempty"`
+	DNS        DNSConfig           `yaml:"dns,omitempty"`
 	Colima     ColimaConfig        `yaml:"colima,omitempty"`
 }
 
@@ -59,18 +84,18 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 	}
 
 	candidates := []string{
-		filepath.Join(workDir, "stacks", "oops.yml"),
-		filepath.Join(workDir, "stacks", "oops.yaml"),
 		filepath.Join(workDir, "oops.yml"),
 		filepath.Join(workDir, "oops.yaml"),
-		filepath.Join(workDir, "stacks", "config.yml"),
-		filepath.Join(workDir, "stacks", "config.yaml"),
+		filepath.Join(workDir, "stacks", "oops.yml"),
+		filepath.Join(workDir, "stacks", "oops.yaml"),
 		filepath.Join(workDir, "config.yml"),
 		filepath.Join(workDir, "config.yaml"),
-		filepath.Join(workDir, "stacks", "groups.yml"),
-		filepath.Join(workDir, "stacks", "groups.yaml"),
+		filepath.Join(workDir, "stacks", "config.yml"),
+		filepath.Join(workDir, "stacks", "config.yaml"),
 		filepath.Join(workDir, "groups.yml"),
 		filepath.Join(workDir, "groups.yaml"),
+		filepath.Join(workDir, "stacks", "groups.yml"),
+		filepath.Join(workDir, "stacks", "groups.yaml"),
 	}
 
 	for _, c := range candidates {
@@ -110,6 +135,17 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 			}
 			if len(fileCfg.Backups.Data) > 0 && len(cfg.Backups.Data) == 0 {
 				cfg.Backups.Data = fileCfg.Backups.Data
+			}
+
+			// Merge DNS
+			if len(fileCfg.DNS.Upstreams) > 0 && len(cfg.DNS.Upstreams) == 0 {
+				cfg.DNS.Upstreams = fileCfg.DNS.Upstreams
+			}
+			if fileCfg.DNS.Upstream != "" && cfg.DNS.Upstream == "" {
+				cfg.DNS.Upstream = fileCfg.DNS.Upstream
+			}
+			if len(fileCfg.DNS.Records) > 0 && len(cfg.DNS.Records) == 0 {
+				cfg.DNS.Records = fileCfg.DNS.Records
 			}
 
 			// Merge colima
