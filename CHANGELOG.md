@@ -6,6 +6,18 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-04
+
+### Added
+- Dedicated development utilities group `stacks/tool/` with lightweight test services (`httpbin` and `mailpit`) connected to `net-edge`.
+- Modular service configuration path convention (`stacks/<group>/<service>/`, e.g. `stacks/edge/caddy/Caddyfile`, `stacks/db/mysql/my.cnf`).
+
+### Changed
+- Consolidated `oops` service daemon directly into `stacks/edge/compose.yml` and removed legacy `stacks/utils/` directory.
+- Standardized profile definitions under `profiles:` in master `oops.yml` (`default: [/edge]`) as the single source of truth, removing `OOPS_DEFAULT_GROUP`.
+- Streamlined `devoops` workstation tooling (`bin/devoops`, `bin/devoops-mac`, `bin/devoops-linux`) to focus exclusively on workstation bootstrapping, network routing, and OS certificate trust while delegating all profile and stack orchestration to the `oops` CLI.
+- Updated edge reverse proxy image tag to `lucaslorentz/caddy-docker-proxy:alpine`.
+
 ## [0.5.0] - 2026-10-04
 
 ### Added
