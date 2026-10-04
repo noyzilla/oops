@@ -74,6 +74,12 @@ func TestSubcommandFlags(t *testing.T) {
 			t.Errorf("command %q flag %q expected shorthand %q, got %q", tt.cmdName, tt.flagName, tt.shorthand, f.Shorthand)
 		}
 	}
+
+	// Verify db-backup prune subcommand exists
+	pruneCmd, _, err := rootCmd.Find([]string{"db-backup", "prune"})
+	if err != nil || pruneCmd == nil || pruneCmd.Name() != "prune" {
+		t.Errorf("expected db-backup prune subcommand to exist")
+	}
 }
 
 func TestHelpOutput(t *testing.T) {

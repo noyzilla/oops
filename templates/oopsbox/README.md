@@ -22,10 +22,10 @@ This blueprint provides a production-ready, modular multi-stack Docker Compose e
 │       ├── compose.yml
 │       └── config/
 │           └── oops/hosts    # Custom Static DNS (hostmac, colima, local.dev)
-├── local-dev/            # Local Workstation Tooling (macOS/Linux - Excluded on Prod)
-│   ├── oopsbox           # Main Dispatcher (Auto-detects OS)
-│   ├── oopsbox-mac       # macOS + Colima Helper (VM firewall, routes, keychain cert)
-│   └── oopsbox-linux     # Linux Desktop Helper
+├── bin/                  # Workstation Dev Tooling (macOS/Linux - Excluded on Prod)
+│   ├── devoops           # Main Dispatcher (Auto-detects OS)
+│   ├── devoops-mac       # macOS + Colima Helper (VM firewall, routes, keychain cert)
+│   └── devoops-linux     # Linux Desktop Helper
 ├── data/                 # Live realtime container storage (High-IOPS persistent volume)
 └── backups/              # Secondary backup storage (Cold storage / database dumps)
 ```
@@ -64,35 +64,37 @@ graph TD
 
 ## Quickstart (Local Development)
 
-### 1. One-Command Setup (`local-dev/oopsbox install`)
-Run the automated installation to initialize credentials, storage, macOS DNS resolver, and register `oopsbox` to global PATH:
+### 1. One-Command Setup (`./bin/devoops install`)
+Run the automated installation to initialize credentials, storage, macOS DNS resolver, and register `devoops` to global PATH:
 ```bash
-./local-dev/oopsbox install
+./bin/devoops install
 ```
 
-### 2. Start Oopsbox Environment (`oopsbox start`)
-Starts VM routing (if using Colima) and starts the default service group (`OOPS_DEFAULT_GROUP=core` in `.env`):
+### 2. Start Dev Environment (`devoops start`)
+Starts VM routing (if using Colima) and starts the default core service group (`OOPS_DEFAULT_GROUP=core` in `.env`):
 ```bash
-oopsbox start           # Starts OOPS_DEFAULT_GROUP (e.g. @core)
-oopsbox start @pg       # Start Postgres profile (edge + pg + redis + oops)
-oopsbox start @minimal  # Start minimal profile (edge only)
-oopsbox start @all      # Start all services across all stacks
+devoops start
 ```
 
-### 3. Install Trusted Local SSL Certificate (`oopsbox install-cert`)
+### 3. Install Trusted Local SSL Certificate (`devoops install-cert`)
 Adds Caddy's local root CA certificate to macOS Keychain (enables green lock for `https://*.web.oops`):
 ```bash
-oopsbox install-cert
+devoops install-cert
 ```
 
 ---
 
-## Group Stacks (`stacks/groups.yml`)
+## Unified Configuration (`stacks/oops.yml`)
 
-Define custom profiles in `stacks/groups.yml` to start or stop cohesive sets of services together without starting unnecessary containers:
+Define custom profiles and registry aliases in `stacks/oops.yml`:
 
 ```yaml
+registries:
+  gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
+  hub: docker.io/myorg
+
 groups:
+  default: "@core"
   core:      # Default: Caddy Edge Router + MySQL + Redis + Oops Daemon
     - /edge
     - mysql
@@ -137,6 +139,11 @@ alias oops='docker run --rm -it \
   -w "$HOME/oopsbox" \
   ghcr.io/noyzilla/oops:latest'
 
+# Pull images across all stacks, specific group, or registry alias
+oops pull --all
+oops pull @core
+oops pull gar/my-app:v1.0.0
+
 # Start service groups or stacks
 oops up @core
 oops up /edge
@@ -159,6 +166,7 @@ Deploy updates across apps sequentially with automated health check polling:
 ```bash
 oops update app.. -d 2s
 oops update app1
+oops update --image gar/my-app:v1.0.0
 ```
 
 ### Database Provisioning & Password Management
@@ -183,9 +191,10 @@ oops db pg drop myapp_db myapp_user
 ### Database Backup & Retention
 Execute automated dumps and prune archives older than `OOPS_BACKUP_RETENTION` (default `7d`):
 ```bash
-oops db-backup
-oops db-backup mysql
-oops db-backup postgres -r 14d
+oops db-backup                      # Backup all databases and prune expired
+oops db-backup mysql                # Backup specific database
+oops db-backup postgres -r 14d      # Backup with custom 14-day retention
+oops db-backup prune                # Prune expired archives only (no dump)
 ```
 
 ### Webhook Automation (CI/CD)

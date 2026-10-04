@@ -218,21 +218,15 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 
 	// Expand any @group targets into concrete selectors
 	var expandedTargets []string
-	var groupsMap map[string][]string
-	groupsLoaded := false
+	oopsCfg, err := LoadOopsConfig(workDir)
+	if err != nil {
+		return nil, err
+	}
 
 	var expandTarget func(tgt string, callStack []string) error
 	expandTarget = func(tgt string, callStack []string) error {
 		if strings.HasPrefix(tgt, "@") {
 			groupName := strings.TrimPrefix(tgt, "@")
-			if !groupsLoaded {
-				var err error
-				groupsMap, err = LoadGroups(workDir)
-				if err != nil {
-					return err
-				}
-				groupsLoaded = true
-			}
 
 			for _, s := range callStack {
 				if s == groupName {
@@ -240,12 +234,12 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 				}
 			}
 
-			groupItems, exists := groupsMap[groupName]
+			groupItems, exists := oopsCfg.Groups[groupName]
 			if !exists {
-				return fmt.Errorf("group '%s' not found in groups.yml", groupName)
+				return fmt.Errorf("group '%s' not found in oops.yml", groupName)
 			}
 			if len(groupItems) == 0 {
-				return fmt.Errorf("group '%s' is empty in groups.yml", groupName)
+				return fmt.Errorf("group '%s' is empty in oops.yml", groupName)
 			}
 
 			for _, item := range groupItems {
@@ -317,7 +311,7 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 			continue
 		}
 
-		// 2. Bare Name or Double Dot Wildcard Matching
+		// 2. Service Name or Double Dot Wildcard Matching
 		for _, ss := range allStacks {
 			var sNames []string
 			for sName := range ss.services {
@@ -345,10 +339,54 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 			}
 		}
 
+		// 3. Image / Registry Alias Matching (e.g. gar/app:v1.0, img:redis:7, or image substring)
+		if !matchedTarget {
+			expandedImage := ExpandImageAlias(target, oopsCfg.Registries)
+			cleanImageQuery := strings.TrimPrefix(strings.TrimPrefix(target, "image:"), "img:")
+
+			for _, ss := range allStacks {
+				var sNames []string
+				for sName := range ss.services {
+					sNames = append(sNames, sName)
+				}
+				sort.Strings(sNames)
+
+				for _, sName := range sNames {
+					s := ss.services[sName]
+					isImageMatch := s.Image == expandedImage ||
+						s.Image == cleanImageQuery ||
+						strings.HasSuffix(s.Image, "/"+cleanImageQuery) ||
+						strings.HasSuffix(s.Image, ":"+cleanImageQuery) ||
+						MatchWildcard(target, s.Image)
+
+					if isImageMatch {
+						key := ss.stackName + "/" + sName
+						if !seen[key] {
+							seen[key] = true
+							results = append(results, ResolvedTarget{
+								StackName:     ss.stackName,
+								ComposePath:   ss.composePath,
+								ServiceName:   sName,
+								ContainerName: s.ContainerName,
+								Image:         s.Image,
+								Labels:        s.ParsedLabels,
+							})
+						}
+						matchedTarget = true
+					}
+				}
+			}
+		}
+
 		if !matchedTarget {
 			return nil, fmt.Errorf("no matching services found for target: %s", target)
 		}
 	}
 
 	return results, nil
+}
+
+// ResolveTargetsByImage resolves all services across all stacks matching the given image query or registry alias
+func ResolveTargetsByImage(workDir string, imageQuery string) ([]ResolvedTarget, error) {
+	return ResolveTargets(workDir, []string{"img:" + imageQuery})
 }

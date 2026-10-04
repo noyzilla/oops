@@ -259,3 +259,80 @@ groups:
 	}
 }
 
+func TestResolveImageAliasesAndRegistryShortcuts(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "oops-img-alias-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	stacksDir := filepath.Join(tmpDir, "stacks")
+	appsDir := filepath.Join(stacksDir, "apps")
+	dbDir := filepath.Join(stacksDir, "db")
+
+	os.MkdirAll(appsDir, 0755)
+	os.MkdirAll(dbDir, 0755)
+
+	os.WriteFile(filepath.Join(appsDir, "compose.yml"), []byte(`
+services:
+  web-api:
+    image: asia-southeast1-docker.pkg.dev/my-project/my-repo/api-service:v2.1.0
+  worker:
+    image: asia-southeast1-docker.pkg.dev/my-project/my-repo/api-service:v2.1.0
+  frontend:
+    image: ghcr.io/myorg/frontend:latest
+`), 0644)
+
+	os.WriteFile(filepath.Join(dbDir, "compose.yml"), []byte(`
+services:
+  redis:
+    image: redis:7-alpine
+`), 0644)
+
+	// Create stacks/oops.yml
+	os.WriteFile(filepath.Join(stacksDir, "oops.yml"), []byte(`
+registries:
+  gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
+  gh: ghcr.io/myorg
+groups:
+  apps:
+    - /apps
+`), 0644)
+
+	// 1. Resolve by registry alias shortcut: gar/api-service:v2.1.0
+	aliasTargets, err := docker.ResolveTargets(tmpDir, []string{"gar/api-service:v2.1.0"})
+	if err != nil {
+		t.Fatalf("failed to resolve by alias gar/api-service:v2.1.0: %v", err)
+	}
+	if len(aliasTargets) != 2 {
+		t.Fatalf("expected 2 targets (web-api, worker), got %d", len(aliasTargets))
+	}
+
+	// 2. Resolve by gh shortcut: gh/frontend:latest
+	ghTargets, err := docker.ResolveTargets(tmpDir, []string{"gh/frontend:latest"})
+	if err != nil {
+		t.Fatalf("failed to resolve gh/frontend:latest: %v", err)
+	}
+	if len(ghTargets) != 1 || ghTargets[0].ServiceName != "frontend" {
+		t.Errorf("expected frontend service, got %+v", ghTargets)
+	}
+
+	// 3. Resolve by image suffix: redis:7-alpine
+	redisTargets, err := docker.ResolveTargets(tmpDir, []string{"redis:7-alpine"})
+	if err != nil {
+		t.Fatalf("failed to resolve redis:7-alpine: %v", err)
+	}
+	if len(redisTargets) != 1 || redisTargets[0].ServiceName != "redis" {
+		t.Errorf("expected redis service, got %+v", redisTargets)
+	}
+
+	// 4. Resolve via ResolveTargetsByImage helper
+	helperTargets, err := docker.ResolveTargetsByImage(tmpDir, "gar/api-service:v2.1.0")
+	if err != nil {
+		t.Fatalf("ResolveTargetsByImage failed: %v", err)
+	}
+	if len(helperTargets) != 2 {
+		t.Fatalf("expected 2 targets via helper, got %d", len(helperTargets))
+	}
+}
+

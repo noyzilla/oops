@@ -171,7 +171,5 @@ func newDBCmd() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(newDBBackupCmd())
-
 	return cmd
 }

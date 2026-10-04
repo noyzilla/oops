@@ -30,7 +30,9 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 ### Smart Target Resolution & Double Dot (`..`) Wildcard Protocol
 Target strings are resolved using an explicit, shell-safe notation that eliminates quoting overhead on physical and virtual keyboards:
 - **Group Stacks (`@<group>`)**:
-  - Any target starting with `@` (e.g., `@core`, `@pg`, `@minimal`, `@all`) resolves against `stacks/groups.yml` (or `groups.yml`). It expands recursively into the constituent stacks and services defined in the named profile.
+  - Any target starting with `@` (e.g., `@core`, `@pg`, `@minimal`, `@all`) resolves against `stacks/oops.yml` (or `oops.yml`). It expands recursively into the constituent stacks and services defined in the named profile.
+- **Registry Aliases & Image Matching (`<alias>/<image>:<tag>` or `<image>:<tag>`)**:
+  - Any target matching a configured registry alias (e.g. `gar/web-app:v1.0` -> `asia-southeast1-docker.pkg.dev/.../web-app:v1.0`), `img:<image>`, or exact image name resolves to all services across all stacks using that container image.
 - **Stack Target (`/<stack>`)**:
   - Any target starting with a leading slash `/` without further subpaths (e.g., `/edge`, `/db`, `/apps`, `/utils`) targets the entire stack and executes on that stack's `compose.yml` (located under `stacks/<stack>/`).
 - **Scoped Service Target (`/<stack>/<service>`)**:
@@ -105,7 +107,7 @@ For each matched service in target order:
     ```
 
 ### Database Backup & Retention (`oops db-backup [targets...]`)
-- **Syntax**: `oops db-backup [targets...] [-r <duration|int>]` (also accepts aliases `oops db backup`, `oops db:backup`, `oops backup`).
+- **Syntax**: `oops db-backup [targets...] [-r <duration|int>]` and `oops db-backup prune [-r <duration|int>]`.
 - **Target Resolution**:
   - If targets omitted: Dumps all running database containers discovered in the `db` layer (`mysql`, `postgres`, `redis`).
   - If target specified (e.g. `mysql`, `pg`, `pg:replica`): Dumps only the matching database container.
@@ -135,14 +137,16 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops` | `[-C, --dir <path>]` | Global persistent flag to target a specific oopsbox directory |
 | `oops up` | `[targets...] [-d 0s]` | Starts stack or globbed services with optional inter-service delay (`-d`, `--delay`) |
 | `oops stop` | `<targets...> [-d 0s]` | Gracefully stops target services with stop hooks and inter-service delay (`-d`, `--delay`) |
-| `oops restart`| `[targets...] [-d 0s]` | Restarts target services with stop hooks and inter-service delay (`-d`, `--delay`) |
+| `oops restart`| `[targets...] [-d 0s] [-i, --image <img/alias>]` | Restarts target services with stop hooks, delay gap, or image matching |
 | `oops down` | `[-d 0s]` | Tears down all stacks with stop hooks and inter-service delay (`-d`, `--delay`) |
-| `oops status` | *(none)* | Formatted table of containers, health, and ports |
-| `oops logs` | `<service> [--tail 100] [-f]` | Tail service logs |
-| `oops pull` | `[targets...]` | Pulls images for targets |
-| `oops update` | `<targets...> [-d 0s]` | Executes sequential rolling update with health check and delay gap (`-d`, `--delay`) |
-| `oops db` | `<engine>[:<target>] <action>` | DB provisioning (`create`, `list`, `drop`) |
+| `oops status` | `[targets...]` | Formatted table of containers, health, and ports |
+| `oops logs` | `[targets...] [--tail 100] [-f]` | Tail service logs across target services or stacks |
+| `oops pull` | `[targets...] [--all]` | Pulls images for targets, default group, all stacks, or registry aliases |
+| `oops update` | `[targets...] [--all] [-i, --image <img/alias>] [-d 0s]` | Executes sequential rolling update with health check and delay gap |
+| `oops db` | `<engine>[:<target>] <action>` | DB provisioning (`create`, `passwd`, `list`, `drop`) |
 | `oops db-backup`| `[targets...] [-r 7d]` | Executes DB dump and retention prune (`-r`, `--retention`) |
+| `oops db-backup prune`| `[-r 7d]` | Prunes expired backup archives without triggering a new dump |
+| `oops server` | `[-p, --port 80] [-c, --config <path>]` | Starts webhook deployment and DNS discovery daemon (aliases: `webhook`, `daemon`) |
 
 ---
 

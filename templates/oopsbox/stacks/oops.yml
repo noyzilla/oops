@@ -1,0 +1,50 @@
+# ==============================================================================
+# Oops Unified Stack Configuration (oops.yml)
+# ==============================================================================
+# Master configuration for registry shortcuts and stack service profiles.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Registry Aliases (Short prefixes for long image repositories)
+# Usage:
+#   oops pull gar/my-app:v1.0
+#   oops update gar/my-app:v1.0 -d 2s
+#   oops restart gar/my-app:v1.0
+# ------------------------------------------------------------------------------
+registries:
+  gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
+  ghcr: ghcr.io/noyzilla
+  # ecr: 123456789.dkr.ecr.ap-southeast-1.amazonaws.com
+
+# ------------------------------------------------------------------------------
+# 2. Service Groups / Stack Profiles
+# Usage:
+#   oops up @core
+#   oops stop @pg
+#   devoops start [group]
+# ------------------------------------------------------------------------------
+groups:
+  # Core Stack: Caddy Edge Router + MySQL + Redis + Oops Daemon
+  core:
+    - /edge
+    - mysql
+    - redis
+    - /utils
+
+  # Postgres Stack: Caddy Edge Router + Postgres + Redis + Oops Daemon
+  pg:
+    - /edge
+    - postgres
+    - redis
+    - /utils
+
+  # Minimal / Edge Only: Only Caddy Ingress Router
+  minimal:
+    - /edge
+
+  # Full Stack: All services across edge, db, utils, and apps
+  all:
+    - /edge
+    - /db
+    - /utils
+    - /apps

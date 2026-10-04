@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# Oopsbox Local Dev Main Dispatcher
+# DevOops Local Dev Main Dispatcher
 # Resolve real directory path even if called via symlink
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
@@ -9,21 +9,21 @@ while [ -h "$SOURCE" ]; do
     SOURCE="$(readlink "$SOURCE")"
     [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
 done
-LOCAL_DEV_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+BIN_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 
 # Detect OS
 OS_NAME="$(uname -s)"
 
 case "$OS_NAME" in
     Darwin*)
-        exec "$LOCAL_DEV_DIR/oopsbox-mac" "$@"
+        exec "$BIN_DIR/devoops-mac" "$@"
         ;;
     Linux*)
-        exec "$LOCAL_DEV_DIR/oopsbox-linux" "$@"
+        exec "$BIN_DIR/devoops-linux" "$@"
         ;;
     MINGW*|MSYS*|CYGWIN*)
-        if [ -f "$LOCAL_DEV_DIR/oopsbox-win" ]; then
-            exec "$LOCAL_DEV_DIR/oopsbox-win" "$@"
+        if [ -f "$BIN_DIR/devoops-win" ]; then
+            exec "$BIN_DIR/devoops-win" "$@"
         else
             echo "Windows native script is coming soon. Please run inside WSL2 or use Docker Desktop."
             exit 1

@@ -18,8 +18,9 @@ func newServerCmd() *cobra.Command {
 	var configPath string
 
 	cmd := &cobra.Command{
-		Use:   "server",
-		Short: "Starts the webhook deployment and DNS discovery daemon",
+		Use:     "server",
+		Aliases: []string{"webhook", "daemon"},
+		Short:   "Starts the webhook deployment and DNS discovery daemon",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if port == "" {
 				port = os.Getenv("OOPS_PORT")
