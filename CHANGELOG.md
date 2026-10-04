@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-04
+
 ### Added
 - Native DNS management CLI (`oops dns` / `oops dns list`, `oops dns get <domain>`, `oops dns set <domain> <ip>`, `oops dns del <domain>`, `oops dns reload`) supporting `.wildcard` domain prefixes.
 - Active container protection validations preventing `dns set` conflict or `dns del` removal on dynamic Docker service hostnames.
