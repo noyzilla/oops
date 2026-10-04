@@ -12,7 +12,7 @@ services:
       OOPS_HEALTHCHECK_TIMEOUT: ${OOPS_HEALTHCHECK_TIMEOUT:-10m}
       OOPS_HEALTHCHECK_INTERVAL: ${OOPS_HEALTHCHECK_INTERVAL:-3s}
       OOPS_BACKUP_RETENTION: ${OOPS_BACKUP_RETENTION:-7d}
-      OOPS_BACKUP_DIR: ${OOPS_BACKUP_DIR:-/work/backups}
+      OOPS_BACKUP_DIR: ${OOPS_BACKUP_DIR:-/oopsbox/backups}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
     labels:
@@ -21,8 +21,8 @@ services:
       caddy.reverse_proxy: "{{upstreams 80}}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ../../:/work
-    working_dir: /work
+      - ../../:/oopsbox
+    working_dir: /oopsbox
     networks:
       - net-edge
       - net-db

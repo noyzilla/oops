@@ -13,7 +13,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Native DNS Engine**: High-performance, lightweight UDP/TCP DNS server running embedded inside `oops server` (listening on `:53`).
 - **Wildcard Hostname**: Container hostname prefixed with a dot `.` (e.g. `hostname: .web.oops`), matching both apex and all subdomains (`web.oops` and `*.web.oops`).
 - **Exact Hostname**: Container hostname without leading dot (e.g. `hostname: mail.test`), matching only that exact domain.
-- **Upstream Forwarder**: Stateless relay to external DNS servers (`OOPS_DNS_UPSTREAM`) for unresolved public domains.
+- **Upstream Forwarder**: Stateless relay to external DNS servers (configured in `oops.yml` under `dns.upstreams`) for unresolved public domains.
 
 ---
 
@@ -86,11 +86,9 @@ The DNS resolver table is maintained dynamically via the Docker Engine API and s
 
 ---
 
-## Configuration Parity
-
-| Environment Variable | Internal Config Path | Type | Default | Description |
+| Environment Variable / Config Key | Internal Config Path | Type | Default | Description |
 | :--- | :--- | :---: | :---: | :--- |
-| `OOPS_DNS_UPSTREAM` | `CONFIG.DNS.UPSTREAM` | `string` / `[]string` | `1.1.1.1:53,8.8.8.8:53` | Upstream DNS servers for public relay |
+| `dns.upstreams` (`oops.yml`) / `OOPS_DNS_UPSTREAM` | `CONFIG.DNS.UPSTREAM` | `[]string` / `string` | `1.1.1.1:53,8.8.8.8:53` | Upstream DNS servers for public relay |
 | `OOPS_DNS_TLD` | `CONFIG.DNS.TLD` | `string` | `oops` | Node top-level domain for local resolver and static records |
 
 ---
