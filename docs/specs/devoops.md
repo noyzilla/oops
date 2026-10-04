@@ -35,7 +35,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - On unsupported operating systems (Windows/WSL without Linux shell), outputs an actionable error message and exits with Code 1.
 
 - **Colima Integration & VM Optimization**: If Docker Desktop is not active, utilizes Colima VM with designated CPU, Memory, and VZ optimizations, configuring internal kernel sysctl, disabling conflicting port 53 listeners, and setting DNS resolvers.
-- **Static Host Mapping (`config/oops/hosts`)**: Auto-generates and maintains `config/oops/hosts` mapping `host.oops` to the macOS workstation host IP (gateway) and `vm.oops` to the Colima Linux VM IP.
+- **Static DNS Mapping (`config/oops/dns`)**: Auto-generates and maintains `config/oops/dns` mapping `host.oops` to the macOS workstation host IP (gateway) and `vm.oops` to the Colima Linux VM IP.
 - **Direct Bridge / Route**: Configures host-to-VM routing (e.g. `10.200.0.0/16` or Colima interface IP) so containers can be reached directly via IP or reverse proxy.
 - **Host Firewall Anchors (`pfctl`)**: Binds local ports (80/443/53) or forwards traffic into the local Docker subnet via dedicated packet filter rules (`/etc/pf.anchors/oopsbox`).
 - **macOS Local DNS Resolver**: Creates `/etc/resolver/test` or `/etc/resolver/oops` pointing to `127.0.0.1:53` or container DNS IP to ensure local subdomains resolve seamlessly without `/etc/hosts` pollution.
@@ -48,17 +48,14 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 ## Interface & Subcommands Specification
 
-| Subcommand | Aliases | Description |
+| Subcommand | Arguments | Description |
 | :--- | :--- | :--- |
-| `devoops init` | `install`, `setup` | Automated workstation setup: initializes storage, `.env`, VM, DNS resolver, and symlinks `devoops` to global PATH (`/usr/local/bin/devoops`) |
-| `devoops start` | `up` | Starts VM daemon, network routing, and launches Default Service Group (`@core`) |
-| `devoops stop` | `down` | Stops services and suspends background dev VM |
-| `devoops restart` | *(none)* | Restarts VM daemon and service containers |
-| `devoops status` | `info` | Displays status of VM, Docker engine, network routes, DNS resolver, and running containers |
-| `devoops install-cert` | `cert` | Exports Caddy local root CA from container volume and installs it into OS Trust Store |
-| `devoops hosts` | `dns` | Prints active local DNS mappings and resolver configuration |
-| `devoops logs` | *(none)* | Displays logs from VM daemon or container logs |
-| `devoops <command>` | *(passthrough)* | Any unrecognized command is passed directly to the `oops` CLI binary |
+| `devoops install` | *(none)* | Automated workstation setup: initializes storage, `.env`, VM/routes, and registers `devoops` to global PATH |
+| `devoops start` | `[group]` | Starts VM/daemon, network routing, and launches default or specified service group (e.g. `@core`, `@pg`) |
+| `devoops install-cert` | *(none)* | Exports Caddy local root CA from container volume and installs it into OS Trust Store |
+| `devoops stop` | *(none)* | Stops services and shuts down running stacks |
+| `devoops status` | *(none)* | Displays status of running containers |
+| `devoops dns` | *(none)* | Prints active local DNS mappings and resolver configuration |
 
 ## Dependency & Blast-Radius Matrix
 

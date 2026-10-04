@@ -155,6 +155,10 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops backup-db prune` | `[-r 7d]` | Prunes expired DB dump archives |
 | `oops backup-data` | `[targets...] [-r 7d]` | Executes data volume tar archives and retention prune (alias: `data-backup`) |
 | `oops backup-data prune` | `[-r 7d]` | Prunes expired data volume archives |
+| `oops dns` | `[list]` | Inspects active DNS records, static mappings, and discovery routes |
+| `oops dns add` | `<domain> <ip>` | Adds or updates static DNS record in `config/oops/dns` (supports `.wildcard`) |
+| `oops dns del` | `<domain>` | Deletes static DNS record from `config/oops/dns` |
+| `oops dns reload` | *(none)* | Validates `config/oops/dns` and triggers atomic reload across running daemon |
 | `oops server` | `[-p, --port 80] [-c, --config <path>]` | Starts webhook deployment and DNS discovery daemon (aliases: `webhook`, `daemon`) |
 
 ---

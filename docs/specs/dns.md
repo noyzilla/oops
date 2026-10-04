@@ -35,11 +35,12 @@ DNS `A` record queries are matched against active container hostnames in the fol
    - Action: Return `A` record with IPv4 address of the matching container (TTL: 5s).
    - Example: `hostname: mail.test` matches `mail.test`.
 
-3. **Custom Static Hosts Resolution (`config/oops/hosts` & `OOPS_DNS_RECORDS`)**:
-   - Condition: Static mappings defined in `config/oops/hosts` (standard `/etc/hosts` format) or `OOPS_DNS_RECORDS` env var.
-   - Matching: Exact hostnames (e.g. `host.oops`, `vm.oops`, `hostmac`, `colima`) or wildcard suffixes (e.g. `.local.dev`).
+3. **Custom Static DNS Records (`config/oops/dns` & `OOPS_DNS_RECORDS`)**:
+   - Condition: Static mappings defined in `config/oops/dns` (Format: `<domain> <ip>`, 1 row = 1 domain, supports `.wildcard`) or `OOPS_DNS_RECORDS` env var.
+   - Matching: Exact hostnames (e.g. `host.oops`, `vm.oops`, `hostmac`) or wildcard prefixes (e.g. `.local.dev`, `.web.oops`).
    - Action: Return static mapped IPv4 address.
-   - Example: `192.168.64.1 host.oops` maps macOS workstation gateway, `192.168.64.2 vm.oops` maps Colima VM.
+   - Example: `host.oops 192.168.64.1` maps workstation gateway, `vm.oops 192.168.64.2` maps Colima VM.
+   - **Hot-Reload & Safety**: The daemon watches file modtimes (`WatchDNSConfigFile`) and atomic-swaps static records without downtime or daemon restart. Malformed lines are safely skipped with warning logs without corrupting the active routing table.
 
 4. **Fallback & No Hostname**:
    - If a container does not specify a domain-formatted hostname, Oops DNS does not invent arbitrary names.
@@ -53,21 +54,32 @@ DNS `A` record queries are matched against active container hostnames in the fol
 
 ---
 
-## Docker Events Synchronization State Machine
+## Docker Events & File Synchronization State Machine
 
-The DNS resolver table is maintained dynamically via the Docker Engine API:
+The DNS resolver table is maintained dynamically via the Docker Engine API and static config file watcher:
 
 ```
 [Daemon Startup] ──> Full Container List Scan ──> Register Running Container Hostnames
        │
+       ├──> Load config/oops/dns ──> Atomic Register Static & Wildcard Records
+       │
        ▼
-[Docker Event Loop]
-       ├── Event "start" / "unpause"   ──> Inspect Container ──> Register/Update Hostname & IP
-       └── Event "die" / "stop" / "pause" / "destroy" ──> Remove Hostname from Table
+[Event Watchers Loop]
+       ├── Docker Event ("start" / "die") ──> Register/Remove Container Hostname
+       └── File Watcher (ModTime check)   ──> Atomic Swap Static Records (config/oops/dns)
 ```
 
 - **Thread-Safety**: Hostname lookup and mutation use read/write locking (`sync.RWMutex`).
 - **Multi-Network IP Resolution**: Uses the primary network IP (preferring `net-edge`, `net-apps`, or bridge).
+
+---
+
+## DNS Inspection & Management CLI (`oops dns`)
+
+- **`oops dns` / `oops dns list`**: Inspects and tabulates all active static and container DNS records.
+- **`oops dns add <domain> <ip>`**: Adds or updates a static record in `config/oops/dns` (supports `.wildcard`, e.g. `.my-app.test 127.0.0.1`).
+- **`oops dns del <domain>`**: Removes a static record from `config/oops/dns`.
+- **`oops dns reload`**: Validates file syntax and triggers atomic reload across running daemon.
 
 ---
 

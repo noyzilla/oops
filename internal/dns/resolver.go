@@ -72,6 +72,48 @@ func (r *Resolver) Unregister(containerID string) {
 	delete(r.byID, containerID)
 }
 
+// SwapStatic atomically replaces all static records with the new set
+func (r *Resolver) SwapStatic(newRecords map[string]net.IP) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// 1. Unregister previous static entries
+	if domains, exists := r.byID["static"]; exists {
+		for _, d := range domains {
+			if strings.HasPrefix(d, ".") {
+				suffix := strings.TrimPrefix(d, ".")
+				delete(r.wildcard, suffix)
+			} else {
+				delete(r.exact, d)
+			}
+		}
+		delete(r.byID, "static")
+	}
+
+	// 2. Register new static entries
+	for rawHostname, ip := range newRecords {
+		if ip == nil {
+			continue
+		}
+		trimmed := strings.TrimSpace(strings.ToLower(rawHostname))
+		trimmed = strings.TrimSuffix(trimmed, ".")
+		if trimmed == "" || trimmed == "localhost" {
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, ".") {
+			suffix := strings.TrimPrefix(trimmed, ".")
+			if suffix != "" {
+				r.wildcard[suffix] = ip
+				r.byID["static"] = append(r.byID["static"], "."+suffix)
+			}
+		} else {
+			r.exact[trimmed] = ip
+			r.byID["static"] = append(r.byID["static"], trimmed)
+		}
+	}
+}
+
 // Resolve returns the matched IPv4 for a query domain, if registered
 func (r *Resolver) Resolve(queryDomain string) (net.IP, bool) {
 	query := strings.TrimSpace(strings.ToLower(queryDomain))

@@ -106,4 +106,5 @@ func init() {
 	rootCmd.AddCommand(newRestoreCmd())
 	rootCmd.AddCommand(newRestoreDBCmd())
 	rootCmd.AddCommand(newRestoreDataCmd())
+	rootCmd.AddCommand(newDNSCmd())
 }

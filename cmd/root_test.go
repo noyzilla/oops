@@ -29,6 +29,7 @@ func TestRootCommandSubcommands(t *testing.T) {
 		"restore",
 		"restore-db",
 		"restore-data",
+		"dns",
 	}
 
 	for _, sub := range expectedSubcommands {

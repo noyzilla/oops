@@ -6,6 +6,16 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Added
+- Native DNS management CLI (`oops dns` / `oops dns list`, `oops dns add <domain> <ip>`, `oops dns del <domain>`, `oops dns reload`) supporting `.wildcard` domain prefixes.
+- Pure file-watcher and atomic safe hot-reload for static DNS records in `oops server` with zero downtime.
+- Canonical 1-row-1-domain static DNS storage format in `config/oops/dns`.
+- Healthcheck configuration for `oops` service daemon in `stacks/utils/compose.yml`.
+
+### Changed
+- Standardized `devoops` DNS and static host provisioning to `config/oops/dns`.
+- Cleaned up command aliases to maintain strict CLI canonical discipline.
+
 ## [0.4.0] - 2026-10-04
 
 ### Added
