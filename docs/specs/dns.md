@@ -35,11 +35,11 @@ DNS `A` record queries are matched against active container hostnames in the fol
    - Action: Return `A` record with IPv4 address of the matching container (TTL: 5s).
    - Example: `hostname: mail.test` matches `mail.test`.
 
-3. **Custom Static Hosts Resolution (`stacks/utils/config/oops/hosts` & `OOPS_DNS_RECORDS`)**:
-   - Condition: Static mappings defined in `stacks/utils/config/oops/hosts` (standard `/etc/hosts` format) or `OOPS_DNS_RECORDS` env var.
-   - Matching: Exact hostnames (e.g. `hostmac`, `host.docker.internal`, `colima`) or wildcard suffixes (e.g. `.local.dev`).
+3. **Custom Static Hosts Resolution (`config/oops/hosts` & `OOPS_DNS_RECORDS`)**:
+   - Condition: Static mappings defined in `config/oops/hosts` (standard `/etc/hosts` format) or `OOPS_DNS_RECORDS` env var.
+   - Matching: Exact hostnames (e.g. `host.oops`, `vm.oops`, `hostmac`, `colima`) or wildcard suffixes (e.g. `.local.dev`).
    - Action: Return static mapped IPv4 address.
-   - Example: `192.168.5.2 hostmac host.docker.internal hostdocker` maps Colima/host machine gateway.
+   - Example: `192.168.64.1 host.oops` maps macOS workstation gateway, `192.168.64.2 vm.oops` maps Colima VM.
 
 4. **Fallback & No Hostname**:
    - If a container does not specify a domain-formatted hostname, Oops DNS does not invent arbitrary names.

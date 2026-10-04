@@ -33,12 +33,21 @@ type BackupConfig struct {
 	Data      []DataBackupTarget `yaml:"data,omitempty"`
 }
 
+// ColimaConfig defines VM resource settings for macOS Colima workstation
+type ColimaConfig struct {
+	CPU    int    `yaml:"cpu,omitempty"`
+	Memory int    `yaml:"memory,omitempty"`
+	Disk   int    `yaml:"disk,omitempty"`
+	VMType string `yaml:"vm_type,omitempty"`
+}
+
 // OopsConfig represents the unified configuration in oops.yml / config.yml
 type OopsConfig struct {
 	Registries map[string]string   `yaml:"registries,omitempty"`
 	Aliases    map[string]string   `yaml:"aliases,omitempty"` // alias for registries
 	Groups     map[string][]string `yaml:"groups,omitempty"`
 	Backups    BackupConfig        `yaml:"backups,omitempty"`
+	Colima     ColimaConfig        `yaml:"colima,omitempty"`
 }
 
 // LoadOopsConfig finds and parses oops.yml / config.yml / groups.yml
@@ -101,6 +110,20 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 			}
 			if len(fileCfg.Backups.Data) > 0 && len(cfg.Backups.Data) == 0 {
 				cfg.Backups.Data = fileCfg.Backups.Data
+			}
+
+			// Merge colima
+			if fileCfg.Colima.CPU > 0 && cfg.Colima.CPU == 0 {
+				cfg.Colima.CPU = fileCfg.Colima.CPU
+			}
+			if fileCfg.Colima.Memory > 0 && cfg.Colima.Memory == 0 {
+				cfg.Colima.Memory = fileCfg.Colima.Memory
+			}
+			if fileCfg.Colima.Disk > 0 && cfg.Colima.Disk == 0 {
+				cfg.Colima.Disk = fileCfg.Colima.Disk
+			}
+			if fileCfg.Colima.VMType != "" && cfg.Colima.VMType == "" {
+				cfg.Colima.VMType = fileCfg.Colima.VMType
 			}
 		}
 	}

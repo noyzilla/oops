@@ -34,8 +34,8 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - On `Linux`, invokes `bin/devoops-linux`.
 - On unsupported operating systems (Windows/WSL without Linux shell), outputs an actionable error message and exits with Code 1.
 
-### macOS VM & Network Routing Rules
-- **Colima Integration**: If Docker Desktop is not active, utilizes Colima VM with designated CPU, Memory, and Disk allocations.
+- **Colima Integration & VM Optimization**: If Docker Desktop is not active, utilizes Colima VM with designated CPU, Memory, and VZ optimizations, configuring internal kernel sysctl, disabling conflicting port 53 listeners, and setting DNS resolvers.
+- **Static Host Mapping (`config/oops/hosts`)**: Auto-generates and maintains `config/oops/hosts` mapping `host.oops` to the macOS workstation host IP (gateway) and `vm.oops` to the Colima Linux VM IP.
 - **Direct Bridge / Route**: Configures host-to-VM routing (e.g. `10.200.0.0/16` or Colima interface IP) so containers can be reached directly via IP or reverse proxy.
 - **Host Firewall Anchors (`pfctl`)**: Binds local ports (80/443/53) or forwards traffic into the local Docker subnet via dedicated packet filter rules (`/etc/pf.anchors/oopsbox`).
 - **macOS Local DNS Resolver**: Creates `/etc/resolver/test` or `/etc/resolver/oops` pointing to `127.0.0.1:53` or container DNS IP to ensure local subdomains resolve seamlessly without `/etc/hosts` pollution.

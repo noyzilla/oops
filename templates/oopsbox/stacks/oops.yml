@@ -76,3 +76,15 @@ backups:
     - name: redis           # Creates: backups/data_redis_<TIMESTAMP>.tar.gz
       paths:
         - data/redis
+
+# ------------------------------------------------------------------------------
+# 4. Workstation VM Configuration (Colima Dev Environment)
+# Usage:
+#   devoops start           # Starts Colima with specified CPU, memory, and vm_type
+# ------------------------------------------------------------------------------
+colima:
+  cpu: 4                    # Number of CPU cores allocated to VM
+  memory: 4                 # Memory in GB allocated to VM
+  disk: 60                  # Disk size in GB allocated to VM
+  vm_type: vz               # VM hypervisor engine: vz (recommended) or qemu
+
