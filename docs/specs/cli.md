@@ -29,6 +29,8 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 ### Smart Target Resolution & Double Dot (`..`) Wildcard Protocol
 Target strings are resolved using an explicit, shell-safe notation that eliminates quoting overhead on physical and virtual keyboards:
+- **Group Stacks (`@<group>`)**:
+  - Any target starting with `@` (e.g., `@core`, `@pg`, `@minimal`, `@all`) resolves against `stacks/groups.yml` (or `groups.yml`). It expands recursively into the constituent stacks and services defined in the named profile.
 - **Stack Target (`/<stack>`)**:
   - Any target starting with a leading slash `/` without further subpaths (e.g., `/edge`, `/db`, `/apps`, `/utils`) targets the entire stack and executes on that stack's `compose.yml` (located under `stacks/<stack>/`).
 - **Scoped Service Target (`/<stack>/<service>`)**:
@@ -39,8 +41,9 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
   - **Prefix Match (`<prefix>..`)**: e.g., `app..` matches all services starting with `app` (e.g. `app-web`, `app-worker`).
   - **Suffix Match (`..<suffix>`)**: e.g., `..worker` matches all services ending with `worker` (e.g. `mail-worker`, `job-worker`).
   - **Contains Match (`..<keyword>..`)**: e.g., `..api..` matches any service name containing `api`.
-- **Global Stack (Omitted Target)**:
-  - If no target is specified, operations execute across all stacks in deterministic dependency order:
+- **Default Group & Global Stack (Omitted Target)**:
+  - If no target is specified, the CLI checks for `OOPS_DEFAULT_GROUP` (from shell environment or `.env` in the working directory). If set (e.g. `OOPS_DEFAULT_GROUP=core`), it defaults to starting the specified `@group`.
+  - If `OOPS_DEFAULT_GROUP` is not set, operations execute across all stacks in deterministic dependency order:
     - **Startup (`oops up`)**: `/edge` -> `/db` -> `/utils` -> `/apps` -> `[custom stacks...]`
     - **Teardown (`oops down`)**: `[custom stacks...]` -> `/apps` -> `/utils` -> `/db` -> `/edge`
 

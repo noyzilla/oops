@@ -183,7 +183,14 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		})
 	}
 
-	// If no targets supplied: return all services in dependency order
+	// If no targets supplied: check for OOPS_DEFAULT_GROUP
+	if len(targets) == 0 {
+		if defGroup := GetDefaultGroup(workDir); defGroup != "" {
+			targets = []string{"@" + strings.TrimPrefix(defGroup, "@")}
+		}
+	}
+
+	// If still no targets: return all services across all stacks in dependency order
 	if len(targets) == 0 {
 		var results []ResolvedTarget
 		for _, ss := range allStacks {
@@ -209,10 +216,60 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		return results, nil
 	}
 
+	// Expand any @group targets into concrete selectors
+	var expandedTargets []string
+	var groupsMap map[string][]string
+	groupsLoaded := false
+
+	var expandTarget func(tgt string, callStack []string) error
+	expandTarget = func(tgt string, callStack []string) error {
+		if strings.HasPrefix(tgt, "@") {
+			groupName := strings.TrimPrefix(tgt, "@")
+			if !groupsLoaded {
+				var err error
+				groupsMap, err = LoadGroups(workDir)
+				if err != nil {
+					return err
+				}
+				groupsLoaded = true
+			}
+
+			for _, s := range callStack {
+				if s == groupName {
+					return fmt.Errorf("circular group dependency detected: %s", strings.Join(append(callStack, groupName), " -> "))
+				}
+			}
+
+			groupItems, exists := groupsMap[groupName]
+			if !exists {
+				return fmt.Errorf("group '%s' not found in groups.yml", groupName)
+			}
+			if len(groupItems) == 0 {
+				return fmt.Errorf("group '%s' is empty in groups.yml", groupName)
+			}
+
+			for _, item := range groupItems {
+				if err := expandTarget(item, append(callStack, groupName)); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+
+		expandedTargets = append(expandedTargets, tgt)
+		return nil
+	}
+
+	for _, t := range targets {
+		if err := expandTarget(t, nil); err != nil {
+			return nil, err
+		}
+	}
+
 	var results []ResolvedTarget
 	seen := make(map[string]bool)
 
-	for _, target := range targets {
+	for _, target := range expandedTargets {
 		matchedTarget := false
 
 		// 1. Stack Target or Scoped Service (/stack or /stack/service)

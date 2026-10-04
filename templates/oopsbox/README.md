@@ -22,6 +22,10 @@ This blueprint provides a production-ready, modular multi-stack Docker Compose e
 │       ├── compose.yml
 │       └── config/
 │           └── oops/hosts    # Custom Static DNS (hostmac, colima, local.dev)
+├── local-dev/            # Local Workstation Tooling (macOS/Linux - Excluded on Prod)
+│   ├── oopsbox           # Main Dispatcher (Auto-detects OS)
+│   ├── oopsbox-mac       # macOS + Colima Helper (VM firewall, routes, keychain cert)
+│   └── oopsbox-linux     # Linux Desktop Helper
 ├── data/                 # Live realtime container storage (High-IOPS persistent volume)
 └── backups/              # Secondary backup storage (Cold storage / database dumps)
 ```
@@ -58,35 +62,89 @@ graph TD
 
 ---
 
-## Quickstart
+## Quickstart (Local Development)
 
-### 1. Configure Environment
+### 1. One-Command Setup (`local-dev/oopsbox install`)
+Run the automated installation to initialize credentials, storage, macOS DNS resolver, and register `oopsbox` to global PATH:
 ```bash
-cp .env.example .env
-# Edit .env and set secure values for OOPS_SECRET and database passwords
+./local-dev/oopsbox install
 ```
 
-### 2. Manage Oopsbox with Oops CLI
-Use Oops natively or via the container alias:
+### 2. Start Oopsbox Environment (`oopsbox start`)
+Starts VM routing (if using Colima) and starts the default service group (`OOPS_DEFAULT_GROUP=core` in `.env`):
+```bash
+oopsbox start           # Starts OOPS_DEFAULT_GROUP (e.g. @core)
+oopsbox start @pg       # Start Postgres profile (edge + pg + redis + oops)
+oopsbox start @minimal  # Start minimal profile (edge only)
+oopsbox start @all      # Start all services across all stacks
+```
+
+### 3. Install Trusted Local SSL Certificate (`oopsbox install-cert`)
+Adds Caddy's local root CA certificate to macOS Keychain (enables green lock for `https://*.web.oops`):
+```bash
+oopsbox install-cert
+```
+
+---
+
+## Group Stacks (`stacks/groups.yml`)
+
+Define custom profiles in `stacks/groups.yml` to start or stop cohesive sets of services together without starting unnecessary containers:
+
+```yaml
+groups:
+  core:      # Default: Caddy Edge Router + MySQL + Redis + Oops Daemon
+    - /edge
+    - mysql
+    - redis
+    - /utils
+
+  pg:        # Postgres Stack: Caddy Edge Router + Postgres + Redis + Oops Daemon
+    - /edge
+    - postgres
+    - redis
+    - /utils
+
+  minimal:   # Minimal: Only Caddy Ingress Router
+    - /edge
+
+  all:       # Full Stack: All services
+    - /edge
+    - /db
+    - /utils
+    - /apps
+```
+
+Use `@group` syntax with any `oops` command:
+```bash
+oops up @core
+oops stop @pg
+oops restart @minimal
+oops update @core -d 2s
+```
+
+---
+
+## Global Oops CLI Usage
+
+You can also use `oops` natively or via container alias from any directory:
 
 ```bash
-# Set up Host Alias in ~/.zshrc or ~/.bashrc (Identical Fullpath Mount):
+# Set up Host Alias in ~/.zshrc or ~/.bashrc:
 alias oops='docker run --rm -it \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v "$HOME/oopsbox":"$HOME/oopsbox" \
   -w "$HOME/oopsbox" \
   ghcr.io/noyzilla/oops:latest'
 
-# Start entire oopsbox (from anywhere!)
-oops up
-
-# Start specific stacks (in dependency order)
+# Start service groups or stacks
+oops up @core
 oops up /edge
 oops up /db
 oops up /utils
 oops up /apps
 
-# Start specific services or wildcard
+# Target specific services or wildcard
 oops up mysql
 oops up /db/mysql
 oops up app..

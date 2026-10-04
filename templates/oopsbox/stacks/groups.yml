@@ -1,0 +1,35 @@
+# ==============================================================================
+# Oops Group Stacks Configuration (groups.yml)
+# ==============================================================================
+# Define named profiles to start/stop cohesive sets of services together.
+# Usage:
+#   oops up @core
+#   oops stop @pg
+#   oopsbox start [group]
+# ==============================================================================
+
+groups:
+  # Core Stack: Caddy Edge Router + MySQL + Redis + Oops Daemon
+  core:
+    - /edge
+    - mysql
+    - redis
+    - /utils
+
+  # Postgres Stack: Caddy Edge Router + Postgres + Redis + Oops Daemon
+  pg:
+    - /edge
+    - postgres
+    - redis
+    - /utils
+
+  # Minimal / Edge Only: Only Caddy Ingress Router
+  minimal:
+    - /edge
+
+  # Full Stack: All services across edge, db, utils, and apps
+  all:
+    - /edge
+    - /db
+    - /utils
+    - /apps

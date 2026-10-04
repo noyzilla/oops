@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+set -e
+
+# Oopsbox Local Dev Tool for Linux
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+    DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+LOCAL_DEV_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+OOPSBOX_DIR="$(cd -P "$LOCAL_DEV_DIR/.." && pwd)"
+
+cd "$OOPSBOX_DIR"
+
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+generate_password() {
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -base64 15 | tr -dc 'A-Za-z0-9' | head -c 20
+    else
+        LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 20
+    fi
+}
+
+cmd_install() {
+    echo -e "${BLUE}==> [Linux] Installing Oopsbox Local Dev Environment...${NC}"
+
+    if [ ! -f .env ]; then
+        if [ -f .env.example ]; then
+            echo -e "Creating .env with auto-generated secure credentials..."
+            cp .env.example .env
+            local secret=$(generate_password)
+            local mysql_pass=$(generate_password)
+            local pg_pass=$(generate_password)
+
+            sed -i -e "s|OOPS_SECRET=.*|OOPS_SECRET=${secret}|g" \
+                   -e "s|MYSQL_ROOT_PASSWORD=.*|MYSQL_ROOT_PASSWORD=${mysql_pass}|g" \
+                   -e "s|POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${pg_pass}|g" .env
+            echo -e "${GREEN}✓ .env created successfully.${NC}"
+        fi
+    else
+        echo -e "Existing .env found. Keeping current credentials."
+    fi
+
+    mkdir -p data backups
+    echo -e "${GREEN}✓ Storage directories (data/, backups/) initialized.${NC}"
+
+    # 3. Register oopsbox to global system PATH
+    echo -e "Registering 'oopsbox' to global system PATH..."
+    if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
+        ln -sf "$LOCAL_DEV_DIR/oopsbox" /usr/local/bin/oopsbox
+        echo -e "${GREEN}✓ Symlink created: /usr/local/bin/oopsbox${NC}"
+    elif sudo -n true 2>/dev/null || [ -n "$SUDO_USER" ]; then
+        sudo ln -sf "$LOCAL_DEV_DIR/oopsbox" /usr/local/bin/oopsbox
+        echo -e "${GREEN}✓ Symlink created: /usr/local/bin/oopsbox${NC}"
+    else
+        mkdir -p "$HOME/.local/bin"
+        ln -sf "$LOCAL_DEV_DIR/oopsbox" "$HOME/.local/bin/oopsbox"
+        echo -e "${GREEN}✓ Symlink created: $HOME/.local/bin/oopsbox${NC}"
+    fi
+
+    echo -e "\n${GREEN}===============================================${NC}"
+    echo -e "${GREEN}🎉 Oopsbox installation complete!${NC}"
+    echo -e "You can now run ${BLUE}oopsbox${NC} from any terminal directory!"
+    echo -e "${GREEN}===============================================${NC}"
+}
+
+cmd_start() {
+    local target_arg="$1"
+
+    if [ -f .env ]; then
+        set -a
+        source .env
+        set +a
+    fi
+
+    # Check if Docker daemon is accessible
+    if ! docker info >/dev/null 2>&1; then
+        echo -e "${RED}❌ Error: Docker daemon is not accessible. Please ensure Docker is running.${NC}"
+        exit 1
+    fi
+
+    local start_target=""
+    if [ -n "$target_arg" ]; then
+        if [[ "$target_arg" == @* ]] || [[ "$target_arg" == /* ]]; then
+            start_target="$target_arg"
+        elif [ -d "stacks/$target_arg" ]; then
+            start_target="/$target_arg"
+        else
+            start_target="@$target_arg"
+        fi
+    elif [ -n "$OOPS_DEFAULT_GROUP" ]; then
+        start_target="@${OOPS_DEFAULT_GROUP#@}"
+    fi
+
+    echo -e "${BLUE}==> [Linux] Starting Oopsbox Environment (${start_target:-all services})...${NC}"
+    if command -v oops >/dev/null 2>&1; then
+        if [ -n "$start_target" ]; then
+            oops up "$start_target"
+        else
+            oops up
+        fi
+    else
+        echo -e "Starting stacks via docker compose fallback..."
+        case "$start_target" in
+            @minimal)
+                docker compose -f stacks/edge/compose.yml up -d
+                ;;
+            @core)
+                docker compose -f stacks/edge/compose.yml up -d
+                docker compose -f stacks/db/compose.yml up -d mysql redis
+                docker compose -f stacks/utils/compose.yml up -d
+                ;;
+            @pg)
+                docker compose -f stacks/edge/compose.yml up -d
+                docker compose -f stacks/db/compose.yml up -d postgres redis
+                docker compose -f stacks/utils/compose.yml up -d
+                ;;
+            *)
+                docker compose -f stacks/edge/compose.yml up -d
+                docker compose -f stacks/db/compose.yml up -d
+                docker compose -f stacks/utils/compose.yml up -d
+                ;;
+        esac
+    fi
+    echo -e "\n${GREEN}✨ Oopsbox is up and running!${NC}"
+}
+
+cmd_install_cert() {
+    echo -e "${BLUE}==> [Linux] Installing Caddy Local Root CA Certificate...${NC}"
+    local cert_src="data/caddy/pki/authorities/local/root.crt"
+    local tmp_cert="backups/caddy-root.crt"
+
+    if [ ! -f "$cert_src" ]; then
+        if docker ps | grep -q "caddy-proxy"; then
+            docker cp caddy-proxy:/data/caddy/pki/authorities/local/root.crt "$tmp_cert" 2>/dev/null || true
+        fi
+    else
+        cp "$cert_src" "$tmp_cert"
+    fi
+
+    local cert_file="${tmp_cert:-$cert_src}"
+    if [ ! -f "$cert_file" ]; then
+        echo -e "${RED}❌ Error: Caddy root.crt not found. Run 'oopsbox start' first.${NC}"
+        exit 1
+    fi
+
+    if [ -d "/usr/local/share/ca-certificates" ]; then
+        sudo cp "$cert_file" /usr/local/share/ca-certificates/oops-caddy.crt
+        sudo update-ca-certificates
+        echo -e "${GREEN}✓ Certificate added to Linux system trust store.${NC}"
+    elif command -v trust >/dev/null 2>&1; then
+        sudo trust anchor "$cert_file"
+        echo -e "${GREEN}✓ Certificate added via trust anchor.${NC}"
+    fi
+
+    rm -f "$tmp_cert"
+}
+
+cmd_stop() {
+    echo -e "${YELLOW}==> [Linux] Stopping Oopsbox Environment...${NC}"
+    if command -v oops >/dev/null 2>&1; then
+        oops down
+    else
+        docker compose -f stacks/utils/compose.yml down 2>/dev/null || true
+        docker compose -f stacks/db/compose.yml down 2>/dev/null || true
+        docker compose -f stacks/edge/compose.yml down 2>/dev/null || true
+    fi
+    echo -e "${GREEN}✓ Oopsbox stopped.${NC}"
+}
+
+case "$1" in
+    install)
+        cmd_install
+        ;;
+    start)
+        cmd_start "$2"
+        ;;
+    install-cert|install-cer)
+        cmd_install_cert
+        ;;
+    stop)
+        cmd_stop
+        ;;
+    status)
+        docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+        ;;
+    *)
+        echo -e "${BLUE}Oopsbox Local Dev Tool (Linux)${NC}"
+        echo -e "Usage: oopsbox <command> [group]"
+        echo -e ""
+        echo -e "Commands:"
+        echo -e "  ${GREEN}install${NC}              Initialize .env, storage, and global PATH"
+        echo -e "  ${GREEN}start [group]${NC}        Start default group (OOPS_DEFAULT_GROUP) or specified group (e.g. @pg, @core)"
+        echo -e "  ${GREEN}install-cert${NC}         Install Caddy Local Root SSL certificate into trust store"
+        echo -e "  ${GREEN}stop${NC}                 Stop all running stacks"
+        echo -e "  ${GREEN}status${NC}               Show status of running containers"
+        ;;
+esac

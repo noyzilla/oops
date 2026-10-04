@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -e
+
+# Oopsbox Local Dev Main Dispatcher
+# Resolve real directory path even if called via symlink
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+    DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+LOCAL_DEV_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+
+# Detect OS
+OS_NAME="$(uname -s)"
+
+case "$OS_NAME" in
+    Darwin*)
+        exec "$LOCAL_DEV_DIR/oopsbox-mac" "$@"
+        ;;
+    Linux*)
+        exec "$LOCAL_DEV_DIR/oopsbox-linux" "$@"
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
+        if [ -f "$LOCAL_DEV_DIR/oopsbox-win" ]; then
+            exec "$LOCAL_DEV_DIR/oopsbox-win" "$@"
+        else
+            echo "Windows native script is coming soon. Please run inside WSL2 or use Docker Desktop."
+            exit 1
+        fi
+        ;;
+    *)
+        echo "Unsupported OS: $OS_NAME"
+        exit 1
+        ;;
+esac

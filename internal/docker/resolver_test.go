@@ -131,3 +131,131 @@ services:
 		t.Errorf("expected label oops.stop.cmd to be 'sleep 2', got %q", wildcardTargets[0].Labels["oops.stop.cmd"])
 	}
 }
+
+func TestResolveGroupsAndDefaultGroup(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "oops-groups-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	stacksDir := filepath.Join(tmpDir, "stacks")
+	edgeDir := filepath.Join(stacksDir, "edge")
+	dbDir := filepath.Join(stacksDir, "db")
+	utilsDir := filepath.Join(stacksDir, "utils")
+	appsDir := filepath.Join(stacksDir, "apps")
+
+	os.MkdirAll(edgeDir, 0755)
+	os.MkdirAll(dbDir, 0755)
+	os.MkdirAll(utilsDir, 0755)
+	os.MkdirAll(appsDir, 0755)
+
+	os.WriteFile(filepath.Join(edgeDir, "compose.yml"), []byte(`
+services:
+  caddy:
+    image: caddy:latest
+`), 0644)
+
+	os.WriteFile(filepath.Join(dbDir, "compose.yml"), []byte(`
+services:
+  mysql:
+    image: mysql:8.0
+  postgres:
+    image: postgres:16
+  redis:
+    image: redis:alpine
+`), 0644)
+
+	os.WriteFile(filepath.Join(utilsDir, "compose.yml"), []byte(`
+services:
+  oops:
+    image: oops:latest
+`), 0644)
+
+	os.WriteFile(filepath.Join(appsDir, "compose.yml"), []byte(`
+services:
+  web:
+    image: web:latest
+`), 0644)
+
+	// Create stacks/groups.yml
+	os.WriteFile(filepath.Join(stacksDir, "groups.yml"), []byte(`
+groups:
+  core:
+    - /edge
+    - mysql
+    - redis
+    - /utils
+  pg:
+    - /edge
+    - postgres
+    - redis
+    - /utils
+  minimal:
+    - /edge
+`), 0644)
+
+	// 1. Resolve explicit @core group
+	coreTargets, err := docker.ResolveTargets(tmpDir, []string{"@core"})
+	if err != nil {
+		t.Fatalf("failed to resolve @core: %v", err)
+	}
+	if len(coreTargets) != 4 {
+		t.Fatalf("expected 4 targets for @core, got %d", len(coreTargets))
+	}
+	// Verify postgres & web are NOT in core
+	for _, tgt := range coreTargets {
+		if tgt.ServiceName == "postgres" || tgt.ServiceName == "web" {
+			t.Errorf("unexpected service %s in core group", tgt.ServiceName)
+		}
+	}
+
+	// 2. Resolve explicit @pg group
+	pgTargets, err := docker.ResolveTargets(tmpDir, []string{"@pg"})
+	if err != nil {
+		t.Fatalf("failed to resolve @pg: %v", err)
+	}
+	if len(pgTargets) != 4 {
+		t.Fatalf("expected 4 targets for @pg, got %d", len(pgTargets))
+	}
+	hasPostgres := false
+	hasMysql := false
+	for _, tgt := range pgTargets {
+		if tgt.ServiceName == "postgres" {
+			hasPostgres = true
+		}
+		if tgt.ServiceName == "mysql" {
+			hasMysql = true
+		}
+	}
+	if !hasPostgres || hasMysql {
+		t.Errorf("expected pg group to contain postgres and not mysql, got pgTargets: %+v", pgTargets)
+	}
+
+	// 3. Test OOPS_DEFAULT_GROUP in .env
+	os.WriteFile(filepath.Join(tmpDir, ".env"), []byte("OOPS_DEFAULT_GROUP=minimal\n"), 0644)
+	defTargets, err := docker.ResolveTargets(tmpDir, nil)
+	if err != nil {
+		t.Fatalf("failed to resolve targets with OOPS_DEFAULT_GROUP=minimal in .env: %v", err)
+	}
+	if len(defTargets) != 1 || defTargets[0].ServiceName != "caddy" {
+		t.Errorf("expected 1 caddy target for minimal group, got: %+v", defTargets)
+	}
+
+	// 4. Test OOPS_DEFAULT_GROUP env override
+	t.Setenv("OOPS_DEFAULT_GROUP", "pg")
+	envTargets, err := docker.ResolveTargets(tmpDir, nil)
+	if err != nil {
+		t.Fatalf("failed to resolve targets with OOPS_DEFAULT_GROUP=pg: %v", err)
+	}
+	if len(envTargets) != 4 {
+		t.Fatalf("expected 4 targets for OOPS_DEFAULT_GROUP=pg, got %d", len(envTargets))
+	}
+
+	// 5. Test unknown group error
+	_, err = docker.ResolveTargets(tmpDir, []string{"@unknown"})
+	if err == nil {
+		t.Errorf("expected error for non-existent group @unknown, got nil")
+	}
+}
+
