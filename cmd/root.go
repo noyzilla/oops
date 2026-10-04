@@ -98,6 +98,12 @@ func init() {
 	rootCmd.AddCommand(newLogsCmd())
 	rootCmd.AddCommand(newPullCmd())
 	rootCmd.AddCommand(newUpdateCmd())
+	rootCmd.AddCommand(newSwitchCmd())
 	rootCmd.AddCommand(newDBCmd())
-	rootCmd.AddCommand(newDBBackupCmd())
+	rootCmd.AddCommand(newBackupCmd())
+	rootCmd.AddCommand(newBackupDBCmd())
+	rootCmd.AddCommand(newBackupDataCmd())
+	rootCmd.AddCommand(newRestoreCmd())
+	rootCmd.AddCommand(newRestoreDBCmd())
+	rootCmd.AddCommand(newRestoreDataCmd())
 }

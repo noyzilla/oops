@@ -195,6 +195,8 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) for local development setup, testi
 - [System Architecture](ARCHITECTURE.md)
 - [Domain Glossary & Ubiquitous Language](CONTEXT.md)
 - [Living Specifications: CLI Orchestration](docs/specs/cli.md)
+- [Living Specifications: DevOops Workstation](docs/specs/devoops.md)
+- [Living Specifications: Native DNS Daemon](docs/specs/dns.md)
 - [Living Specifications: Webhook Daemon](docs/specs/webhook.md)
 - [Oopsbox Blueprint Template](templates/oopsbox/README.md)
 - [System Documentation & Deep-Dives](docs/README.md)

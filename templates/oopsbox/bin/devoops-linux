@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
-# Oopsbox Local Dev Tool for Linux
+# DevOops Local Dev Tool for Linux
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
     DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
     SOURCE="$(readlink "$SOURCE")"
     [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
 done
-LOCAL_DEV_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
-OOPSBOX_DIR="$(cd -P "$LOCAL_DEV_DIR/.." && pwd)"
+BIN_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+OOPSBOX_DIR="$(cd -P "$BIN_DIR/.." && pwd)"
 
 cd "$OOPSBOX_DIR"
 
@@ -28,7 +28,7 @@ generate_password() {
 }
 
 cmd_install() {
-    echo -e "${BLUE}==> [Linux] Installing Oopsbox Local Dev Environment...${NC}"
+    echo -e "${BLUE}==> [Linux] Installing DevOops Local Dev Environment...${NC}"
 
     if [ ! -f .env ]; then
         if [ -f .env.example ]; then
@@ -50,23 +50,26 @@ cmd_install() {
     mkdir -p data backups
     echo -e "${GREEN}✓ Storage directories (data/, backups/) initialized.${NC}"
 
-    # 3. Register oopsbox to global system PATH
-    echo -e "Registering 'oopsbox' to global system PATH..."
+    # Register devoops to global system PATH
+    echo -e "Registering 'devoops' to global system PATH..."
     if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
-        ln -sf "$LOCAL_DEV_DIR/oopsbox" /usr/local/bin/oopsbox
-        echo -e "${GREEN}✓ Symlink created: /usr/local/bin/oopsbox${NC}"
+        ln -sf "$BIN_DIR/devoops" /usr/local/bin/devoops
+        echo -e "${GREEN}✓ Symlink created: /usr/local/bin/devoops${NC}"
     elif sudo -n true 2>/dev/null || [ -n "$SUDO_USER" ]; then
-        sudo ln -sf "$LOCAL_DEV_DIR/oopsbox" /usr/local/bin/oopsbox
-        echo -e "${GREEN}✓ Symlink created: /usr/local/bin/oopsbox${NC}"
+        sudo ln -sf "$BIN_DIR/devoops" /usr/local/bin/devoops
+        echo -e "${GREEN}✓ Symlink created: /usr/local/bin/devoops${NC}"
     else
         mkdir -p "$HOME/.local/bin"
-        ln -sf "$LOCAL_DEV_DIR/oopsbox" "$HOME/.local/bin/oopsbox"
-        echo -e "${GREEN}✓ Symlink created: $HOME/.local/bin/oopsbox${NC}"
+        ln -sf "$BIN_DIR/devoops" "$HOME/.local/bin/devoops"
+        echo -e "${GREEN}✓ Symlink created: $HOME/.local/bin/devoops${NC}"
     fi
 
     echo -e "\n${GREEN}===============================================${NC}"
-    echo -e "${GREEN}🎉 Oopsbox installation complete!${NC}"
-    echo -e "You can now run ${BLUE}oopsbox${NC} from any terminal directory!"
+    echo -e "${GREEN}🎉 DevOops installation complete!${NC}"
+    echo -e "You can now run ${BLUE}devoops${NC} from any terminal directory!"
+    echo -e "Next steps:"
+    echo -e "  1. Start services:     ${BLUE}devoops start${NC}"
+    echo -e "  2. Install HTTPS cert: ${BLUE}devoops install-cert${NC}"
     echo -e "${GREEN}===============================================${NC}"
 }
 
@@ -98,7 +101,7 @@ cmd_start() {
         start_target="@${OOPS_DEFAULT_GROUP#@}"
     fi
 
-    echo -e "${BLUE}==> [Linux] Starting Oopsbox Environment (${start_target:-all services})...${NC}"
+    echo -e "${BLUE}==> [Linux] Starting DevOops Environment (${start_target:-all services})...${NC}"
     if command -v oops >/dev/null 2>&1; then
         if [ -n "$start_target" ]; then
             oops up "$start_target"
@@ -128,7 +131,7 @@ cmd_start() {
                 ;;
         esac
     fi
-    echo -e "\n${GREEN}✨ Oopsbox is up and running!${NC}"
+    echo -e "\n${GREEN}✨ DevOops is up and running!${NC}"
 }
 
 cmd_install_cert() {
@@ -146,7 +149,7 @@ cmd_install_cert() {
 
     local cert_file="${tmp_cert:-$cert_src}"
     if [ ! -f "$cert_file" ]; then
-        echo -e "${RED}❌ Error: Caddy root.crt not found. Run 'oopsbox start' first.${NC}"
+        echo -e "${RED}❌ Error: Caddy root.crt not found. Run 'devoops start' first.${NC}"
         exit 1
     fi
 
@@ -163,7 +166,7 @@ cmd_install_cert() {
 }
 
 cmd_stop() {
-    echo -e "${YELLOW}==> [Linux] Stopping Oopsbox Environment...${NC}"
+    echo -e "${YELLOW}==> [Linux] Stopping DevOops Environment...${NC}"
     if command -v oops >/dev/null 2>&1; then
         oops down
     else
@@ -171,7 +174,7 @@ cmd_stop() {
         docker compose -f stacks/db/compose.yml down 2>/dev/null || true
         docker compose -f stacks/edge/compose.yml down 2>/dev/null || true
     fi
-    echo -e "${GREEN}✓ Oopsbox stopped.${NC}"
+    echo -e "${GREEN}✓ DevOops stopped.${NC}"
 }
 
 case "$1" in
@@ -191,8 +194,8 @@ case "$1" in
         docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
         ;;
     *)
-        echo -e "${BLUE}Oopsbox Local Dev Tool (Linux)${NC}"
-        echo -e "Usage: oopsbox <command> [group]"
+        echo -e "${BLUE}DevOops Local Dev Tool (Linux)${NC}"
+        echo -e "Usage: devoops <command> [group]"
         echo -e ""
         echo -e "Commands:"
         echo -e "  ${GREEN}install${NC}              Initialize .env, storage, and global PATH"

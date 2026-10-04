@@ -18,7 +18,7 @@ This document provides the high-level architecture, module boundaries, and desig
 
 ## System Documentation & Deep-Dives
 In accordance with the Mirror Index Pattern and system documentation taxonomy in [docs/README.md](docs/README.md):
-- [Living Specifications: CLI Orchestration](docs/specs/cli.md) & [Webhook Daemon](docs/specs/webhook.md) (`docs/specs/`) - Feature and subsystem contracts combining domain rules, API schemas, and dependency blast-radius matrices (template: [.agents/templates/docs/spec.md](.agents/templates/docs/spec.md)).
+- [Living Specifications](docs/specs/): [CLI Orchestration](docs/specs/cli.md), [DevOops Workstation](docs/specs/devoops.md), [Native DNS Daemon](docs/specs/dns.md), [Webhook Daemon](docs/specs/webhook.md) (`docs/specs/`) - Feature and subsystem contracts combining domain rules, API schemas, and dependency blast-radius matrices (template: [.agents/templates/docs/spec.md](.agents/templates/docs/spec.md)).
 - **Architectural Decisions** (`docs/adr/`) - Strategic architectural decision records (ADR) with explicit `.deprecated.md` and `.superseded.md` lifecycle naming (template: [.agents/templates/docs/adr.md](.agents/templates/docs/adr.md)).
 - **Architecture Deep-Dives** (`docs/architecture/`) - Subsystem topologies, component interaction diagrams, and system data flows (template: [.agents/templates/docs/architecture.md](.agents/templates/docs/architecture.md)).
 - **Design Specifications** (`docs/design/`) - Reusable component tokens, form styling, and accessibility standards (template: [.agents/templates/docs/design.md](.agents/templates/docs/design.md)).

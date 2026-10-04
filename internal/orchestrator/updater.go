@@ -173,3 +173,35 @@ func (o *Orchestrator) Restart(ctx context.Context, targets []docker.ResolvedTar
 	}
 	return nil
 }
+
+// Up starts matched targets grouped by stack
+func (o *Orchestrator) Up(ctx context.Context, targets []docker.ResolvedTarget, delay time.Duration) error {
+	stackServiceMap := make(map[string][]string)
+	stackComposeMap := make(map[string]string)
+	var orderedStacks []string
+
+	for _, t := range targets {
+		if _, exists := stackServiceMap[t.StackName]; !exists {
+			orderedStacks = append(orderedStacks, t.StackName)
+			stackComposeMap[t.StackName] = t.ComposePath
+		}
+		stackServiceMap[t.StackName] = append(stackServiceMap[t.StackName], t.ServiceName)
+	}
+
+	for i, stack := range orderedStacks {
+		services := stackServiceMap[stack]
+		composePath := stackComposeMap[stack]
+
+		log.Printf("==> Starting stack /%s (Services: %v)...", stack, services)
+		cmdArgs := append([]string{"up", "-d"}, services...)
+		if err := RunComposeCommand(composePath, cmdArgs...); err != nil {
+			return err
+		}
+
+		if delay > 0 && i < len(orderedStacks)-1 {
+			log.Printf("Pausing %v before starting next stack...", delay)
+			time.Sleep(delay)
+		}
+	}
+	return nil
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# Oopsbox Local Dev Tool for macOS
+# DevOops Local Dev Tool for macOS
 # Resolve real directory path even if called via symlink
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
@@ -9,8 +9,8 @@ while [ -h "$SOURCE" ]; do
     SOURCE="$(readlink "$SOURCE")"
     [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
 done
-LOCAL_DEV_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
-OOPSBOX_DIR="$(cd -P "$LOCAL_DEV_DIR/.." && pwd)"
+BIN_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+OOPSBOX_DIR="$(cd -P "$BIN_DIR/.." && pwd)"
 
 cd "$OOPSBOX_DIR"
 
@@ -30,7 +30,7 @@ generate_password() {
 }
 
 cmd_install() {
-    echo -e "${BLUE}==> [macOS] Installing Oopsbox Local Dev Environment...${NC}"
+    echo -e "${BLUE}==> [macOS] Installing DevOops Local Dev Environment...${NC}"
 
     # 1. Initialize .env from .env.example
     if [ ! -f .env ]; then
@@ -63,15 +63,18 @@ nameserver 127.0.0.1
 EOF
     echo -e "${GREEN}✓ /etc/resolver/oops configured.${NC}"
 
-    # 4. Link oopsbox to global PATH (/usr/local/bin/oopsbox)
-    echo -e "Registering 'oopsbox' to global system PATH..."
-    if [ -d "/usr/local/bin" ]; then
-        sudo ln -sf "$LOCAL_DEV_DIR/oopsbox" /usr/local/bin/oopsbox
-        echo -e "${GREEN}✓ Symlink created: /usr/local/bin/oopsbox -> $LOCAL_DEV_DIR/oopsbox${NC}"
+    # 4. Link devoops to global PATH (/usr/local/bin/devoops)
+    echo -e "Registering 'devoops' to global system PATH..."
+    if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
+        ln -sf "$BIN_DIR/devoops" /usr/local/bin/devoops
+        echo -e "${GREEN}✓ Symlink created: /usr/local/bin/devoops -> $BIN_DIR/devoops${NC}"
+    elif sudo -n true 2>/dev/null || [ -n "$SUDO_USER" ]; then
+        sudo ln -sf "$BIN_DIR/devoops" /usr/local/bin/devoops
+        echo -e "${GREEN}✓ Symlink created: /usr/local/bin/devoops -> $BIN_DIR/devoops${NC}"
     else
         mkdir -p "$HOME/.local/bin"
-        ln -sf "$LOCAL_DEV_DIR/oopsbox" "$HOME/.local/bin/oopsbox"
-        echo -e "${GREEN}✓ Symlink created: $HOME/.local/bin/oopsbox${NC}"
+        ln -sf "$BIN_DIR/devoops" "$HOME/.local/bin/devoops"
+        echo -e "${GREEN}✓ Symlink created: $HOME/.local/bin/devoops${NC}"
     fi
 
     # 5. Check Colima configuration
@@ -81,11 +84,11 @@ EOF
     fi
 
     echo -e "\n${GREEN}===============================================${NC}"
-    echo -e "${GREEN}🎉 Oopsbox installation complete!${NC}"
-    echo -e "You can now run ${BLUE}oopsbox${NC} from any terminal directory!"
+    echo -e "${GREEN}🎉 DevOops installation complete!${NC}"
+    echo -e "You can now run ${BLUE}devoops${NC} from any terminal directory!"
     echo -e "Next steps:"
-    echo -e "  1. Start services:     ${BLUE}oopsbox start${NC}"
-    echo -e "  2. Install HTTPS cert: ${BLUE}oopsbox install-cert${NC}"
+    echo -e "  1. Start services:     ${BLUE}devoops start${NC}"
+    echo -e "  2. Install HTTPS cert: ${BLUE}devoops install-cert${NC}"
     echo -e "${GREEN}===============================================${NC}"
 }
 
@@ -113,7 +116,7 @@ cmd_start() {
         start_target="@${OOPS_DEFAULT_GROUP#@}"
     fi
 
-    echo -e "${BLUE}==> [macOS] Starting Oopsbox Environment (${start_target:-all services})...${NC}"
+    echo -e "${BLUE}==> [macOS] Starting DevOops Environment (${start_target:-all services})...${NC}"
 
     # Check, start and configure Colima if installed
     if command -v colima >/dev/null 2>&1; then
@@ -184,7 +187,7 @@ EOF
         esac
     fi
 
-    echo -e "\n${GREEN}✨ Oopsbox is up and running!${NC}"
+    echo -e "\n${GREEN}✨ DevOops is up and running!${NC}"
 }
 
 cmd_install_cert() {
@@ -203,7 +206,7 @@ cmd_install_cert() {
 
     if [ ! -f "$tmp_cert" ] && [ ! -f "$cert_src" ]; then
         echo -e "${RED}❌ Error: Caddy root.crt not found. Please ensure caddy-proxy is started.${NC}"
-        echo -e "Run: ${BLUE}oopsbox start${NC} first, then try again."
+        echo -e "Run: ${BLUE}devoops start${NC} first, then try again."
         exit 1
     fi
 
@@ -233,7 +236,7 @@ cmd_install_cert() {
 }
 
 cmd_stop() {
-    echo -e "${YELLOW}==> [macOS] Stopping Oopsbox Environment...${NC}"
+    echo -e "${YELLOW}==> [macOS] Stopping DevOops Environment...${NC}"
     if command -v oops >/dev/null 2>&1; then
         oops down
     else
@@ -241,7 +244,7 @@ cmd_stop() {
         docker compose -f stacks/db/compose.yml down 2>/dev/null || true
         docker compose -f stacks/edge/compose.yml down 2>/dev/null || true
     fi
-    echo -e "${GREEN}✓ Oopsbox stopped.${NC}"
+    echo -e "${GREEN}✓ DevOops stopped.${NC}"
 }
 
 case "$1" in
@@ -261,8 +264,8 @@ case "$1" in
         docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
         ;;
     *)
-        echo -e "${BLUE}Oopsbox Local Dev Tool (macOS)${NC}"
-        echo -e "Usage: oopsbox <command> [group]"
+        echo -e "${BLUE}DevOops Local Dev Tool (macOS)${NC}"
+        echo -e "Usage: devoops <command> [group]"
         echo -e ""
         echo -e "Commands:"
         echo -e "  ${GREEN}install${NC}              Initialize .env, storage, macOS DNS resolver, and global PATH"
