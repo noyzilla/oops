@@ -48,10 +48,12 @@ func newServerCmd() *cobra.Command {
 
 			http.HandleFunc("/update", webhook.HandleUpdate)
 			http.HandleFunc("/deploy", webhook.HandleUpdate)
-			http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+			healthHandler := func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte("ok\n"))
-			})
+			}
+			http.HandleFunc("/healthz", healthHandler)
+			http.HandleFunc("/health", healthHandler)
 
 			log.Printf("Listening for webhooks on :%s (config: %s)\n", port, configPath)
 			return http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
