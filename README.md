@@ -8,7 +8,25 @@
 
 ---
 
-## 🌟 The Flagship: Oopsbox Blueprint (`oopsbox/`)
+## Core Philosophy & Why Oops?
+
+Oops and Oopsbox eliminate DevOps complexity through three foundational principles:
+
+- **1:1 Dev-to-Prod Parity (Zero "Works on my machine" Surprises)**:
+  - The exact same infrastructure blueprint (`oopsbox/`) runs seamlessly on local workstations (macOS / Linux) and production servers.
+  - Standardizes network segmentation (`net-edge`, `net-db`), storage paths (`data/`, `backups/`), and local DNS resolution across all machines.
+
+- **Git-Driven Infrastructure (No More SSH Snowflake Configs)**:
+  - Git is the single source of truth for all stack definitions and service configurations (`stacks/<group>/<service>/`).
+  - Push config updates or new service versions to Git, and let the Oops Webhook Daemon reconcile, pull, and reload containers automatically without ever SSHing into the server to manually edit configs.
+
+- **Effortless Tech Stack Upgrades (Zero-Downtime Multi-Group Architecture)**:
+  - Independent modular groups (`stacks/edge`, `stacks/db`, `stacks/tool`, `stacks/apps`) allow updating language runtimes, database engines, or mock tools with zero blast-radius on unrelated services.
+  - Sequential rolling updates (`oops update /apps -d 5s`) ensure zero downtime with pre-stop hooks and automated healthcheck polling.
+
+---
+
+## The Flagship: Oopsbox Blueprint
 
 **Oopsbox** is a complete, pre-configured Infrastructure as Code (IaC) setup located in [`oopsbox/`](oopsbox/README.md). It eliminates DevOps boilerplate and provides an instant developer environment on macOS (OrbStack / Colima) and Linux.
 
@@ -40,15 +58,15 @@ oopsbox/
 - **Strict Network Isolation**: Enforces least privilege across `net-edge` (public ingress) and `net-db` (isolated backend).
 - **Single Source of Truth (`oops.yml`)**: Configure project profiles (`profiles:`), image registry aliases (`registries:`), and automated backups in one clean YAML file.
 
-👉 **[Read the Full Oopsbox Blueprint Guide](oopsbox/README.md)**
+[Read the Full Oopsbox Blueprint Guide](oopsbox/README.md)
 
 ---
 
-## ⚡️ The Engine: Oops CLI & Daemon
+## The Engine: Oops CLI & Daemon
 
 The `oops` CLI binary manages multi-group containers, performs safe rolling updates, automates database provisioning, and executes backups.
 
-### 1. Smart Target & Profile Selectors
+### Smart Target & Profile Selectors
 ```bash
 # Start default profile (@default defined in oops.yml)
 oops up
@@ -70,14 +88,14 @@ oops logs ..api..           # Matches any service containing 'api'
 oops stop -x /edge -x redis
 ```
 
-### 2. Zero-Downtime Sequential Rolling Updates
+### Zero-Downtime Sequential Rolling Updates
 ```bash
 # Pull -> Pre-Stop Hook -> Recreate -> Health Check Poll -> Delay Gap
 oops update /apps -d 5s
 oops update gar/my-app:v2.0
 ```
 
-### 3. Automated Database & User Provisioning
+### Automated Database & User Provisioning
 ```bash
 # Generate 20-char secure passwords and provision DB + User + Grants
 oops db mysql create my_database my_user
@@ -85,7 +103,7 @@ oops db pg:pg-replica create analytics_db analyst_user
 oops db mysql passwd my_user new_password
 ```
 
-### 4. Automated Backup & Safe Interactive Restore
+### Automated Backup & Safe Interactive Restore
 ```bash
 # Full backup (Database Dumps + Filesystem Volume Tarballs)
 oops backup
@@ -96,7 +114,7 @@ oops restore backups/mysql_backup_20261004.sql.gz
 oops restore backups/data_uploads_20261004.tar.gz --dry-run
 ```
 
-### 5. Native DNS Inspection & Management
+### Native DNS Inspection & Management
 ```bash
 # Inspect active DNS resolution table (Containers + Custom Records)
 oops dns
@@ -110,11 +128,11 @@ oops dns del api.internal
 
 ---
 
-## 🚀 CI/CD Webhook Deployments
+## CI/CD Webhook Deployments
 
 Oops runs as a lightweight daemon (`oops server`) listening for deployment webhooks from GitHub Actions, GitLab CI, or custom pipelines.
 
-### Container Labels (`compose.yml`)
+### Container Labels
 
 Add labels to target containers to authorize Oops and configure lifecycle hooks:
 
@@ -140,7 +158,7 @@ curl -X POST \
 
 ---
 
-## 🏁 Quickstart
+## Quickstart
 
 ### Option A: Use Oopsbox (Recommended)
 ```bash

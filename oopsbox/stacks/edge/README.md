@@ -1,6 +1,6 @@
-# Edge Layer — Reverse Proxy & Auto-SSL Guide
+# Edge Group — Reverse Proxy & Auto-SSL Guide
 
-The Edge layer terminates public HTTP/HTTPS traffic, handles automatic SSL certificates (Let's Encrypt / ZeroSSL), and routes incoming requests to internal container workloads.
+The Edge group terminates public HTTP/HTTPS traffic, handles automatic SSL certificates (Let's Encrypt / ZeroSSL / Local Root CA), and routes incoming requests to internal container workloads.
 
 This template provides 3 production-ready options. Choose the proxy technology that best matches your workflow:
 
@@ -36,11 +36,11 @@ Uses `lucaslorentz/caddy-docker-proxy` to dynamically generate Caddy configurati
 
 ### Setup & Usage
 ```bash
-# Start default Caddy edge proxy
-oops up edge
+# Start default Caddy edge proxy & oops daemon
+oops up /edge
 ```
 
-### Application Container Labels (`apps/docker-compose.yml`)
+### Application Container Labels (`stacks/apps/compose.yml`)
 ```yaml
 services:
   my-app:
@@ -50,7 +50,7 @@ services:
       caddy: "app.web.oops"
       caddy.reverse_proxy: "{{upstreams 80}}"
     networks:
-      - oops_network
+      - net-edge
 ```
 
 ---
@@ -71,10 +71,10 @@ Uses `traefik:v3.1` as a cloud-native dynamic reverse proxy with built-in metric
 ### Setup & Usage
 ```bash
 # Start Traefik edge proxy
-docker compose -f edge/docker-compose.traefik.yml up -d
+docker compose -f stacks/edge/compose.traefik.yml up -d
 ```
 
-### Application Container Labels (`apps/docker-compose.yml`)
+### Application Container Labels (`stacks/apps/compose.yml`)
 ```yaml
 services:
   my-app:
@@ -85,7 +85,7 @@ services:
       traefik.http.routers.myapp.entrypoints: "websecure"
       traefik.http.routers.myapp.tls.certresolver: "letsencrypt"
     networks:
-      - oops_network
+      - net-edge
 ```
 
 ---
@@ -106,10 +106,10 @@ Uses the classic `nginxproxy/nginx-proxy` paired with `nginxproxy/acme-companion
 ### Setup & Usage
 ```bash
 # Start Nginx edge proxy
-docker compose -f edge/docker-compose.nginx.yml up -d
+docker compose -f stacks/edge/compose.nginx.yml up -d
 ```
 
-### Application Container Environment (`apps/docker-compose.yml`)
+### Application Container Environment (`stacks/apps/compose.yml`)
 ```yaml
 services:
   my-app:
@@ -118,7 +118,7 @@ services:
       - VIRTUAL_HOST=app.web.oops
       - LETSENCRYPT_HOST=app.web.oops
     networks:
-      - oops_network
+      - net-edge
 ```
 
 ---

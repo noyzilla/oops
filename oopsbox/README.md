@@ -1,6 +1,6 @@
-# Oopsbox Blueprint Template
+# Oopsbox Blueprint
 
-This blueprint provides a production-ready, modular multi-stack Docker Compose environment (**Oopsbox**) designed for orchestration via **Oops** (`ghcr.io/noyzilla/oops:latest`).
+Oopsbox is the production-ready, turnkey Infrastructure as Code (IaC) blueprint for **Oops**. It enforces **1:1 Dev-to-Prod Parity** across local developer workstations (macOS / Linux) and production servers, while enabling fully **Git-driven infrastructure updates** with zero manual SSH configuration editing.
 
 ## Directory Topology
 
