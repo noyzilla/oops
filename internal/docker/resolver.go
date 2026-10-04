@@ -19,7 +19,7 @@ type ResolvedTarget struct {
 }
 
 // Standard stack startup dependency order
-var defaultStackOrder = []string{"edge", "db", "utils", "apps"}
+var defaultStackOrder = []string{"edge", "db", "tool", "apps", "utils"}
 
 // MatchWildcard tests if a candidate string matches a target pattern
 func MatchWildcard(pattern, candidate string) bool {
@@ -183,10 +183,19 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		})
 	}
 
-	// If no targets supplied: check for OOPS_DEFAULT_GROUP
+	// Load oops.yml configuration if available
+	oopsCfg, _ := LoadOopsConfig(workDir)
+	if oopsCfg == nil {
+		oopsCfg = &OopsConfig{
+			Registries: make(map[string]string),
+			Profiles:   make(map[string][]string),
+		}
+	}
+
+	// If no targets supplied: check if "default" profile is defined in oops.yml
 	if len(targets) == 0 {
-		if defGroup := GetDefaultGroup(workDir); defGroup != "" {
-			targets = []string{"@" + strings.TrimPrefix(defGroup, "@")}
+		if _, ok := oopsCfg.Profiles["default"]; ok {
+			targets = []string{"@default"}
 		}
 	}
 
@@ -216,34 +225,47 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		return results, nil
 	}
 
-	// Expand any @group targets into concrete selectors
+	// Expand any @profile targets into concrete selectors
 	var expandedTargets []string
-	oopsCfg, err := LoadOopsConfig(workDir)
-	if err != nil {
-		return nil, err
-	}
 
 	var expandTarget func(tgt string, callStack []string) error
 	expandTarget = func(tgt string, callStack []string) error {
 		if strings.HasPrefix(tgt, "@") {
-			groupName := strings.TrimPrefix(tgt, "@")
+			profileName := strings.TrimPrefix(tgt, "@")
+
+			// Dynamic @all resolution: expand to all discovered stacks if not explicitly defined in oops.yml
+			if profileName == "all" {
+				if profileItems, exists := oopsCfg.Profiles["all"]; exists && len(profileItems) > 0 {
+					for _, item := range profileItems {
+						if err := expandTarget(item, append(callStack, profileName)); err != nil {
+							return err
+						}
+					}
+					return nil
+				}
+				// Built-in dynamic discovery across all stacks
+				for _, ss := range allStacks {
+					expandedTargets = append(expandedTargets, "/"+ss.stackName)
+				}
+				return nil
+			}
 
 			for _, s := range callStack {
-				if s == groupName {
-					return fmt.Errorf("circular group dependency detected: %s", strings.Join(append(callStack, groupName), " -> "))
+				if s == profileName {
+					return fmt.Errorf("circular profile dependency detected: %s", strings.Join(append(callStack, profileName), " -> "))
 				}
 			}
 
-			groupItems, exists := oopsCfg.Groups[groupName]
+			profileItems, exists := oopsCfg.Profiles[profileName]
 			if !exists {
-				return fmt.Errorf("group '%s' not found in oops.yml", groupName)
+				return fmt.Errorf("profile '%s' not found in oops.yml", profileName)
 			}
-			if len(groupItems) == 0 {
-				return fmt.Errorf("group '%s' is empty in oops.yml", groupName)
+			if len(profileItems) == 0 {
+				return fmt.Errorf("profile '%s' is empty in oops.yml", profileName)
 			}
 
-			for _, item := range groupItems {
-				if err := expandTarget(item, append(callStack, groupName)); err != nil {
+			for _, item := range profileItems {
+				if err := expandTarget(item, append(callStack, profileName)); err != nil {
 					return err
 				}
 			}

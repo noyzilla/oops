@@ -17,37 +17,25 @@ registries:
   # ecr: 123456789.dkr.ecr.ap-southeast-1.amazonaws.com
 
 # ------------------------------------------------------------------------------
-# Service Groups / Stack Profiles
+# Workstation & Project Profiles
 # Usage:
-#   oops up @core
-#   oops stop @pg
-#   devoops start [group]
+#   oops up                 # Starts default profile (@default)
+#   oops up @lab            # Starts custom project profile
+#   oops up @all            # Starts all stacks dynamically (built-in engine selector)
+#   oops switch @lab        # Switches active profile and stops other services
+#   devoops start           # Starts default profile on workstation
 # ------------------------------------------------------------------------------
-groups:
-  # Core Stack: Caddy Edge Router + MySQL + Redis + Oops Daemon
-  core:
-    - /edge
-    - mysql
-    - redis
-    - /utils
-
-  # Postgres Stack: Caddy Edge Router + Postgres + Redis + Oops Daemon
-  pg:
-    - /edge
-    - postgres
-    - redis
-    - /utils
-
-  # Minimal / Edge Only: Only Caddy Ingress Router
-  minimal:
+profiles:
+  # Default Development Profile (Caddy Edge Router + Oops DNS Daemon)
+  default:
     - /edge
 
-  # Full Stack: All services across edge, db, utils, and apps
-  all:
-    - /edge
-    - /db
-    - /utils
-    - /apps
+  # Example Custom Project Profile (uncomment and customize as needed):
+  # lab:
+  #   - /edge
+  #   - mysql
+  #   - redis
+  #   - web-app
 
 # ------------------------------------------------------------------------------
 # Automated Backup Configuration (Database Dumps + Filesystem Data Volumes)

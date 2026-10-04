@@ -57,7 +57,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 | Subcommand | Arguments | Description |
 | :--- | :--- | :--- |
 | `devoops install` | *(none)* | Automated workstation setup: initializes storage, `.env`, VM/routes, and registers `devoops` to global PATH |
-| `devoops start` | `[group]` | Starts VM/daemon, network routing, and launches default or specified service group (e.g. `@core`, `@pg`) |
+| `devoops start` | `[profile]` | Starts VM/daemon, network routing, and launches default or specified profile (e.g. `@default`, `@lab`) |
 | `devoops install-cert` | *(none)* | Exports Caddy local root CA from container volume and installs it into OS Trust Store |
 | `devoops stop` | *(none)* | Stops services and shuts down running stacks |
 | `devoops status` | *(none)* | Displays status of running containers |
@@ -79,4 +79,4 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Execution Scenarios**:
   - Running `bin/devoops --help` displays all subcommands cleanly.
   - Running `bin/devoops status` inspects OS and passes through status.
-  - Passthrough commands (`bin/devoops up @core`, `bin/devoops status`) execute equivalent `oops` operations.
+  - Passthrough commands (`bin/devoops up @default`, `bin/devoops status`) execute equivalent `oops` operations.

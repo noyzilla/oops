@@ -132,8 +132,8 @@ services:
 	}
 }
 
-func TestResolveGroupsAndDefaultGroup(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "oops-groups-test-*")
+func TestResolveProfilesAndDefaultProfile(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "oops-profiles-test-*")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
@@ -178,10 +178,10 @@ services:
     image: web:latest
 `), 0644)
 
-	// Create stacks/groups.yml
-	os.WriteFile(filepath.Join(stacksDir, "groups.yml"), []byte(`
-groups:
-  core:
+	// Create oops.yml with profiles
+	os.WriteFile(filepath.Join(tmpDir, "oops.yml"), []byte(`
+profiles:
+  lab:
     - /edge
     - mysql
     - redis
@@ -191,26 +191,26 @@ groups:
     - postgres
     - redis
     - /utils
-  minimal:
+  default:
     - /edge
 `), 0644)
 
-	// 1. Resolve explicit @core group
-	coreTargets, err := docker.ResolveTargets(tmpDir, []string{"@core"})
+	// 1. Resolve explicit @lab profile
+	labTargets, err := docker.ResolveTargets(tmpDir, []string{"@lab"})
 	if err != nil {
-		t.Fatalf("failed to resolve @core: %v", err)
+		t.Fatalf("failed to resolve @lab: %v", err)
 	}
-	if len(coreTargets) != 4 {
-		t.Fatalf("expected 4 targets for @core, got %d", len(coreTargets))
+	if len(labTargets) != 4 {
+		t.Fatalf("expected 4 targets for @lab, got %d", len(labTargets))
 	}
-	// Verify postgres & web are NOT in core
-	for _, tgt := range coreTargets {
+	// Verify postgres & web are NOT in lab
+	for _, tgt := range labTargets {
 		if tgt.ServiceName == "postgres" || tgt.ServiceName == "web" {
-			t.Errorf("unexpected service %s in core group", tgt.ServiceName)
+			t.Errorf("unexpected service %s in lab profile", tgt.ServiceName)
 		}
 	}
 
-	// 2. Resolve explicit @pg group
+	// 2. Resolve explicit @pg profile
 	pgTargets, err := docker.ResolveTargets(tmpDir, []string{"@pg"})
 	if err != nil {
 		t.Fatalf("failed to resolve @pg: %v", err)
@@ -229,33 +229,31 @@ groups:
 		}
 	}
 	if !hasPostgres || hasMysql {
-		t.Errorf("expected pg group to contain postgres and not mysql, got pgTargets: %+v", pgTargets)
+		t.Errorf("expected pg profile to contain postgres and not mysql, got pgTargets: %+v", pgTargets)
 	}
 
-	// 3. Test OOPS_DEFAULT_GROUP in .env
-	os.WriteFile(filepath.Join(tmpDir, ".env"), []byte("OOPS_DEFAULT_GROUP=minimal\n"), 0644)
+	// 3. Test default profile when no targets passed (reads default from oops.yml)
 	defTargets, err := docker.ResolveTargets(tmpDir, nil)
 	if err != nil {
-		t.Fatalf("failed to resolve targets with OOPS_DEFAULT_GROUP=minimal in .env: %v", err)
+		t.Fatalf("failed to resolve targets with default profile in oops.yml: %v", err)
 	}
 	if len(defTargets) != 1 || defTargets[0].ServiceName != "caddy" {
-		t.Errorf("expected 1 caddy target for minimal group, got: %+v", defTargets)
+		t.Errorf("expected 1 caddy target for default profile, got: %+v", defTargets)
 	}
 
-	// 4. Test OOPS_DEFAULT_GROUP env override
-	t.Setenv("OOPS_DEFAULT_GROUP", "pg")
-	envTargets, err := docker.ResolveTargets(tmpDir, nil)
+	// 4. Test Dynamic @all (not explicitly declared in profiles)
+	allTargets, err := docker.ResolveTargets(tmpDir, []string{"@all"})
 	if err != nil {
-		t.Fatalf("failed to resolve targets with OOPS_DEFAULT_GROUP=pg: %v", err)
+		t.Fatalf("failed to resolve dynamic @all: %v", err)
 	}
-	if len(envTargets) != 4 {
-		t.Fatalf("expected 4 targets for OOPS_DEFAULT_GROUP=pg, got %d", len(envTargets))
+	if len(allTargets) != 6 { // caddy, mysql, postgres, redis, oops, web
+		t.Fatalf("expected 6 targets for dynamic @all, got %d", len(allTargets))
 	}
 
-	// 5. Test unknown group error
+	// 5. Test unknown profile error
 	_, err = docker.ResolveTargets(tmpDir, []string{"@unknown"})
 	if err == nil {
-		t.Errorf("expected error for non-existent group @unknown, got nil")
+		t.Errorf("expected error for non-existent profile @unknown, got nil")
 	}
 }
 
@@ -366,7 +364,7 @@ services:
 `), 0644)
 
 	_ = os.WriteFile(filepath.Join(stacksDir, "oops.yml"), []byte(`
-groups:
+profiles:
   core:
     - /edge
     - mysql

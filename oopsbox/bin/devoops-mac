@@ -368,11 +368,9 @@ cmd_start() {
         else
             start_target="@$target_arg"
         fi
-    elif [ -n "$OOPS_DEFAULT_GROUP" ]; then
-        start_target="@${OOPS_DEFAULT_GROUP#@}"
     fi
 
-    echo -e "${BLUE}==> [macOS] Starting DevOops Environment (${start_target:-all services})...${NC}"
+    echo -e "${BLUE}==> [macOS] Starting DevOops Environment (${start_target:-default profile})...${NC}"
 
     # Check, start and configure runtime engine
     start_and_configure_engine
@@ -387,23 +385,17 @@ cmd_start() {
     else
         echo -e "Starting stacks via docker compose fallback..."
         case "$start_target" in
-            @minimal)
+            @default|@minimal|"")
                 docker compose -f stacks/edge/compose.yml up -d
                 ;;
-            @core)
+            @all)
                 docker compose -f stacks/edge/compose.yml up -d
-                docker compose -f stacks/db/compose.yml up -d mysql redis
-                docker compose -f stacks/utils/compose.yml up -d
-                ;;
-            @pg)
-                docker compose -f stacks/edge/compose.yml up -d
-                docker compose -f stacks/db/compose.yml up -d postgres redis
-                docker compose -f stacks/utils/compose.yml up -d
+                docker compose -f stacks/db/compose.yml up -d
+                docker compose -f stacks/apps/compose.yml up -d
                 ;;
             *)
                 docker compose -f stacks/edge/compose.yml up -d
                 docker compose -f stacks/db/compose.yml up -d
-                docker compose -f stacks/utils/compose.yml up -d
                 ;;
         esac
     fi
@@ -522,7 +514,7 @@ case "$1" in
         echo -e ""
         echo -e "Commands:"
         echo -e "  ${GREEN}install${NC}              Initialize .env, storage, macOS DNS resolver, and global PATH"
-        echo -e "  ${GREEN}start [group]${NC}        Start default group (OOPS_DEFAULT_GROUP) or specified group (e.g. @pg, @core)"
+        echo -e "  ${GREEN}start [profile]${NC}      Start default profile (from oops.yml) or specified profile/stack (e.g. @lab, /db)"
         echo -e "  ${GREEN}install-cert${NC}         Install Caddy Local Root SSL certificate into macOS Keychain"
         echo -e "  ${GREEN}stop${NC}                 Stop all running stacks"
         echo -e "  ${GREEN}status${NC}               Show status of running containers"

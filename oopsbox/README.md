@@ -78,7 +78,7 @@ Run the automated installation to initialize credentials, storage, macOS DNS res
 ```
 
 ### Start Dev Environment (`devoops start`)
-Starts VM routing (if using Colima) and starts the default core service group (`OOPS_DEFAULT_GROUP=core` in `.env`):
+Starts VM routing (if using Colima) and starts the default service group (`OOPS_DEFAULT_GROUP=default` in `.env`):
 ```bash
 devoops start
 ```
@@ -102,27 +102,15 @@ registries:
   hub: docker.io/myorg
 
 groups:
-  default: "@core"
-  core:      # Default: Caddy Edge Router + MySQL + Redis + Oops Daemon
-    - /edge
-    - mysql
-    - redis
-    - /utils
-
-  pg:        # Postgres Stack: Caddy Edge Router + Postgres + Redis + Oops Daemon
-    - /edge
-    - postgres
-    - redis
-    - /utils
-
-  minimal:   # Minimal: Only Caddy Ingress Router
+  default:    # Default daily development: Edge Router & DNS
     - /edge
 
-  all:       # Full Stack: All services
-    - /edge
-    - /db
-    - /utils
-    - /apps
+  # Example custom project profile:
+  # lab:
+  #   - /edge
+  #   - mysql
+  #   - redis
+  #   - web-app
 
 dns:
   upstreams:
@@ -135,17 +123,19 @@ dns:
 
 Use `@group` syntax with any `oops` command:
 ```bash
-oops up @core
-oops stop @pg
-oops restart @minimal
-oops update @core -d 2s
+oops up                     # Starts default group (@default)
+oops up @all                # Starts all stacks dynamically (built-in engine discovery)
+oops up /edge               # Starts Edge Perimeter only
+oops up /db                 # Starts Databases
+oops stop @all
+oops restart /edge
 
 # Switch active profile (starts target profile & stops all other running services):
-oops switch @core
-oops switch @pg
+oops switch /edge
+oops switch @default
 
 # Stop all services except specified exclusions:
-oops stop -x @core
+oops stop -x /edge
 oops stop -x /edge -x redis
 ```
 
@@ -190,24 +180,27 @@ alias oops='docker run --rm -it \
 
 # Pull images across all stacks, specific group, or registry alias
 oops pull --all
-oops pull @core
+oops pull @default
 oops pull gar/my-app:v1.0.0
 
 # Start service groups or stacks
-oops up @core
-oops up /edge
-oops up /db
-oops up /utils
-oops up /apps
+oops up                     # Starts default profile (@default)
+oops up @all                # Starts all stacks
+oops up /edge               # Starts Edge Perimeter (Caddy + Oops DNS)
+oops up /db                 # Starts Databases (MySQL, Postgres, Redis)
+oops up /tool               # Starts Dev Tools (httpbin, mailpit)
+oops up /apps               # Starts Applications
 
 # Target specific services or wildcard
 oops up mysql
 oops up /db/mysql
+oops up httpbin
+oops up mailpit
 oops up app..
 
 # Switch profiles and stop other services
-oops switch @core
-oops stop -x @core
+oops switch /edge
+oops stop -x /edge
 ```
 
 ---

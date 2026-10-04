@@ -1,0 +1,38 @@
+services:
+  # ----------------------------------------------------------------------------
+  # HTTP Request & Response Service (Fast, lightweight Go implementation)
+  # Ingress Web URL: http://httpbin.web.oops
+  # ----------------------------------------------------------------------------
+  httpbin:
+    image: mccutchen/go-httpbin:latest
+    container_name: httpbin
+    hostname: httpbin.oops
+    restart: unless-stopped
+    labels:
+      oops.enable: "true"
+      caddy: "httpbin.web.oops"
+      caddy.reverse_proxy: "{{upstreams 8080}}"
+    networks:
+      - net-edge
+
+  # ----------------------------------------------------------------------------
+  # Local SMTP Server & Webmail Inspector
+  # Ingress Web UI: http://mailpit.web.oops
+  # Internal SMTP: mailpit.oops:1025
+  # ----------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    hostname: mailpit.oops
+    restart: unless-stopped
+    labels:
+      oops.enable: "true"
+      caddy: "mailpit.web.oops"
+      caddy.reverse_proxy: "{{upstreams 8025}}"
+    networks:
+      - net-edge
+
+networks:
+  net-edge:
+    name: net-edge
+    external: true

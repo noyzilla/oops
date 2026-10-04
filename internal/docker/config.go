@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -69,18 +68,18 @@ func (d *DNSConfig) GetUpstreams() []string {
 type OopsConfig struct {
 	Registries map[string]string   `yaml:"registries,omitempty"`
 	Aliases    map[string]string   `yaml:"aliases,omitempty"` // alias for registries
-	Groups     map[string][]string `yaml:"groups,omitempty"`
+	Profiles   map[string][]string `yaml:"profiles,omitempty"`
 	Backups    BackupConfig        `yaml:"backups,omitempty"`
 	DNS        DNSConfig           `yaml:"dns,omitempty"`
 	Colima     ColimaConfig        `yaml:"colima,omitempty"`
 }
 
-// LoadOopsConfig finds and parses oops.yml / config.yml / groups.yml
+// LoadOopsConfig finds and parses oops.yml / config.yml
 func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 	cfg := &OopsConfig{
 		Registries: make(map[string]string),
 		Aliases:    make(map[string]string),
-		Groups:     make(map[string][]string),
+		Profiles:   make(map[string][]string),
 	}
 
 	candidates := []string{
@@ -122,10 +121,10 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 				}
 			}
 
-			// Merge groups
-			for k, v := range fileCfg.Groups {
-				if _, exists := cfg.Groups[k]; !exists {
-					cfg.Groups[k] = v
+			// Merge profiles
+			for k, v := range fileCfg.Profiles {
+				if _, exists := cfg.Profiles[k]; !exists {
+					cfg.Profiles[k] = v
 				}
 			}
 
@@ -182,13 +181,13 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 	return cfg, nil
 }
 
-// LoadGroups is a helper to load only the groups map
-func LoadGroups(workDir string) (map[string][]string, error) {
+// LoadProfiles is a helper to load only the profiles map
+func LoadProfiles(workDir string) (map[string][]string, error) {
 	cfg, err := LoadOopsConfig(workDir)
 	if err != nil {
 		return nil, err
 	}
-	return cfg.Groups, nil
+	return cfg.Profiles, nil
 }
 
 // ExpandImageAlias expands a prefix alias (e.g. gar/my-app:v1.0 -> asia-southeast1-docker.pkg.dev/.../my-app:v1.0)
@@ -215,34 +214,4 @@ func ExpandImageAlias(rawImage string, registries map[string]string) string {
 	}
 
 	return trimmed
-}
-
-// GetDefaultGroup reads OOPS_DEFAULT_GROUP from environment or .env file in workDir
-func GetDefaultGroup(workDir string) string {
-	if val := os.Getenv("OOPS_DEFAULT_GROUP"); strings.TrimSpace(val) != "" {
-		return strings.TrimSpace(val)
-	}
-
-	envPath := filepath.Join(workDir, ".env")
-	file, err := os.Open(envPath)
-	if err != nil {
-		return ""
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") || !strings.Contains(line, "=") {
-			continue
-		}
-		parts := strings.SplitN(line, "=", 2)
-		if strings.TrimSpace(parts[0]) == "OOPS_DEFAULT_GROUP" {
-			val := strings.TrimSpace(parts[1])
-			val = strings.Trim(val, `"'`)
-			return val
-		}
-	}
-
-	return ""
 }

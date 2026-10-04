@@ -17,21 +17,29 @@ This document establishes the official domain glossary and ubiquitous language f
 - **Definition**: The complete host deployment environment encapsulating all stacks (`stacks/`), live data storage (`data/`), backup dumps (`backups/`), and environment configuration (`.env`).
 - **Standard Default Locations**: `~/oopsbox` (Local Dev) and `/opt/oopsbox` (Production Server).
 
-### Entity: Stack
-- **Canonical Term**: `Stack`
-- **Definition**: A distinct functional tier and docker compose setup residing in `stacks/<stack>/` (or top-level compose) containing a dedicated `docker-compose.yml` file.
+### Entity: Group
+- **Canonical Term**: `Group`
+- **Definition**: A distinct functional category and compose setup residing in `stacks/<group>/` containing a dedicated `compose.yml` file.
 - **Permitted Canonical Values**:
-  - `edge`: Ingress reverse proxy and SSL termination (e.g. Caddy, Traefik).
+  - `edge`: Ingress reverse proxy, SSL termination, and embedded Oops DNS daemon.
   - `db`: Persistence and cache databases (e.g. MySQL, PostgreSQL, Redis).
-  - `utils`: Auxiliary daemons, sidecars, proxies, queues, and oops webhook engine.
+  - `tool`: Developer tooling, mock, and inspection services (e.g. `httpbin`, `mailpit`).
   - `apps`: Core application services and web backends.
-  - `[custom]`: Dynamic custom stacks (e.g. `monitoring`, `analytics`, `ai`).
-- **Dependency Startup Order**: `edge` -> `db` -> `utils` -> `apps` -> `[custom...]`
-- **Avoid**: `bundle`, `cluster`, `environment`, `layer` (legacy term), `pod`
+  - `[custom]`: Dynamic custom groups (e.g. `monitoring`, `analytics`, `lab`).
+- **CLI Notation**: `/<group>` (e.g. `/edge`, `/db`, `/tool`, `/apps`).
+- **Dependency Startup Order**: `edge` -> `db` -> `tool` -> `apps` -> `[custom...]`
+- **Avoid**: `bundle`, `cluster`, `environment`, `pod`
+
+### Entity: Profile
+- **Canonical Term**: `Profile`
+- **Definition**: A named composition defined in `oops.yml` under `profiles:` (e.g. `@default`, `@lab`) bundling groups and services for developer workflows and runtime context switching (`oops switch @<profile>`).
+- **CLI Notation**: `@<profile>` (e.g. `@default`, `@lab`).
+- **Permitted Synonyms**: `stack_profile`
+- **Avoid**: `preset`, `flavor`
 
 ### Entity: Config
 - **Canonical Term**: `Config`
-- **Definition**: Version-controlled service configurations residing modularly inside each stack (`stacks/<stack>/config/<service>/`, e.g. `stacks/utils/config/oops/hosts`, `stacks/edge/config/caddy/Caddyfile`, `stacks/db/config/mysql/my.cnf`). Tracked in Git and separate from raw binary database storage (`data/`).
+- **Definition**: Version-controlled service configurations residing modularly inside each group (`stacks/<group>/<service>/`, e.g. `stacks/edge/caddy/Caddyfile`, `stacks/db/mysql/my.cnf`). Tracked in Git and separate from raw binary database storage (`data/`).
 
 ### Entity: Storage
 - **Canonical Term**: `Storage`
@@ -41,13 +49,13 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ### Entity: Service
 - **Canonical Term**: `Service`
-- **Definition**: A named workload definition inside a `compose.yml` file (e.g. `caddy`, `mysql`, `app1`).
+- **Definition**: A named workload definition inside a `compose.yml` file (e.g. `caddy-proxy`, `mysql`, `web-app`).
 - **Permitted Synonyms**: `compose_service`
 - **Avoid**: `module`, `microservice`, `app_instance`
 
 ### Entity: Target
 - **Canonical Term**: `Target`
-- **Definition**: The user-supplied identifier passed to CLI commands or Webhook payloads, resolving to stacks via slash prefix (`/apps`, `/db`), scoped services via path (`/db/mysql`), exact service names (`mysql`), or Double Dot wildcards (e.g. `app..`, `..worker`, `..api..`).
+- **Definition**: The user-supplied identifier passed to CLI commands or Webhook payloads, resolving to groups via slash prefix (`/<group>`, e.g. `/edge`, `/db`), scoped services via path (`/<group>/<service>`, e.g. `/db/mysql`), profiles via at prefix (`@<profile>`, e.g. `@default`, `@lab`), exact service names (`mysql`), or Double Dot wildcards (e.g. `app..`, `..worker`, `..api..`).
 - **Permitted Synonyms**: `target_pattern`, `target_selector`
 - **Avoid**: `regex_pattern`, `filter_query`
 
