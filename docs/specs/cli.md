@@ -15,14 +15,15 @@ synapses: ["ARCHITECTURE.md", "CONTEXT.md", "DESIGN.md", "docs/specs/webhook.md"
 
 ## Overview & Scope
 
-Oops provides an operator CLI binary (`oops <command>`) designed to manage multi-stack Docker Compose environments (`stacks/edge`, `stacks/db`, `stacks/apps`, `stacks/utils`), execute sequential rolling updates with health check polling, enforce graceful lifecycle shutdown hooks, provision least-privilege database credentials, and manage automated database backups.
+Oops provides an operator CLI binary (`oops <command>`) designed to manage multi-group Docker Compose environments (`stacks/edge`, `stacks/db`, `stacks/tool`, `stacks/apps`), execute sequential rolling updates with health check polling, enforce graceful lifecycle shutdown hooks, provision least-privilege database credentials, and manage automated database backups.
 
 ## Domain Context & Ubiquitous Language
 
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
-- **Stack**: A cohesive group of services defined in a `compose.yml` (or compose file) under `stacks/<stack>/` (e.g. `/edge`, `/db`, `/apps`, `/utils`, or custom sub-directories).
-- **Service**: A named compose service in `compose.yml`.
-- **Target**: Explicit stack (`/db`, `/apps`), scoped service (`/db/mysql`, `/apps/api`), exact service name (`caddy`, `mysql`), or Double Dot wildcard (`app..`, `..worker`, `..api..`).
+- **Group**: A distinct functional category and compose setup residing in `stacks/<group>/` containing a dedicated `compose.yml` (e.g. `/edge`, `/db`, `/tool`, `/apps`, or custom sub-directories).
+- **Service Configuration**: Version-controlled service configuration files residing modularly inside each group (`stacks/<group>/<service>/`, e.g. `stacks/edge/caddy/Caddyfile`, `stacks/db/mysql/my.cnf`).
+- **Profile**: A named workstation or project group defined in `oops.yml` (`profiles:`), selectable via `@<profile>` (e.g. `@default`, `@lab`).
+- **Target**: Explicit group (`/db`, `/apps`), scoped service (`/db/mysql`, `/apps/api`), exact service name (`caddy`, `mysql`), or Double Dot wildcard (`app..`, `..worker`, `..api..`).
 - **Rolling Update**: Sequential pull -> stop hook -> recreate -> health poll workflow.
 
 ## Business Rules & Logic Invariants
@@ -64,9 +65,9 @@ When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down
 
 ### Sequential Rolling Update Algorithm (`oops update <targets...>`)
 For each matched service in target order:
-- **Step 1 - Pull**: Run `docker compose -f <layer_compose> pull <service>`.
+- **Step 1 - Pull**: Run `docker compose -f <group_compose> pull <service>`.
 - **Step 2 - Stop Hook (if defined)**: If container has label `oops.stop.cmd`, execute the command inside the running container with timeout `oops.stop.timeout` (default `OOPS_STOP_TIMEOUT` or 30s).
-- **Step 3 - Recreate**: Run `docker compose -f <layer_compose> up -d --no-deps <service>`.
+- **Step 3 - Recreate**: Run `docker compose -f <group_compose> up -d --no-deps <service>`.
 - **Step 4 - Health Polling**:
   - Poll Docker container inspection state `.State.Health.Status` every `OOPS_HEALTHCHECK_INTERVAL` (default 3s).
   - If `.State.Health.Status == "healthy"`: Service update succeeded. If `-d` / `--delay` is set, pause for the delay gap before advancing to next service.
@@ -118,7 +119,7 @@ For each matched service in target order:
   - Subcommand `oops backup-db prune` prunes expired database dump archives.
 - **Filesystem & Volume Data Backup (`oops backup-data [names...] [-r <duration|int>]`)**:
   - Aliases: `oops data-backup`.
-  - Targets: Reads `backups.data` targets from `stacks/oops.yml` (e.g. `uploads`, `certs`, `storage`).
+  - Targets: Reads `backups.data` targets from `oops.yml` (e.g. `uploads`, `certs`, `storage`).
   - Filename format: `backups/data_<name>_<TIMESTAMP>.tar.gz`.
   - Subcommand `oops backup-data prune` prunes expired data archive files.
 - **Retention Pruning (`-r, --retention <duration|int>`)**:
@@ -182,8 +183,8 @@ Oops commands can be invoked from any terminal directory. The working directory 
 
 - **Targeted Test Command**: `go test -v -race ./...`
 - **Acceptance Scenarios**:
-  - `oops up /<layer>` correctly locates compose file in `edge/`, `db/`, `apps/`, `utils/`.
-  - `oops up /db/mysql` starts only `mysql` service inside `db/docker-compose.yml`.
+  - `oops up /<group>` correctly locates compose file in `edge/`, `db/`, `tool/`, `apps/`.
+  - `oops up /db/mysql` starts only `mysql` service inside `db/compose.yml`.
   - `oops stop app..` executes `oops.stop.cmd` on all matching running containers sequentially with `--delay` (`-d`) gap.
   - `oops update app..` executes rolling update sequentially, waiting for health checks and observing delay gaps.
   - `oops db mysql create my_db my_user` generates 20-char password when omitted and creates isolated user.

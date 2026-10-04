@@ -27,21 +27,40 @@ generate_password() {
     fi
 }
 
+get_yaml_file() {
+    for f in "devoops.yml" "devoops.yaml" "oops.yml" "oops.yaml"; do
+        if [ -f "$f" ]; then
+            echo "$f"
+            return
+        fi
+    done
+}
+
+run_oops() {
+    if command -v oops >/dev/null 2>&1; then
+        oops "$@"
+    elif [ -x "$BIN_DIR/oops" ]; then
+        "$BIN_DIR/oops" "$@"
+    elif [ -x "$OOPSBOX_DIR/../oops" ]; then
+        "$OOPSBOX_DIR/../oops" "$@"
+    else
+        return 127
+    fi
+}
+
 get_dns_tld() {
     local tld="${OOPS_DNS_TLD:-${DNS_TLD}}"
     if [ -z "$tld" ]; then
-        for f in "devoops.yml" "devoops.yaml" "oops.yml" "oops.yaml" "stacks/oops.yml" "stacks/oops.yaml"; do
-            if [ -f "$f" ]; then
-                tld=$(awk -F: '
-                    /^[[:space:]]*dns:[[:space:]]*$/ { in_sec=1; next }
-                    in_sec && /^[a-zA-Z]/ { in_sec=0 }
-                    in_sec && $1 ~ "^[[:space:]]*tld[[:space:]]*$" {
-                        sub(/#.*/, "", $2); gsub(/[[:space:]]/, "", $2); print $2
-                    }
-                ' "$f" 2>/dev/null | head -n 1)
-                [ -n "$tld" ] && break
-            fi
-        done
+        local yaml_file=$(get_yaml_file)
+        if [ -n "$yaml_file" ]; then
+            tld=$(awk -F: '
+                /^[[:space:]]*dns:[[:space:]]*$/ { in_sec=1; next }
+                in_sec && /^[a-zA-Z]/ { in_sec=0 }
+                in_sec && $1 ~ "^[[:space:]]*tld[[:space:]]*$" {
+                    sub(/#.*/, "", $2); gsub(/[[:space:]]/, "", $2); print $2
+                }
+            ' "$yaml_file" 2>/dev/null | head -n 1)
+        fi
     fi
     echo "${tld:-oops}"
 }
@@ -120,8 +139,6 @@ cmd_install() {
 }
 
 cmd_start() {
-    local target_arg="$1"
-
     if [ -f .env ]; then
         set -a
         source .env
@@ -136,42 +153,15 @@ cmd_start() {
 
     update_static_hosts
 
-    local start_target=""
-    if [ -n "$target_arg" ]; then
-        if [[ "$target_arg" == @* ]] || [[ "$target_arg" == /* ]]; then
-            start_target="$target_arg"
-        elif [ -d "stacks/$target_arg" ]; then
-            start_target="/$target_arg"
-        else
-            start_target="@$target_arg"
-        fi
-    fi
-
-    echo -e "${BLUE}==> [Linux] Starting DevOops Environment (${start_target:-default profile})...${NC}"
-    if command -v oops >/dev/null 2>&1; then
-        if [ -n "$start_target" ]; then
-            oops up "$start_target"
-        else
-            oops up
-        fi
+    echo -e "${BLUE}==> [Linux] Starting DevOops Environment...${NC}"
+    if run_oops up; then
+        :
     else
         echo -e "Starting stacks via docker compose fallback..."
-        case "$start_target" in
-            @default|@minimal|"")
-                docker compose -f stacks/edge/compose.yml up -d
-                ;;
-            @all)
-                docker compose -f stacks/edge/compose.yml up -d
-                docker compose -f stacks/db/compose.yml up -d
-                docker compose -f stacks/apps/compose.yml up -d
-                ;;
-            *)
-                docker compose -f stacks/edge/compose.yml up -d
-                docker compose -f stacks/db/compose.yml up -d
-                ;;
-        esac
+        docker compose -f stacks/edge/compose.yml up -d
     fi
     echo -e "\n${GREEN}✨ DevOops is up and running!${NC}"
+    echo -e "Use ${BLUE}oops${NC} to manage stacks and profiles (e.g. ${BLUE}oops up @lab${NC}, ${BLUE}oops switch${NC}, ${BLUE}oops status${NC})."
 }
 
 cmd_install_cert() {
@@ -207,12 +197,17 @@ cmd_install_cert() {
 
 cmd_stop() {
     echo -e "${YELLOW}==> [Linux] Stopping DevOops Environment...${NC}"
-    if command -v oops >/dev/null 2>&1; then
-        oops down
+    if run_oops down; then
+        :
     else
-        docker compose -f stacks/utils/compose.yml down 2>/dev/null || true
-        docker compose -f stacks/db/compose.yml down 2>/dev/null || true
-        docker compose -f stacks/edge/compose.yml down 2>/dev/null || true
+        echo -e "Stopping stacks via docker compose fallback..."
+        for dir in stacks/apps stacks/tool stacks/db stacks/edge; do
+            if [ -f "$dir/compose.yml" ]; then
+                docker compose -f "$dir/compose.yml" down 2>/dev/null || true
+            elif [ -f "$dir/compose.yaml" ]; then
+                docker compose -f "$dir/compose.yaml" down 2>/dev/null || true
+            fi
+        done
     fi
     echo -e "${GREEN}✓ DevOops stopped.${NC}"
 }
@@ -222,7 +217,7 @@ case "$1" in
         cmd_install
         ;;
     start)
-        cmd_start "$2"
+        cmd_start
         ;;
     install-cert)
         cmd_install_cert
@@ -230,34 +225,16 @@ case "$1" in
     stop)
         cmd_stop
         ;;
-    status)
-        docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-        ;;
-    dns)
-        shift
-        if command -v oops >/dev/null 2>&1; then
-            oops dns "$@"
-        else
-            echo -e "${BLUE}=== DevOops DNS Configuration ===${NC}"
-            if [ -f data/oops/dns.records ]; then
-                echo -e "\nCustom DNS Records (data/oops/dns.records):"
-                cat data/oops/dns.records
-            elif [ -f config/oops.dns ]; then
-                echo -e "\nCustom DNS Records (config/oops.dns):"
-                cat config/oops.dns
-            fi
-        fi
-        ;;
     *)
-        echo -e "${BLUE}DevOops Local Dev Tool (Linux)${NC}"
-        echo -e "Usage: devoops <command> [group]"
+        echo -e "${BLUE}DevOops Workstation Tool (Linux)${NC}"
+        echo -e "Usage: devoops <command>"
         echo -e ""
         echo -e "Commands:"
-        echo -e "  ${GREEN}install${NC}              Initialize .env, storage, and global PATH"
-        echo -e "  ${GREEN}start [profile]${NC}      Start default profile (from oops.yml) or specified profile/stack (e.g. @lab, /db)"
-        echo -e "  ${GREEN}install-cert${NC}         Install Caddy Local Root SSL certificate into trust store"
-        echo -e "  ${GREEN}stop${NC}                 Stop all running stacks"
-        echo -e "  ${GREEN}status${NC}               Show status of running containers"
-        echo -e "  ${GREEN}dns${NC}                  Inspect active DNS records and resolver configuration"
+        echo -e "  ${GREEN}install${NC}         Initialize .env, storage, and global PATH"
+        echo -e "  ${GREEN}start${NC}           Configure networking/DNS hosts and boot oops"
+        echo -e "  ${GREEN}install-cert${NC}    Install Caddy Local Root SSL certificate into trust store"
+        echo -e "  ${GREEN}stop${NC}            Stop runtime services"
+        echo -e ""
+        echo -e "For managing stacks and profiles, use ${BLUE}oops <command>${NC} (e.g. oops up, oops switch, oops status)."
         ;;
 esac

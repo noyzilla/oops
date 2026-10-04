@@ -12,17 +12,17 @@ This blueprint provides a production-ready, modular multi-stack Docker Compose e
 ├── devoops.yml           # Local Workstation Engine & DNS settings (git-ignored)
 ├── devoops.yml.example   # Workstation configuration template (Committed)
 ├── stacks/               # All Multi-Stack Definitions (Pure IaC, Git-tracked)
-│   ├── edge/             # Stack: Ingress Reverse Proxy & Auto-SSL (net-edge)
+│   ├── edge/             # Group: Ingress Reverse Proxy, Auto-SSL & Oops Daemon (net-edge)
 │   │   ├── compose.yml
-│   │   └── config/
-│   │       └── caddy/Caddyfile
-│   ├── db/               # Stack: Persistence & Cache (net-db - isolated from edge)
+│   │   └── caddy/
+│   │       └── Caddyfile
+│   ├── db/               # Group: Persistence & Cache (net-db - isolated from edge)
 │   │   ├── compose.yml
-│   │   └── config/
-│   │       └── mysql/my.cnf
-│   ├── apps/             # Stack: Application Services (web-app, worker)
+│   │   └── mysql/
+│   │       └── my.cnf
+│   ├── tool/             # Group: Development Utilities & Mocking (httpbin, mailpit)
 │   │   └── compose.yml
-│   └── utils/            # Stack: Oops Webhook Engine & Utilities (net-edge+net-db)
+│   └── apps/             # Group: Application Services (web-app, worker)
 │       └── compose.yml
 ├── bin/                  # Workstation Dev Tooling (macOS/Linux - Excluded on Prod)
 │   ├── devoops           # Main Dispatcher (Auto-detects OS)
@@ -45,17 +45,16 @@ Oops Stack enforces the **Principle of Least Privilege & Network Isolation**:
 
 ```mermaid
 graph TD
-    Internet((Internet / Clients)) -->|Ports 80/443| Edge["Edge Stack (Caddy / Traefik / Nginx)"]
+    Internet((Internet / Clients)) -->|Ports 80/443| Edge["Edge Group (Caddy + Oops Daemon)"]
     
     subgraph "net-edge (Ingress Only)"
         Edge -->|Reverse Proxy| WebApp["apps: web-app"]
-        Edge -.->|Optional| OopsEngine["utils: oops-engine"]
+        Edge -->|Reverse Proxy| Tools["tool: httpbin / mailpit"]
     end
     
     subgraph "net-db (Internal & Isolated)"
         WebApp -->|SQL / Cache| DB["db: MySQL / Postgres / Redis"]
         Worker["apps: worker (Isolated / NO Internet)"] -->|Queue / DB| DB
-        OopsEngine -->|Backup / Exec| DB
     end
     
     style Edge fill:#3b82f6,stroke:#1d4ed8,color:#fff
@@ -78,7 +77,7 @@ Run the automated installation to initialize credentials, storage, macOS DNS res
 ```
 
 ### Start Dev Environment (`devoops start`)
-Starts VM routing (if using Colima) and starts the default service group (`OOPS_DEFAULT_GROUP=default` in `.env`):
+Starts VM routing (if using Colima) and boots the default profile (`profiles.default` in `oops.yml`):
 ```bash
 devoops start
 ```
@@ -101,7 +100,7 @@ registries:
   noyzilla: ghcr.io/noyzilla
   hub: docker.io/myorg
 
-groups:
+profiles:
   default:    # Default daily development: Edge Router & DNS
     - /edge
 

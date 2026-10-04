@@ -1,6 +1,6 @@
 services:
   caddy-proxy:
-    image: lucaslorentz/caddy-docker-proxy:2.9-alpine
+    image: lucaslorentz/caddy-docker-proxy:alpine
     container_name: caddy-proxy
     hostname: .web.oops
     restart: unless-stopped

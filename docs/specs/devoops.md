@@ -56,12 +56,12 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 | Subcommand | Arguments | Description |
 | :--- | :--- | :--- |
-| `devoops install` | *(none)* | Automated workstation setup: initializes storage, `.env`, VM/routes, and registers `devoops` to global PATH |
-| `devoops start` | `[profile]` | Starts VM/daemon, network routing, and launches default or specified profile (e.g. `@default`, `@lab`) |
-| `devoops install-cert` | *(none)* | Exports Caddy local root CA from container volume and installs it into OS Trust Store |
-| `devoops stop` | *(none)* | Stops services and shuts down running stacks |
-| `devoops status` | *(none)* | Displays status of running containers |
-| `devoops dns` | *(none)* | Prints active local DNS mappings and resolver configuration |
+| `devoops install` | *(none)* | Automated workstation setup: initializes storage, `.env`, VM/routes, DNS resolver, and registers `devoops` to global PATH |
+| `devoops start` | *(none)* | Boots VM/daemon, configures network/DNS, and starts default oops runtime (`oops up`) |
+| `devoops install-cert` | *(none)* | Exports Caddy local root CA from container volume and installs it into OS Trust Store / macOS Keychain |
+| `devoops stop` | *(none)* | Stops services and shuts down running stacks via `oops down` |
+
+> **Note**: For managing stacks, profiles, container health, logs, and DNS records, developers use `oops <command>` directly (e.g. `oops up @lab`, `oops switch`, `oops status`, `oops dns`).
 
 ## Dependency & Blast-Radius Matrix
 
@@ -77,6 +77,6 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 - **Syntax Validation**: `sh -n oopsbox/bin/devoops` and `bash -n oopsbox/bin/devoops-mac` and `bash -n oopsbox/bin/devoops-linux` exit with Code 0.
 - **Execution Scenarios**:
-  - Running `bin/devoops --help` displays all subcommands cleanly.
-  - Running `bin/devoops status` inspects OS and passes through status.
-  - Passthrough commands (`bin/devoops up @default`, `bin/devoops status`) execute equivalent `oops` operations.
+  - Running `bin/devoops` or `bin/devoops --help` displays all subcommands cleanly.
+  - Running `bin/devoops start` boots VM engine, configures networking/resolver, and delegates to `oops up`.
+  - Running `bin/devoops stop` delegates to `oops down`.

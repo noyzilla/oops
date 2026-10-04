@@ -72,7 +72,7 @@ The DNS resolver table is maintained dynamically via the Docker Engine API and s
 ```
 
 - **Thread-Safety**: Hostname lookup and mutation use read/write locking (`sync.RWMutex`).
-- **Multi-Network IP Resolution**: Uses the primary network IP (preferring `net-edge`, `net-apps`, or bridge).
+- **Multi-Network IP Resolution**: Uses the primary network IP (preferring `net-edge`, `net-db`, or bridge).
 
 ---
 
