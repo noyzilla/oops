@@ -1,203 +1,180 @@
-# Oops
+# Oops & Oopsbox
 
 ![Oops Logo](logo.jpg)
 > *Because "Oops, sorry!" is the most common phrase when DevOps breaks production.*
 
-Oops is a lightweight service written in Go (Golang) designed to handle webhooks from CI/CD systems (e.g., GitHub Actions, GitLab CI). It automates the process of pulling the latest Docker images, performing graceful shutdowns, recreating containers, and pruning old images, all based on Docker Labels defined on the target containers.
-
-## Features
-
-- **Zero-Downtime Architecture (Image Mode)**: Pulls the latest image and orchestrates container recreation with exact volume and network preservation.
-- **Source-Based Deployment (Git Mode)**: Supports lightweight environments by spawning a temporary container to `git pull` the latest source code directly into your mounted volumes, then restarts the target container.
-- **Regex Container Targeting**: Update specific containers dynamically using Regular Expressions via the webhook payload (e.g., target `webapp_.*`).
-- **Per-Project Security**: Assign specific Secrets to individual containers via labels for isolated, project-level security. Each container strictly validates its own webhook token.
-- **Graceful Shutdown (Stop Command)**: Execute custom commands (e.g., `sleep`, `php artisan horizon:terminate`) inside the container before stopping it, preventing interrupted background jobs.
-- **Auto Cleanup**: Automatically removes dangling images after a successful Image deployment to save disk space.
+**Oops** is a zero-overhead DevOps orchestration engine, native DNS daemon, and multi-stack CLI written in Go.
+**Oopsbox** is the flagship turnkey infrastructure blueprint that delivers an instant, production-grade Docker Compose workstation and server environment with automated local HTTPS (`*.web.oops`), embedded DNS resolution (`:53`), and multi-group stack isolation.
 
 ---
 
-## Installation & Setup
+## 🌟 The Flagship: Oopsbox Blueprint (`oopsbox/`)
 
-You can run Oops using the official Docker image or by building it from source.
+**Oopsbox** is a complete, pre-configured Infrastructure as Code (IaC) setup located in [`oopsbox/`](oopsbox/README.md). It eliminates DevOps boilerplate and provides an instant developer environment on macOS (OrbStack / Colima) and Linux.
 
-### Docker Image (Recommended)
-
-Create a `docker-compose.yml` for Oops:
-```yaml
-services:
-  oops:
-    image: ghcr.io/noyzilla/oops:latest
-    container_name: oops
-    restart: unless-stopped
-    volumes:
-      # Must mount docker.sock to allow oops to manage other containers
-      - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - "8080:80"
+```text
+oopsbox/
+├── oops.yml              # Master Config: profiles (@default, @lab), registry shortcuts, backups, DNS
+├── devoops.yml           # Workstation Settings: VM engine (OrbStack/Colima), resources, local DNS
+├── stacks/               # Pure Git-Tracked Infrastructure as Code (IaC)
+│   ├── edge/             # Group: Ingress Reverse Proxy (Caddy) + Oops Daemon (net-edge)
+│   │   ├── compose.yml
+│   │   └── caddy/Caddyfile
+│   ├── db/               # Group: Persistence & Cache (MySQL, Postgres, Redis on isolated net-db)
+│   │   ├── compose.yml
+│   │   └── mysql/my.cnf
+│   ├── tool/             # Group: Dev & Mock Utilities (httpbin, mailpit on net-edge)
+│   │   └── compose.yml
+│   └── apps/             # Group: Application Services (web-app, worker)
+│       └── compose.yml
+├── bin/                  # Workstation Developer Tools (devoops, devoops-mac, devoops-linux)
+├── data/                 # Live container storage (High-IOPS persistent host volumes)
+└── backups/              # Automated database dumps & filesystem data archives
 ```
 
-Start the service:
-```bash
-docker compose up -d
-```
+### Why Oopsbox?
 
-### Build from Source
+- **1-Command Workstation Setup**: Run `./bin/devoops install` and `devoops start` to boot the VM, set up host networking, register the macOS/Linux DNS resolver, and trust root SSL certificates.
+- **Automated Local HTTPS**: Caddy Edge Proxy automatically issues and serves valid TLS certificates with green locks for `https://*.web.oops`.
+- **Embedded Zero-Config DNS**: Containers are instantly resolvable by hostname (e.g. `mysql.oops`, `redis.oops`, `host.oops`, `vm.oops`) through the embedded Oops DNS engine.
+- **Strict Network Isolation**: Enforces least privilege across `net-edge` (public ingress) and `net-db` (isolated backend).
+- **Single Source of Truth (`oops.yml`)**: Configure project profiles (`profiles:`), image registry aliases (`registries:`), and automated backups in one clean YAML file.
 
-Clone the repository and start:
-```bash
-git clone https://github.com/noyzilla/oops.git
-cd oops
-docker compose up -d --build
-```
-
-> Oops will listen for webhooks on port `8080` (or the port configured via `OOPS_PORT` / `PORT` environment variable).
+👉 **[Read the Full Oopsbox Blueprint Guide](oopsbox/README.md)**
 
 ---
 
-## Target Container Configuration
+## ⚡️ The Engine: Oops CLI & Daemon
 
-For security reasons, Oops relies exclusively on **Docker Labels** instead of Environment Variables. This prevents sensitive infrastructure secrets from being exposed inside the container's application space (preventing leaks in case of a Remote Code Execution vulnerability in the app).
+The `oops` CLI binary manages multi-group containers, performs safe rolling updates, automates database provisioning, and executes backups.
 
-To allow Oops to manage a specific container, add the following labels to the target project's `docker-compose.yml`:
+### 1. Smart Target & Profile Selectors
+```bash
+# Start default profile (@default defined in oops.yml)
+oops up
+
+# Start custom project profile or whole group
+oops up @lab
+oops up /edge
+oops up /db
+
+# Switch active profile (starts target profile & gracefully stops others)
+oops switch @lab
+
+# Double Dot (..) wildcards
+oops restart app..          # Matches all services starting with 'app'
+oops stop ..worker          # Matches all services ending with 'worker'
+oops logs ..api..           # Matches any service containing 'api'
+
+# Stop all services except exclusions
+oops stop -x /edge -x redis
+```
+
+### 2. Zero-Downtime Sequential Rolling Updates
+```bash
+# Pull -> Pre-Stop Hook -> Recreate -> Health Check Poll -> Delay Gap
+oops update /apps -d 5s
+oops update gar/my-app:v2.0
+```
+
+### 3. Automated Database & User Provisioning
+```bash
+# Generate 20-char secure passwords and provision DB + User + Grants
+oops db mysql create my_database my_user
+oops db pg:pg-replica create analytics_db analyst_user
+oops db mysql passwd my_user new_password
+```
+
+### 4. Automated Backup & Safe Interactive Restore
+```bash
+# Full backup (Database Dumps + Filesystem Volume Tarballs)
+oops backup
+oops backup prune -r 7d
+
+# Safe restore with workspace check, confirmation guard, and dry-run preview
+oops restore backups/mysql_backup_20261004.sql.gz
+oops restore backups/data_uploads_20261004.tar.gz --dry-run
+```
+
+### 5. Native DNS Inspection & Management
+```bash
+# Inspect active DNS resolution table (Containers + Custom Records)
+oops dns
+oops dns get mysql.oops
+
+# Manage custom static / wildcard DNS records
+oops dns set api.internal 10.0.0.5
+oops dns set .staging.oops 127.0.0.1
+oops dns del api.internal
+```
+
+---
+
+## 🚀 CI/CD Webhook Deployments
+
+Oops runs as a lightweight daemon (`oops server`) listening for deployment webhooks from GitHub Actions, GitLab CI, or custom pipelines.
+
+### Container Labels (`compose.yml`)
+
+Add labels to target containers to authorize Oops and configure lifecycle hooks:
 
 | Label | Required | Description |
-| --- | --- | --- |
-| `oops.enable` | Yes | Must be set to `true` to authorize the Oops to manage this container. |
-| `oops.secret` | Yes | Project-specific secret. The webhook token must match this secret exactly for the update to proceed. |
-| `oops.stop.cmd` | No | **(Optional)** Command to execute inside the container **before** it is stopped (useful for graceful shutdowns). |
-| `oops.stop.timeout` | No | **(Optional)** Maximum duration (e.g. `30s`, `1m`) to wait for the stop command to complete. Default is `30s` (or `$OOPS_STOP_TIMEOUT`). |
-| `oops.git.dir` | **Yes (Git Mode)** | The absolute path inside the container where the source code is mounted (e.g. `/app`). |
-| `oops.git.url` | **Yes (Git Mode)** | The Git repository URL of the project. Validated against the webhook `url` to prevent accidental deployments to the wrong container, and used to auto-clone if `.git` does not exist. |
-| `oops.tool.image` | No | **(Optional)** Image to run as a tool container after git pull. |
-| `oops.tool.cmd` | No | **(Optional)** Command to run inside the tool container. |
+| :--- | :---: | :--- |
+| `oops.enable` | Yes | Must be `"true"` to authorize Oops management. |
+| `oops.secret` | Yes | Secure webhook token for per-project authentication. |
+| `oops.stop.cmd` | No | Command to execute inside container *before* stopping (e.g. `php artisan horizon:terminate`). |
+| `oops.stop.timeout` | No | Timeout for graceful pre-stop hook (e.g. `30s`, `60s`). Default: `30s`. |
+| `oops.health.url` | No | HTTP health check URL for polling readiness after recreation. |
+| `oops.git.url` | Yes (Git Mode) | Git repository URL for volume source checkout. |
+| `oops.git.dir` | Yes (Git Mode) | Absolute path inside container where source is mounted (e.g. `/app`). |
 
-### Example Target `docker-compose.yml`:
-```yaml
-services:
-  app_image_node:
-    image: myrepo/myimage:latest
-    container_name: web_image_node
-    labels:
-      - "oops.enable=true"
-      - "oops.secret=${MY_APP_SECRET}" # Strongly recommended to use .env file for secrets
-      - "oops.stop.cmd=sleep 5 && echo 'Finishing background jobs...'"
-      - "oops.stop.timeout=30"
+### Webhook Trigger Example
 
-  app_git_php:
-    image: dunglas/frankenphp:latest-alpine
-    container_name: web_git_php
-    volumes:
-      - ./sites/web_git_php/app:/app/public
-    labels:
-      - "oops.enable=true"
-      - "oops.secret=my-secret"
-      - "oops.git.url=https://github.com/myorg/my-php-app.git"
-      - "oops.git.dir=/app/public"
-      - "oops.tool.image=composer:latest"
-      - "oops.tool.cmd=composer install --no-dev"
-
-  app_git_bun:
-    image: oven/bun:alpine
-    container_name: web_git_bun
-    command: ["bun", "run", "index.ts"]
-    volumes:
-      - ./sites/web_git_bun/app:/app
-    labels:
-      - "oops.enable=true"
-      - "oops.secret=my-bun-secret"
-      - "oops.git.url=https://github.com/myorg/my-bun-app.git"
-      - "oops.git.dir=/app"
-      - "oops.tool.image=oven/bun:alpine"
-      - "oops.tool.cmd=bun install"
-```
-
----
-
-## Triggering Deployments (Webhook)
-
-The service listens for HTTP `POST` requests at the `/update` endpoint. You must provide the authentication token in the headers and the target configuration in a JSON payload.
-
-### Authentication Header
-The `Authorization` header is required.
-```http
-Authorization: Bearer <SECRET_TOKEN>
-```
-
-### JSON Payload
-
-You can trigger different deployment modes by specifying the `action` field (`image` or `git`).
-
-#### Image Deployment Mode (Default)
-The `image` field is **mandatory** for this mode.
-
-- **Update all containers using a specific image**
-  ```json
-  {
-    "action": "image",
-    "image": "myrepo/myimage:latest"
-  }
-  ```
-
-- **Update multiple containers matching a Regex**
-  ```json
-  {
-    "action": "image",
-    "image": "myrepo/myimage:latest",
-    "container": "^web_image_.*"
-  }
-  ```
-
-#### Git Pull Deployment Mode
-Uses a temporary container to execute `git fetch` and `git checkout` to a specific tag in your mounted volume, then restarts the target container.
-
-> [!WARNING]
-> **Data Loss Prevention:** The oops uses `git checkout -f` to enforce the tag state. Any modifications to tracked files inside the `git_dir` **will be overwritten**. For production, always mount persistent data (like user uploads or SQLite databases) as a separate Docker Volume.
-
-- **Deploy a specific Git Tag (Required)**
-  ```json
-  {
-    "action": "git",
-    "url": "https://github.com/myorg/my-bun-app.git",
-    "tag": "v1.2.3",
-    "container": "^web_git_bun$"
-  }
-  ```
-
-### Example cURL Request
 ```bash
 curl -X POST \
-  -H "Authorization: Bearer super-secret-key-for-this-app" \
+  -H "Authorization: Bearer my-secure-token" \
   -H "Content-Type: application/json" \
-  -d '{"action": "image", "image": "myrepo/myimage:latest", "container": "^web_image_.*"}' \
-  http://<SERVER_IP>:8080/update
+  -d '{"action": "image", "image": "ghcr.io/myorg/web-app:v1.2.0"}' \
+  https://oops.web.oops/update
 ```
 
 ---
 
-## Supported Payload Fields
+## 🏁 Quickstart
 
-- `action`: (Required) Either `"image"` or `"git"`. Defaults to `"image"`.
-- `image`: (Required for `image` action) The full image name and tag to deploy.
-- `url`: (Required for `git` action) The Git repository URL. Only containers with a matching `oops.git.url` label will be targeted.
-- `tag`: (Required for `git` action) The specific Git tag to checkout (e.g., `v1.2.3`).
-- `container`: (Optional) Regular expression matching the container names to update. If omitted, it will attempt to update ALL authorized containers matching the given `image` or `url`.
+### Option A: Use Oopsbox (Recommended)
+```bash
+git clone https://github.com/noyzilla/oops.git
+cd oops/oopsbox
+
+# Initialize workstation environment (.env, storage, DNS resolver, global PATH)
+./bin/devoops install
+
+# Start environment
+devoops start
+
+# Install local root SSL certificate for green lock HTTPS (*.web.oops)
+devoops install-cert
+```
+
+### Option B: Run Standalone CLI / Daemon
+```bash
+# Build oops binary locally
+go build -o oops .
+
+# Run webhook & DNS server
+./oops server -p 80
+```
 
 ---
 
-## Contributing
-
-Please see [CONTRIBUTING.md](CONTRIBUTING.md) for local development setup, testing, Conventional Commits guidelines, and release procedures with `svu`.
-
----
-
-## Architecture & Domain Context
+## Architecture & Specifications
 
 - [System Architecture](ARCHITECTURE.md)
 - [Domain Glossary & Ubiquitous Language](CONTEXT.md)
-- [Living Specifications: CLI Orchestration](docs/specs/cli.md)
-- [Living Specifications: DevOops Workstation](docs/specs/devoops.md)
-- [Living Specifications: Native DNS Daemon](docs/specs/dns.md)
-- [Living Specifications: Webhook Daemon](docs/specs/webhook.md)
-- [Oopsbox Master Blueprint](oopsbox/README.md)
-- [System Documentation & Deep-Dives](docs/README.md)
-
+- [Oopsbox Master Blueprint Guide](oopsbox/README.md)
+- [CLI Orchestration Specification](docs/specs/cli.md)
+- [DevOops Workstation Tooling Specification](docs/specs/devoops.md)
+- [Native DNS Daemon Specification](docs/specs/dns.md)
+- [Webhook Daemon Specification](docs/specs/webhook.md)
+- [System Documentation Taxonomy](docs/README.md)
