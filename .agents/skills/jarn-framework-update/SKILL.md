@@ -26,7 +26,7 @@ Activate this workflow when:
 
 ### Execute the Updater Script
 - Run the following command in the terminal to execute the Jarn unified installer:
-  `curl -fsSL https://raw.githubusercontent.com/noyzilla/jarn/main/scripts/jarn.sh | sh`
+  `curl -fsSL https://raw.githubusercontent.com/noyzilla/jarn/main/install.sh | sh`
 - Wait for the script to finish and check the exit code. If it fails, report the error to the user immediately.
 
 ### Ingest Updated Rules & Modular Skills
