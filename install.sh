@@ -59,25 +59,51 @@ fi
 cp -R "$SRC_DIR/"* "$TARGET_DIR/" 2>/dev/null || true
 cp -R "$SRC_DIR/."* "$TARGET_DIR/" 2>/dev/null || true
 
-# 4. Make developer tool scripts executable
-chmod +x "$TARGET_DIR/bin/"* 2>/dev/null || true
+# 4. Download and Install Native Oops CLI Binary as Primary
+CLI_INSTALLED=false
+OS_RAW="$(uname -s)"
+case "$OS_RAW" in
+    Darwin*) OS="darwin" ;;
+    Linux*)  OS="linux" ;;
+    *)       OS="" ;;
+esac
 
-# 5. Run Oopsbox Initialization
-if [ -f "$TARGET_DIR/bin/oopsbox" ]; then
-    echo -e "\n==> Initializing workstation configuration..."
-    (cd "$TARGET_DIR" && ./bin/oopsbox install)
+ARCH_RAW="$(uname -m)"
+case "$ARCH_RAW" in
+    x86_64|amd64)  ARCH="amd64" ;;
+    arm64|aarch64) ARCH="arm64" ;;
+    *)             ARCH="" ;;
+esac
+
+if [ -n "$OS" ] && [ -n "$ARCH" ]; then
+    echo -e "==> Downloading native Oops CLI binary for ${OS}-${ARCH}..."
+    BINARY_URL="https://github.com/noyzilla/oops/releases/latest/download/oops-${OS}-${ARCH}"
+    if curl -fsSL "$BINARY_URL" -o "$TARGET_DIR/bin/oops" 2>/dev/null && [ -s "$TARGET_DIR/bin/oops" ]; then
+        chmod +x "$TARGET_DIR/bin/oops"
+        CLI_INSTALLED=true
+        echo -e "${GREEN}✓ Downloaded native Oops CLI to ${TARGET_DIR}/bin/oops${NC}"
+    else
+        echo -e "${YELLOW}Notice: Native release binary not found; will use wrapper fallback.${NC}"
+    fi
 fi
 
-# 6. Install Global Oops Wrapper Script if writable
-WRAPPER_INSTALLED=false
-WRAPPER_PATH=""
+# Make developer tool scripts executable
+chmod +x "$TARGET_DIR/bin/"* 2>/dev/null || true
 
+# 5. Link Global Oops CLI (Native Binary Primary, Docker Wrapper Fallback)
+GLOBAL_OOPS_INSTALLED=false
 for CANDIDATE_DIR in "/usr/local/bin" "$HOME/.local/bin"; do
     if [ -d "$CANDIDATE_DIR" ] && [ -w "$CANDIDATE_DIR" ]; then
-        WRAPPER_PATH="$CANDIDATE_DIR/oops"
-        cat > "$WRAPPER_PATH" <<'EOF'
+        if [ "$CLI_INSTALLED" = true ]; then
+            ln -sf "$TARGET_DIR/bin/oops" "$CANDIDATE_DIR/oops"
+            GLOBAL_OOPS_INSTALLED=true
+            echo -e "${GREEN}✓ Linked native oops CLI binary at ${CANDIDATE_DIR}/oops${NC}"
+            break
+        else
+            WRAPPER_PATH="$CANDIDATE_DIR/oops"
+            cat > "$WRAPPER_PATH" <<'EOF'
 #!/bin/sh
-# Oops Docker CLI Wrapper with Same Host Path Mapping
+# Oops Docker CLI Wrapper Fallback
 BOX_DIR="${OOPSBOX_DIR:-$HOME/oopsbox}"
 exec docker run --rm -i \
   -v /var/run/docker.sock:/var/run/docker.sock \
@@ -86,12 +112,19 @@ exec docker run --rm -i \
   -e OOPSBOX_DIR="${BOX_DIR}" \
   ghcr.io/noyzilla/oops:latest "$@"
 EOF
-        chmod +x "$WRAPPER_PATH"
-        WRAPPER_INSTALLED=true
-        echo -e "${GREEN}✓ Installed global oops wrapper at ${WRAPPER_PATH}${NC}"
-        break
+            chmod +x "$WRAPPER_PATH"
+            GLOBAL_OOPS_INSTALLED=true
+            echo -e "${YELLOW}✓ Installed global oops Docker wrapper fallback at ${WRAPPER_PATH}${NC}"
+            break
+        fi
     fi
 done
+
+# 6. Run Oopsbox Initialization
+if [ -f "$TARGET_DIR/bin/oopsbox" ]; then
+    echo -e "\n==> Initializing workstation configuration..."
+    (cd "$TARGET_DIR" && ./bin/oopsbox install)
+fi
 
 # 7. Print Completion & Quickstart Instructions
 echo -e "\n${BOLD}${GREEN}==============================================================================${NC}"
@@ -99,14 +132,14 @@ echo -e "${BOLD}${GREEN}  Oopsbox Installation Complete!${NC}"
 echo -e "${BOLD}${GREEN}==============================================================================${NC}"
 echo -e "Oopsbox Location: ${BOLD}${TARGET_DIR}${NC}\n"
 
-if [ "$WRAPPER_INSTALLED" = true ]; then
+if [ "$GLOBAL_OOPS_INSTALLED" = true ]; then
     echo -e "You can run ${BOLD}oops${NC} from any directory:"
     echo -e "  ${BOLD}export OOPSBOX_DIR=\"${TARGET_DIR}\"${NC}"
     echo -e "  ${BOLD}oops up${NC}\n"
 else
     echo -e "Add this alias to your shell profile (~/.bashrc or ~/.zshrc):"
     echo -e "  ${BOLD}export OOPSBOX_DIR=\"${TARGET_DIR}\"${NC}"
-    echo -e "  ${BOLD}alias oops='docker run --rm -i -v /var/run/docker.sock:/var/run/docker.sock -v \"\${OOPSBOX_DIR:-\$HOME/oopsbox}\":\"\${OOPSBOX_DIR:-\$HOME/oopsbox}\" -w \"\${OOPSBOX_DIR:-\$HOME/oopsbox}\" -e OOPSBOX_DIR=\"\${OOPSBOX_DIR:-\$HOME/oopsbox}\" ghcr.io/noyzilla/oops:latest'${NC}\n"
+    echo -e "  ${BOLD}alias oops='${TARGET_DIR}/bin/oops'${NC}\n"
 fi
 
 echo -e "To start your environment:"

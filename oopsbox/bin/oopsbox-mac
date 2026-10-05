@@ -572,6 +572,33 @@ cmd_upgrade() {
     cp -f "$src_dir/bin/"* "$OOPSBOX_DIR/bin/" 2>/dev/null || true
     chmod +x "$OOPSBOX_DIR/bin/"* 2>/dev/null || true
 
+    # Download latest native oops CLI binary
+    local arch_raw="$(uname -m)"
+    local arch="amd64"
+    case "$arch_raw" in
+        arm64|aarch64) arch="arm64" ;;
+        x86_64|amd64)  arch="amd64" ;;
+    esac
+
+    local cli_url=""
+    if [ "$target_ver" = "latest" ]; then
+        cli_url="https://github.com/noyzilla/oops/releases/latest/download/oops-darwin-${arch}"
+    else
+        cli_url="https://github.com/noyzilla/oops/releases/download/${target_ver}/oops-darwin-${arch}"
+    fi
+
+    echo -e "==> Downloading native Oops CLI binary (darwin-${arch})..."
+    if curl -fsSL "$cli_url" -o "$OOPSBOX_DIR/bin/oops" 2>/dev/null && [ -s "$OOPSBOX_DIR/bin/oops" ]; then
+        chmod +x "$OOPSBOX_DIR/bin/oops"
+        if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
+            ln -sf "$OOPSBOX_DIR/bin/oops" /usr/local/bin/oops
+        elif [ -d "$HOME/.local/bin" ]; then
+            mkdir -p "$HOME/.local/bin"
+            ln -sf "$OOPSBOX_DIR/bin/oops" "$HOME/.local/bin/oops"
+        fi
+        echo -e "${GREEN}✓ Native oops CLI binary upgraded successfully.${NC}"
+    fi
+
     echo -e "==> Updating template and documentation files..."
     for tmpl in ".env.example" "oopsbox.yml.example" "README.md"; do
         if [ -f "$src_dir/$tmpl" ]; then
