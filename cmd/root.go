@@ -231,5 +231,4 @@ func init() {
 	rootCmd.AddCommand(newRestoreDataCmd())
 	rootCmd.AddCommand(newDNSCmd())
 	rootCmd.AddCommand(newIPCmd())
-	rootCmd.AddCommand(newIPsCmd())
 }

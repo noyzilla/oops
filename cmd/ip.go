@@ -36,16 +36,6 @@ func newIPCmd() *cobra.Command {
 	}
 }
 
-func newIPsCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "ips",
-		Short: "List all active Docker container IP addresses sorted by IP",
-		Long:  "Inspects all running Docker containers, extracts their network IP addresses, and displays a formatted table sorted by IP address.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runIPsList(cmd)
-		},
-	}
-}
 
 func runSingleIPLookup(cmd *cobra.Command, target string) error {
 	workDir := ResolveWorkDir(targetDir)

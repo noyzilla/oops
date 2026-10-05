@@ -35,7 +35,6 @@ func TestRootCommandSubcommands(t *testing.T) {
 		"version",
 		"selfupdate",
 		"ip",
-		"ips",
 	}
 
 	for _, sub := range expectedSubcommands {
