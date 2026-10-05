@@ -4,14 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
-## [Unreleased]
+## [0.14.0] - 2026-10-05
+
+### Features
+- Implemented container status inspection command (`oops status`) with Docker Engine API integration showing status, health, IP, and formatted ports.
+- Refined port formatting rules in `oops status` with `*:` (all-interface `0.0.0.0`/`::`), `#:` (loopback `127.0.0.1`), multi-port array grouping (`*:[9001,9002]->9000`), port deduplication, and `PORTS (*=all, #=local)` table header legend.
+- Set default server listening port to `8080` for non-root safety and edge proxy compatibility.
 
 ### Changed
-- Updated Jarn framework from v0.10.0 to v0.10.1 and declared `Release Mode: host-release` in `AGENTS.md`.
-- Release workflow now waits (up to 10 minutes) for the host release object before uploading assets, instead of failing after a single 5-second retry.
+- Streamlined CLI subcommands by removing legacy aliases (`webhook`, `daemon`, `db-backup`, `data-backup`, `db-restore`, `data-restore`, `delete`, `rm`).
+- Updated `oops db` help and living specifications to explicitly list supported database engines (`mysql`, `pg`/`postgres`).
+- Updated Jarn framework to v0.10.1 and declared `Release Mode: host-release` in `AGENTS.md`.
 
 ### Fixed
-- Release workflow no longer fails with `release not found` when the tag is pushed before the release object is created.
+- Release workflow no longer fails with `release not found` when tag is pushed before the release object is created.
 
 ## [0.13.0] - 2026-10-05
 
