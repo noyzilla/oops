@@ -94,6 +94,10 @@ func ReadSQLHeader(r io.Reader) (*DBManifest, error) {
 		}
 	}
 
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("read sql header: %w", err)
+	}
+
 	if !foundAny {
 		return nil, nil
 	}

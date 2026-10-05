@@ -1,6 +1,7 @@
 package backup_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -92,7 +93,7 @@ backups:
 	_ = os.WriteFile(filepath.Join(workDir, "oops.yml"), []byte(oopsYaml), 0644)
 
 	// Execute data backup
-	err := backup.ExecuteDataBackup(nil, workDir, backupDir, nil, 7*24*time.Hour)
+	err := backup.ExecuteDataBackup(t.Context(), workDir, backupDir, nil, 7*24*time.Hour)
 	if err != nil {
 		t.Fatalf("ExecuteDataBackup failed: %v", err)
 	}
@@ -137,7 +138,7 @@ backups:
 	}
 
 	// Test ExecuteRestoreData (dry-run)
-	err = backup.ExecuteRestoreData(nil, workDir, backupDir, "uploads", true, true)
+	err = backup.ExecuteRestoreData(t.Context(), workDir, backupDir, "uploads", true, true)
 	if err != nil {
 		t.Fatalf("ExecuteRestoreData dry-run failed: %v", err)
 	}
@@ -146,7 +147,7 @@ backups:
 	sampleFile := filepath.Join(workDir, "data", "uploads", "sample.png")
 	_ = os.Remove(sampleFile)
 
-	err = backup.ExecuteRestoreData(nil, workDir, backupDir, "uploads", false, true)
+	err = backup.ExecuteRestoreData(t.Context(), workDir, backupDir, "uploads", false, true)
 	if err != nil {
 		t.Fatalf("ExecuteRestoreData actual restore failed: %v", err)
 	}
@@ -196,5 +197,21 @@ func TestFindLatestDBBackup_Redis(t *testing.T) {
 	}
 	if latest != redisFile {
 		t.Errorf("expected %s, got %s", redisFile, latest)
+	}
+}
+
+type errReader struct{}
+
+func (e *errReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New("simulated read failure")
+}
+
+func TestReadSQLHeader_ScannerError(t *testing.T) {
+	manifest, err := backup.ReadSQLHeader(&errReader{})
+	if err == nil {
+		t.Fatalf("expected error from ReadSQLHeader on bad reader, got nil error (manifest: %+v)", manifest)
+	}
+	if !strings.Contains(err.Error(), "simulated read failure") {
+		t.Errorf("unexpected error message: %v", err)
 	}
 }

@@ -238,6 +238,9 @@ func SetStaticDNSRecord(workDir, domain, ipStr string) (string, error) {
 				lines = append(lines, text)
 			}
 		}
+		if err := scanner.Err(); err != nil {
+			return "", fmt.Errorf("read %s: %w", targetPath, err)
+		}
 	} else {
 		lines = append(lines, "# ==============================================================================")
 		lines = append(lines, "# Oops Static DNS Records (Domain IP)")
@@ -297,6 +300,10 @@ func DeleteStaticDNSRecord(workDir, domain string) (string, error) {
 			continue // skip this line to delete
 		}
 		lines = append(lines, text)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("read %s: %w", targetPath, err)
 	}
 
 	if !found {
