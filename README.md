@@ -160,26 +160,20 @@ curl -X POST \
 
 ## Quickstart
 
-### 1-Line Installer (Recommended)
-Install Oopsbox and the global CLI wrapper with one command:
+### 1-Line Installer: Oopsbox & CLI (Complete Blueprint)
+Install the full Oopsbox workstation blueprint and native CLI with one command:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash
 ```
 
-### Download Standalone CLI Binary (Native)
-Download the pre-compiled, static binary directly for your OS & architecture:
+### 1-Line Installer: Oops CLI Only (Standalone)
+Auto-detects your OS and architecture (`darwin/arm64`, `darwin/amd64`, `linux/arm64`, `linux/amd64`) and installs the standalone binary:
 ```bash
-# macOS (Apple Silicon / arm64)
-curl -fsSL https://github.com/noyzilla/oops/releases/latest/download/oops-darwin-arm64 -o /usr/local/bin/oops && chmod +x /usr/local/bin/oops
+# Default install to /usr/local/bin/oops (or ~/.local/bin/oops)
+curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install-cli.sh | bash
 
-# macOS (Intel / amd64)
-curl -fsSL https://github.com/noyzilla/oops/releases/latest/download/oops-darwin-amd64 -o /usr/local/bin/oops && chmod +x /usr/local/bin/oops
-
-# Linux (x86_64 / amd64)
-curl -fsSL https://github.com/noyzilla/oops/releases/latest/download/oops-linux-amd64 -o /usr/local/bin/oops && chmod +x /usr/local/bin/oops
-
-# Linux (ARM64 / aarch64)
-curl -fsSL https://github.com/noyzilla/oops/releases/latest/download/oops-linux-arm64 -o /usr/local/bin/oops && chmod +x /usr/local/bin/oops
+# Custom installation path:
+curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install-cli.sh | bash -s -- /usr/local/bin/oops
 ```
 
 ### Upgrading Oopsbox
