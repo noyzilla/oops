@@ -1,0 +1,54 @@
+name: Release Multi-OS Binaries
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Build multi-OS binaries
+        run: |
+          mkdir -p dist
+          targets=(
+            "linux/amd64"
+            "linux/arm64"
+            "darwin/amd64"
+            "darwin/arm64"
+          )
+          for target in "${targets[@]}"; do
+            os="${target%%/*}"
+            arch="${target##*/}"
+            output="dist/oops-${os}-${arch}"
+            echo "==> Building ${output}..."
+            CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" go build -ldflags="-s -w" -o "${output}" .
+          done
+
+      - name: Generate Checksums
+        working-directory: dist
+        run: |
+          sha256sum oops-* > checksums.txt
+
+      - name: Publish Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/oops-linux-amd64
+            dist/oops-linux-arm64
+            dist/oops-darwin-amd64
+            dist/oops-darwin-arm64
+            dist/checksums.txt

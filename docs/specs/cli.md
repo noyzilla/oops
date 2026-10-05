@@ -195,6 +195,16 @@ Oops commands can be invoked from any terminal directory. The working directory 
 
 ---
 
+## Binary Distribution & Multi-OS Releases
+
+Upon tag releases (`v*.*.*`), standalone statically-linked executable binaries (`CGO_ENABLED=0`, `-ldflags="-s -w"`) and SHA-256 checksums (`checksums.txt`) are compiled and published directly to GitHub Release assets via GitHub Actions:
+- `oops-linux-amd64`
+- `oops-linux-arm64`
+- `oops-darwin-amd64`
+- `oops-darwin-arm64`
+
+---
+
 ## Dependency & Blast-Radius Matrix
 
 - **Upstream Callers**: CLI human operators, CI/CD runners (bash, scripts).
