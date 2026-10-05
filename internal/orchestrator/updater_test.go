@@ -1,6 +1,7 @@
 package orchestrator_test
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -74,5 +75,22 @@ func TestGetStopTimeout(t *testing.T) {
 	labelsDefault := map[string]string{}
 	if got := orchestrator.GetStopTimeout(labelsDefault); got != 30*time.Second {
 		t.Errorf("expected default 30s, got %v", got)
+	}
+}
+
+func TestFindEnvFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	envPath := tmpDir + "/.env"
+	_ = os.WriteFile(envPath, []byte("OOPS_SECRET=test-secret"), 0644)
+
+	// Compose file in sub-directory stacks/edge/compose.yml
+	stacksEdgeDir := tmpDir + "/stacks/edge"
+	_ = os.MkdirAll(stacksEdgeDir, 0755)
+	composeFile := stacksEdgeDir + "/compose.yml"
+	_ = os.WriteFile(composeFile, []byte("services: {}"), 0644)
+
+	found := orchestrator.FindEnvFile(composeFile)
+	if found != envPath {
+		t.Errorf("expected FindEnvFile to find %q, got %q", envPath, found)
 	}
 }

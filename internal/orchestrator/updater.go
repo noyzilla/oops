@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -58,9 +60,46 @@ func (o *Orchestrator) FindContainerID(ctx context.Context, target docker.Resolv
 	return "", nil
 }
 
-// RunComposeCommand executes docker compose with specific arguments
+// FindEnvFile walks up from composePath to locate the nearest .env file in the workspace
+func FindEnvFile(composePath string) string {
+	dir := filepath.Dir(composePath)
+	if dir == "." || dir == "" {
+		if abs, err := filepath.Abs(composePath); err == nil {
+			dir = filepath.Dir(abs)
+		}
+	} else if !filepath.IsAbs(dir) {
+		if abs, err := filepath.Abs(dir); err == nil {
+			dir = abs
+		}
+	}
+
+	curr := dir
+	for {
+		candidate := filepath.Join(curr, ".env")
+		if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
+			return candidate
+		}
+		parent := filepath.Dir(curr)
+		if parent == curr {
+			break
+		}
+		curr = parent
+	}
+	return ""
+}
+
+// RunComposeCommand executes docker compose with specific arguments and auto-detected .env
 func RunComposeCommand(composePath string, args ...string) error {
-	cmdArgs := append([]string{"compose", "-f", composePath}, args...)
+	var cmdArgs []string
+	cmdArgs = append(cmdArgs, "compose")
+
+	if envFile := FindEnvFile(composePath); envFile != "" {
+		cmdArgs = append(cmdArgs, "--env-file", envFile)
+	}
+
+	cmdArgs = append(cmdArgs, "-f", composePath)
+	cmdArgs = append(cmdArgs, args...)
+
 	cmd := exec.Command("docker", cmdArgs...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
