@@ -38,10 +38,15 @@ jobs:
             CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" go build -ldflags="-s -w" -o "${output}" .
           done
 
+      - name: Package Oopsbox Blueprint
+        run: |
+          mkdir -p dist
+          tar -czf dist/oopsbox.tar.gz -C oopsbox .
+
       - name: Generate Checksums
         working-directory: dist
         run: |
-          sha256sum oops-* > checksums.txt
+          sha256sum oops-* oopsbox.tar.gz > checksums.txt
 
       - name: Publish Release Assets
         uses: softprops/action-gh-release@v2
@@ -51,4 +56,5 @@ jobs:
             dist/oops-linux-arm64
             dist/oops-darwin-amd64
             dist/oops-darwin-arm64
+            dist/oopsbox.tar.gz
             dist/checksums.txt

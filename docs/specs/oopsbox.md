@@ -61,6 +61,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 | `oopsbox install-cert` | *(none)* | Exports Caddy local root CA from container volume and installs it into OS Trust Store / macOS Keychain |
 | `oopsbox stop` | *(none)* | Stops services and shuts down running stacks via `oops down` to release container names and ports |
 | `oopsbox switch` | `<path>` | Multi-box handover: Tears down current active workspace (`oops down`), re-links global CLI, and boots target Oopsbox environment |
+| `oopsbox upgrade` | `[tag]` | In-place workstation upgrade: fetches latest (or tagged) release blueprint, safely updates `bin/` scripts, template examples, and re-links global symlink without touching user data or custom `.env` |
 
 ### Multi-Box Switching Invariant (`oopsbox switch <path>`)
 When switching between isolated organization workspaces (e.g. `~/Workspaces/org-a/oopsbox` -> `~/Workspaces/org-b/oopsbox`):

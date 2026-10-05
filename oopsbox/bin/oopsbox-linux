@@ -282,6 +282,70 @@ cmd_switch() {
     echo -e "${GREEN}=======================================================${NC}"
 }
 
+cmd_upgrade() {
+    local target_ver="${1:-latest}"
+    echo -e "${BLUE}==> Upgrading Oopsbox workstation scripts and example templates (${target_ver})...${NC}"
+
+    command -v curl >/dev/null 2>&1 || { echo -e "${RED}Error: curl is required.${NC}" >&2; exit 1; }
+    command -v tar >/dev/null 2>&1 || { echo -e "${RED}Error: tar is required.${NC}" >&2; exit 1; }
+
+    local tmp_dir=$(mktemp -d)
+    cleanup_upgrade() {
+        rm -rf "$tmp_dir"
+    }
+    trap cleanup_upgrade EXIT
+
+    local src_dir=""
+    local download_url=""
+    if [ "$target_ver" = "latest" ]; then
+        download_url="https://github.com/noyzilla/oops/releases/latest/download/oopsbox.tar.gz"
+    else
+        download_url="https://github.com/noyzilla/oops/releases/download/${target_ver}/oopsbox.tar.gz"
+    fi
+
+    echo -e "==> Downloading Oopsbox blueprint from ${download_url}..."
+    if curl -fsSL "$download_url" -o "$tmp_dir/oopsbox.tar.gz" 2>/dev/null && [ -s "$tmp_dir/oopsbox.tar.gz" ]; then
+        mkdir -p "$tmp_dir/extracted"
+        tar -xzf "$tmp_dir/oopsbox.tar.gz" -C "$tmp_dir/extracted"
+        src_dir="$tmp_dir/extracted"
+    else
+        echo -e "==> Release artifact not found; falling back to GitHub main branch archive..."
+        curl -fsSL https://github.com/noyzilla/oops/archive/refs/heads/main.tar.gz -o "$tmp_dir/oops.tar.gz"
+        tar -xzf "$tmp_dir/oops.tar.gz" -C "$tmp_dir"
+        src_dir="$tmp_dir/oops-main/oopsbox"
+    fi
+
+    if [ ! -d "$src_dir/bin" ]; then
+        echo -e "${RED}Error: Invalid blueprint archive downloaded.${NC}" >&2
+        exit 1
+    fi
+
+    echo -e "==> Updating bin/ scripts..."
+    mkdir -p "$OOPSBOX_DIR/bin"
+    cp -f "$src_dir/bin/"* "$OOPSBOX_DIR/bin/" 2>/dev/null || true
+    chmod +x "$OOPSBOX_DIR/bin/"* 2>/dev/null || true
+
+    echo -e "==> Updating template and documentation files..."
+    for tmpl in ".env.example" "oopsbox.yml.example" "README.md"; do
+        if [ -f "$src_dir/$tmpl" ]; then
+            cp -f "$src_dir/$tmpl" "$OOPSBOX_DIR/$tmpl"
+        fi
+    done
+
+    # Re-link global CLI symlink
+    if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
+        ln -sf "$OOPSBOX_DIR/bin/oopsbox" /usr/local/bin/oopsbox
+    elif [ -d "$HOME/.local/bin" ]; then
+        mkdir -p "$HOME/.local/bin"
+        ln -sf "$OOPSBOX_DIR/bin/oopsbox" "$HOME/.local/bin/oopsbox"
+    fi
+
+    echo -e "\n${GREEN}=======================================================${NC}"
+    echo -e "${GREEN}✓ Oopsbox workstation scripts & templates successfully upgraded!${NC}"
+    echo -e "  Location: $OOPSBOX_DIR"
+    echo -e "${GREEN}=======================================================${NC}"
+}
+
 case "$1" in
     install)
         cmd_install
@@ -298,6 +362,9 @@ case "$1" in
     switch)
         cmd_switch "$2"
         ;;
+    upgrade|update)
+        cmd_upgrade "$2"
+        ;;
     *)
         echo -e "${BLUE}Oopsbox Workstation Tool (Linux)${NC}"
         echo -e "Usage: oopsbox <command>"
@@ -308,6 +375,7 @@ case "$1" in
         echo -e "  ${GREEN}install-cert${NC}    Install Caddy Local Root SSL certificate into trust store"
         echo -e "  ${GREEN}stop${NC}            Stop runtime services (runs oops down)"
         echo -e "  ${GREEN}switch <path>${NC}   Tear down current box, switch context, and start target oopsbox"
+        echo -e "  ${GREEN}upgrade [tag]${NC}   Upgrade workstation scripts in bin/ and example templates in-place"
         echo -e ""
         echo -e "For managing stacks and profiles, use ${BLUE}oops <command>${NC} (e.g. oops up, oops switch, oops status)."
         ;;

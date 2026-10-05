@@ -37,19 +37,22 @@ cleanup() {
 trap cleanup EXIT
 
 echo -e "==> Downloading Oopsbox blueprint from GitHub..."
-curl -fsSL https://github.com/noyzilla/oops/archive/refs/heads/main.tar.gz -o "$TMP_DIR/oops.tar.gz"
-
-echo -e "==> Extracting blueprint..."
-tar -xzf "$TMP_DIR/oops.tar.gz" -C "$TMP_DIR"
-
-mkdir -p "$TARGET_DIR"
-
-# Copy oopsbox contents without clobbering existing custom .env
-if [ -d "$TMP_DIR/oops-main/oopsbox" ]; then
-    SRC_DIR="$TMP_DIR/oops-main/oopsbox"
+if curl -fsSL https://github.com/noyzilla/oops/releases/latest/download/oopsbox.tar.gz -o "$TMP_DIR/oopsbox.tar.gz" 2>/dev/null && [ -s "$TMP_DIR/oopsbox.tar.gz" ]; then
+    echo -e "==> Extracting release blueprint..."
+    mkdir -p "$TMP_DIR/extracted"
+    tar -xzf "$TMP_DIR/oopsbox.tar.gz" -C "$TMP_DIR/extracted"
+    SRC_DIR="$TMP_DIR/extracted"
 else
-    echo -e "${RED}Error: Failed to locate oopsbox directory in downloaded archive.${NC}" >&2
-    exit 1
+    echo -e "==> Downloading fallback blueprint from main branch..."
+    curl -fsSL https://github.com/noyzilla/oops/archive/refs/heads/main.tar.gz -o "$TMP_DIR/oops.tar.gz"
+    echo -e "==> Extracting blueprint..."
+    tar -xzf "$TMP_DIR/oops.tar.gz" -C "$TMP_DIR"
+    if [ -d "$TMP_DIR/oops-main/oopsbox" ]; then
+        SRC_DIR="$TMP_DIR/oops-main/oopsbox"
+    else
+        echo -e "${RED}Error: Failed to locate oopsbox directory in downloaded archive.${NC}" >&2
+        exit 1
+    fi
 fi
 
 # Copy all files & directories
