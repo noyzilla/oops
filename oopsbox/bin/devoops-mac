@@ -459,6 +459,58 @@ cmd_stop() {
     echo -e "${GREEN}✓ DevOops stopped.${NC}"
 }
 
+cmd_switch() {
+    local target_raw="$1"
+    if [ -z "$target_raw" ]; then
+        echo -e "${RED}Error: Target oopsbox directory path is required.${NC}"
+        echo -e "Usage: ${BLUE}devoops switch <path/to/oopsbox>${NC}"
+        exit 1
+    fi
+
+    local target_path
+    if [[ "$target_raw" == ~* ]]; then
+        target_path="${target_raw/#\~/$HOME}"
+    else
+        target_path="$(cd "$target_raw" 2>/dev/null && pwd || echo "$target_raw")"
+    fi
+
+    if [ ! -d "$target_path" ]; then
+        echo -e "${RED}Error: Directory not found: $target_path${NC}"
+        exit 1
+    fi
+
+    if [ ! -d "$target_path/stacks" ] && [ ! -f "$target_path/oops.yml" ] && [ ! -f "$target_path/devoops.yml" ]; then
+        echo -e "${RED}Error: $target_path is not a valid Oopsbox workspace (missing stacks/ or oops.yml).${NC}"
+        exit 1
+    fi
+
+    echo -e "${BLUE}==> Switching DevOops context to: $target_path${NC}"
+
+    # Step 1: Clean and tear down current containers to release names and ports
+    echo -e "${YELLOW}==> Tearing down active containers from current workspace...${NC}"
+    cmd_stop
+
+    # Step 2: Re-link global CLI symlink
+    local target_bin="$target_path/bin/devoops"
+    if [ -f "$target_bin" ]; then
+        if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
+            ln -sf "$target_bin" /usr/local/bin/devoops
+        elif [ -d "/usr/local/bin" ]; then
+            sudo ln -sf "$target_bin" /usr/local/bin/devoops 2>/dev/null || true
+        fi
+    fi
+
+    # Step 3: Start target environment
+    echo -e "${BLUE}==> Booting up target environment...${NC}"
+    (cd "$target_path" && ./bin/devoops start)
+
+    echo -e "\n${GREEN}=======================================================${NC}"
+    echo -e "${GREEN}✓ Successfully switched active Oopsbox to: $target_path${NC}"
+    echo -e "To ensure 'oops' targets this box outside its directory, run:"
+    echo -e "  export OOPSBOX_DIR=\"$target_path\""
+    echo -e "${GREEN}=======================================================${NC}"
+}
+
 case "$1" in
     install)
         cmd_install
@@ -472,6 +524,9 @@ case "$1" in
     stop)
         cmd_stop
         ;;
+    switch)
+        cmd_switch "$2"
+        ;;
     *)
         echo -e "${BLUE}DevOops Workstation Tool (macOS)${NC}"
         echo -e "Usage: devoops <command>"
@@ -480,7 +535,8 @@ case "$1" in
         echo -e "  ${GREEN}install${NC}         Initialize .env, storage, macOS DNS resolver, and global PATH"
         echo -e "  ${GREEN}start${NC}           Start VM engine, configure networking/DNS, and boot oops"
         echo -e "  ${GREEN}install-cert${NC}    Install Caddy Local Root SSL certificate into macOS Keychain"
-        echo -e "  ${GREEN}stop${NC}            Stop runtime services"
+        echo -e "  ${GREEN}stop${NC}            Stop runtime services (runs oops down)"
+        echo -e "  ${GREEN}switch <path>${NC}   Tear down current box, switch context, and start target oopsbox"
         echo -e ""
         echo -e "For managing stacks and profiles, use ${BLUE}oops <command>${NC} (e.g. oops up, oops switch, oops status)."
         ;;

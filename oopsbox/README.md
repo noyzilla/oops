@@ -88,6 +88,12 @@ Adds Caddy's local root CA certificate to macOS Keychain (enables green lock for
 devoops install-cert
 ```
 
+### Switch Active Oopsbox (`devoops switch <path>`)
+Seamlessly switch between multiple isolated organization workspaces without port or container name collisions:
+```bash
+devoops switch ~/Workspaces/another-org/oopsbox
+```
+
 ---
 
 ## Unified Configuration (`oops.yml`)

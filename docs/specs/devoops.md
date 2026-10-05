@@ -59,7 +59,14 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 | `devoops install` | *(none)* | Automated workstation setup: initializes storage, `.env`, VM/routes, DNS resolver, and registers `devoops` to global PATH |
 | `devoops start` | *(none)* | Boots VM/daemon, configures network/DNS, and starts default oops runtime (`oops up`) |
 | `devoops install-cert` | *(none)* | Exports Caddy local root CA from container volume and installs it into OS Trust Store / macOS Keychain |
-| `devoops stop` | *(none)* | Stops services and shuts down running stacks via `oops down` |
+| `devoops stop` | *(none)* | Stops services and shuts down running stacks via `oops down` to release container names and ports |
+| `devoops switch` | `<path>` | Multi-box handover: Tears down current active workspace (`oops down`), re-links global CLI, and boots target Oopsbox environment |
+
+### Multi-Box Switching Invariant (`devoops switch <path>`)
+When switching between isolated organization workspaces (e.g. `~/Workspaces/org-a/oopsbox` -> `~/Workspaces/org-b/oopsbox`):
+- **Container Name Cleanup**: Fixed container names (`caddy-proxy`, `mysql`, `postgres`, `redis`, `oops`) cannot coexist across multiple workspaces. `devoops switch` executes a full graceful `down` on the current workspace before booting the target workspace.
+- **Zero Data Loss**: Because service data is persisted in host directories (`./data/`), tearing down containers does not delete databases or persistent volumes.
+- **Global Symlink Handover**: Atomically updates `/usr/local/bin/devoops` to target the active Oopsbox's `bin/devoops`.
 
 > **Note**: For managing stacks, profiles, container health, logs, and DNS records, developers use `oops <command>` directly (e.g. `oops up @lab`, `oops switch`, `oops status`, `oops dns`).
 
@@ -77,6 +84,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 - **Syntax Validation**: `sh -n oopsbox/bin/devoops` and `bash -n oopsbox/bin/devoops-mac` and `bash -n oopsbox/bin/devoops-linux` exit with Code 0.
 - **Execution Scenarios**:
-  - Running `bin/devoops` or `bin/devoops --help` displays all subcommands cleanly.
+  - Running `bin/devoops` or `bin/devoops --help` displays all subcommands cleanly (including `switch`).
   - Running `bin/devoops start` boots VM engine, configures networking/resolver, and delegates to `oops up`.
   - Running `bin/devoops stop` delegates to `oops down`.
+  - Running `bin/devoops switch <path>` tears down current containers and starts the target Oopsbox cleanly without port or name collisions.
