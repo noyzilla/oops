@@ -135,6 +135,9 @@ func TestHelpOutput(t *testing.T) {
 }
 
 func TestResolveWorkDir(t *testing.T) {
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+
 	// 1. Explicit Custom Dir
 	custom := "/tmp/my-oopsbox"
 	if got := cmd.ResolveWorkDir(custom); got != custom {

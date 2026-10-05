@@ -161,9 +161,13 @@ curl -X POST \
 ## Quickstart
 
 ### 1-Line Installer: Oopsbox & CLI (Complete Blueprint)
-Install the full Oopsbox workstation blueprint and native CLI with one command:
+Install the full Oopsbox workstation blueprint and native CLI:
 ```bash
+# Default: Install directly into the current directory
 curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash
+
+# Custom directory: Install into a specific project path (e.g. ~/oopsbox or ./my-project)
+curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash -s -- ~/oopsbox
 ```
 
 ### 1-Line Installer: Oops CLI Only (Standalone)

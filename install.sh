@@ -3,7 +3,11 @@ set -e
 
 # ==============================================================================
 # Oops & Oopsbox One-Line Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash
+# Usage:
+#   # Install to current directory:
+#   curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash
+#   # Install to specified project directory:
+#   curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash -s -- <project-directory>
 # ==============================================================================
 
 # ANSI Color Codes
@@ -19,9 +23,37 @@ echo -e "${BOLD}${BLUE}  Oops & Oopsbox Installer${NC}"
 echo -e "${BOLD}${BLUE}==============================================================================${NC}"
 
 # 1. Determine Target Installation Directory
-TARGET_DIR="${1:-${OOPSBOX_DIR:-$HOME/oopsbox}}"
+TARGET_INPUT=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dir|-d|--path|-o)
+            TARGET_INPUT="$2"
+            shift 2
+            ;;
+        -*)
+            shift
+            ;;
+        *)
+            if [[ -z "$TARGET_INPUT" ]]; then
+                TARGET_INPUT="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+if [[ -n "$TARGET_INPUT" ]]; then
+    TARGET_DIR="$TARGET_INPUT"
+else
+    TARGET_DIR="$(pwd)"
+fi
+
 # Expand tilde if present
 TARGET_DIR="${TARGET_DIR/#\~/$HOME}"
+
+# Ensure target directory exists and resolve absolute path
+mkdir -p "$TARGET_DIR"
+TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
 
 echo -e "==> Target Directory: ${BOLD}${TARGET_DIR}${NC}"
 
@@ -30,14 +62,14 @@ command -v curl >/dev/null 2>&1 || { echo -e "${RED}Error: curl is required but 
 command -v tar >/dev/null 2>&1 || { echo -e "${RED}Error: tar is required but not installed.${NC}" >&2; exit 1; }
 
 # 3. Download and Extract Oopsbox Blueprint
-TMP_DIR=$(mktemp -d)
+TMP_DIR="$(mktemp -d)"
 cleanup() {
     rm -rf "$TMP_DIR"
 }
-trap cleanup EXIT
+trap cleanup EXIT INT TERM
 
 echo -e "==> Downloading Oopsbox blueprint from GitHub..."
-if curl -fsSL https://github.com/noyzilla/oops/releases/latest/download/oopsbox.tar.gz -o "$TMP_DIR/oopsbox.tar.gz" 2>/dev/null && [ -s "$TMP_DIR/oopsbox.tar.gz" ]; then
+if curl -fsSL https://github.com/noyzilla/oops/releases/latest/download/oopsbox.tar.gz -o "$TMP_DIR/oopsbox.tar.gz" 2>/dev/null && [[ -s "$TMP_DIR/oopsbox.tar.gz" ]]; then
     echo -e "==> Extracting release blueprint..."
     mkdir -p "$TMP_DIR/extracted"
     tar -xzf "$TMP_DIR/oopsbox.tar.gz" -C "$TMP_DIR/extracted"
@@ -47,7 +79,7 @@ else
     curl -fsSL https://github.com/noyzilla/oops/archive/refs/heads/main.tar.gz -o "$TMP_DIR/oops.tar.gz"
     echo -e "==> Extracting blueprint..."
     tar -xzf "$TMP_DIR/oops.tar.gz" -C "$TMP_DIR"
-    if [ -d "$TMP_DIR/oops-main/oopsbox" ]; then
+    if [[ -d "$TMP_DIR/oops-main/oopsbox" ]]; then
         SRC_DIR="$TMP_DIR/oops-main/oopsbox"
     else
         echo -e "${RED}Error: Failed to locate oopsbox directory in downloaded archive.${NC}" >&2
@@ -55,9 +87,9 @@ else
     fi
 fi
 
-# Copy all files & directories
-cp -R "$SRC_DIR/"* "$TARGET_DIR/" 2>/dev/null || true
-cp -R "$SRC_DIR/."* "$TARGET_DIR/" 2>/dev/null || true
+# Copy all blueprint files & directories into target directory
+mkdir -p "$TARGET_DIR"
+cp -R "$SRC_DIR/." "$TARGET_DIR/"
 
 # 4. Download and Install Native Oops CLI Binary as Primary
 CLI_INSTALLED=false
@@ -70,15 +102,17 @@ esac
 
 ARCH_RAW="$(uname -m)"
 case "$ARCH_RAW" in
-    x86_64|amd64)  ARCH="amd64" ;;
-    arm64|aarch64) ARCH="arm64" ;;
-    *)             ARCH="" ;;
+    x86_64|amd64)        ARCH="amd64" ;;
+    arm64|aarch64|armv8*) ARCH="arm64" ;;
+    *)                   ARCH="" ;;
 esac
 
-if [ -n "$OS" ] && [ -n "$ARCH" ]; then
+mkdir -p "$TARGET_DIR/bin"
+
+if [[ -n "$OS" && -n "$ARCH" ]]; then
     echo -e "==> Downloading native Oops CLI binary for ${OS}-${ARCH}..."
     BINARY_URL="https://github.com/noyzilla/oops/releases/latest/download/oops-${OS}-${ARCH}"
-    if curl -fsSL "$BINARY_URL" -o "$TARGET_DIR/bin/oops" 2>/dev/null && [ -s "$TARGET_DIR/bin/oops" ]; then
+    if curl -fsSL "$BINARY_URL" -o "$TARGET_DIR/bin/oops" 2>/dev/null && [[ -s "$TARGET_DIR/bin/oops" ]]; then
         chmod +x "$TARGET_DIR/bin/oops"
         CLI_INSTALLED=true
         echo -e "${GREEN}✓ Downloaded native Oops CLI to ${TARGET_DIR}/bin/oops${NC}"
@@ -93,8 +127,8 @@ chmod +x "$TARGET_DIR/bin/"* 2>/dev/null || true
 # 5. Link Global Oops CLI (Native Binary Primary, Docker Wrapper Fallback)
 GLOBAL_OOPS_INSTALLED=false
 for CANDIDATE_DIR in "/usr/local/bin" "$HOME/.local/bin"; do
-    if [ -d "$CANDIDATE_DIR" ] && [ -w "$CANDIDATE_DIR" ]; then
-        if [ "$CLI_INSTALLED" = true ]; then
+    if [[ -d "$CANDIDATE_DIR" && -w "$CANDIDATE_DIR" ]]; then
+        if [[ "$CLI_INSTALLED" == true ]]; then
             ln -sf "$TARGET_DIR/bin/oops" "$CANDIDATE_DIR/oops"
             GLOBAL_OOPS_INSTALLED=true
             echo -e "${GREEN}✓ Linked native oops CLI binary at ${CANDIDATE_DIR}/oops${NC}"
@@ -121,7 +155,7 @@ EOF
 done
 
 # 6. Run Oopsbox Initialization
-if [ -f "$TARGET_DIR/bin/oopsbox" ]; then
+if [[ -f "$TARGET_DIR/bin/oopsbox" ]]; then
     echo -e "\n==> Initializing workstation configuration..."
     (cd "$TARGET_DIR" && ./bin/oopsbox install)
 fi
@@ -132,7 +166,7 @@ echo -e "${BOLD}${GREEN}  Oopsbox Installation Complete!${NC}"
 echo -e "${BOLD}${GREEN}==============================================================================${NC}"
 echo -e "Oopsbox Location: ${BOLD}${TARGET_DIR}${NC}\n"
 
-if [ "$GLOBAL_OOPS_INSTALLED" = true ]; then
+if [[ "$GLOBAL_OOPS_INSTALLED" == true ]]; then
     echo -e "You can run ${BOLD}oops${NC} from any directory:"
     echo -e "  ${BOLD}export OOPSBOX_DIR=\"${TARGET_DIR}\"${NC}"
     echo -e "  ${BOLD}oops up${NC}\n"
@@ -143,6 +177,7 @@ else
 fi
 
 echo -e "To start your environment:"
-echo -e "  1. ${BOLD}oopsbox start${NC}"
-echo -e "  2. ${BOLD}oopsbox install-cert${NC} (to enable local trusted HTTPS for *.web.oops)"
+echo -e "  1. ${BOLD}cd ${TARGET_DIR}${NC}"
+echo -e "  2. ${BOLD}oopsbox start${NC}"
+echo -e "  3. ${BOLD}oopsbox install-cert${NC} (to enable local trusted HTTPS for *.web.oops)"
 echo -e "${BOLD}${GREEN}==============================================================================${NC}\n"
