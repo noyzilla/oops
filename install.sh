@@ -39,33 +39,30 @@ echo -e "==> Detected Platform: ${BOLD}${OS}-${ARCH}${NC}"
 # 2. Check Prerequisite Tools
 command -v curl >/dev/null 2>&1 || { echo -e "${RED}Error: curl is required but not installed.${NC}" >&2; exit 1; }
 
-# 3. Determine Target Binary Installation Path
+# 3. Determine Target Binary Installation Path & Sudo Requirement
 TARGET_BIN_DIR=""
 USE_SUDO=false
 
 if [[ -f /etc/os-release ]] && (grep -qi "Container-Optimized OS" /etc/os-release 2>/dev/null || grep -qi "^ID=.*cos" /etc/os-release 2>/dev/null); then
     TARGET_BIN_DIR="/var/lib/google/bin"
-    if [[ ! -d "$TARGET_BIN_DIR" ]]; then
-        if [[ -w "/var/lib/google" ]]; then
-            mkdir -p "$TARGET_BIN_DIR"
-        elif command -v sudo >/dev/null 2>&1; then
-            sudo mkdir -p "$TARGET_BIN_DIR"
-        fi
-    fi
 fi
 
 if [[ -z "$TARGET_BIN_DIR" ]]; then
     if [[ -d "/usr/local/bin" && -w "/usr/local/bin" ]]; then
         TARGET_BIN_DIR="/usr/local/bin"
     elif [[ -w "/usr/local" ]]; then
-        mkdir -p "/usr/local/bin"
         TARGET_BIN_DIR="/usr/local/bin"
     elif command -v sudo >/dev/null 2>&1; then
         TARGET_BIN_DIR="/usr/local/bin"
-        USE_SUDO=true
     else
         TARGET_BIN_DIR="$HOME/.local/bin"
-        mkdir -p "$TARGET_BIN_DIR"
+    fi
+fi
+
+# Detect whether sudo permissions are required for the target directory
+if [[ ! -w "$TARGET_BIN_DIR" && ! -w "$(dirname "$TARGET_BIN_DIR")" ]]; then
+    if command -v sudo >/dev/null 2>&1 && [[ "$EUID" -ne 0 ]]; then
+        USE_SUDO=true
     fi
 fi
 
