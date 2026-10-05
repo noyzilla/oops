@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-05
+
+### Added
+- Multi-OS raw binary releases (`oops-linux-amd64`, `oops-linux-arm64`, `oops-darwin-amd64`, `oops-darwin-arm64`) with SHA-256 `checksums.txt` compiled and published via GitHub Actions.
+- Oopsbox blueprint package asset (`oopsbox.tar.gz`) generated and attached to GitHub Releases for fast, pinned-version provisioning.
+- In-place workstation upgrade command (`oopsbox upgrade [tag]`, alias: `update`) in `oopsbox-mac` and `oopsbox-linux` to safely update `bin/` scripts and templates without touching user data or custom `.env`.
+
+### Changed
+- Optimized `install.sh` one-line installer to prioritize downloading release `oopsbox.tar.gz` directly with graceful fallback to `main` branch archive.
+
+### Fixed
+- Handled `scanner.Err()` checks across backup manifest and DNS records parser, and standardized test contexts using `t.Context()`.
+
 ## [0.8.0] - 2026-10-05
 
 ### Added
