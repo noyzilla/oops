@@ -19,9 +19,6 @@ func FindDNSFilePath(workDir string) string {
 	if custom := os.Getenv("OOPS_DNS_FILE"); custom != "" {
 		return custom
 	}
-	if custom := os.Getenv("OOPS_HOSTS_FILE"); custom != "" {
-		return custom
-	}
 
 	candidatePaths := []string{
 		filepath.Join(workDir, "data", "oops", "dns.records"),

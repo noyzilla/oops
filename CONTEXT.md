@@ -105,14 +105,14 @@ All environment variables follow the **[Topic] -> [Modifier] -> [Unit]** standar
 | :--- | :--- | :---: | :---: | :--- |
 | `OOPSBOX_DIR` | `CONFIG.CLI.WORK_DIR` | `string` | `""` | Target oopsbox directory (auto-probes `~/.oops/active_box`, `~/oopsbox`, `/opt/oopsbox`) |
 | `OOPS_DOMAIN` | `CONFIG.SERVER.DOMAIN` | `string` | `""` | Optional ingress FQDN for webhook daemon |
-| `OOPS_PORT` | `CONFIG.SERVER.PORT` | `int / string` | `80` | Webhook HTTP daemon listening port (fallback: `PORT`) |
-| `OOPS_SECRET` | `CONFIG.WEBHOOK.SECRET` | `string` | `""` | Global fallback webhook secret token |
-| `OOPS_DNS_UPSTREAM` | `CONFIG.DNS.UPSTREAM` | `string` | `1.1.1.1:53,8.8.8.8:53` | Upstream DNS relays (fallback; configured via `oops.yml` `dns.upstreams`) |
-| `OOPS_HEALTHCHECK_TIMEOUT` | `CONFIG.HEALTHCHECK.TIMEOUT` | `duration` | `10m` | Maximum wait time for container to become healthy (fallback: `HEALTHCHECK_TIMEOUT_SECONDS`) |
-| `OOPS_HEALTHCHECK_INTERVAL`| `CONFIG.HEALTHCHECK.INTERVAL`| `duration` | `3s` | Polling interval between health checks (fallback: `HEALTHCHECK_INTERVAL_SECONDS`) |
-| `OOPS_STOP_TIMEOUT` | `CONFIG.CONTAINER.STOP_TIMEOUT`| `duration` | `30s` | Default timeout for graceful container stop (fallback: `STOP_TIMEOUT_SECONDS`) |
-| `OOPS_BACKUP_RETENTION` | `CONFIG.BACKUP.RETENTION` | `duration` | `7d` | Retention window for database dump archives (fallback: `BACKUP_RETENTION_DAYS`) |
-| `OOPS_BACKUP_DIR` | `CONFIG.BACKUP.DIR` | `string` | `./backups` | Target directory for backup files (fallback: `BACKUP_DIR`) |
+| `OOPS_PORT` | `CONFIG.SERVER.PORT` | `int / string` | `80` | Webhook HTTP daemon listening port |
+| `OOPS_SECRET` | `CONFIG.WEBHOOK.SECRET` | `string` | `""` | Global webhook secret token |
+| `OOPS_DNS_UPSTREAM` | `CONFIG.DNS.UPSTREAM` | `string` | `1.1.1.1:53,8.8.8.8:53` | Upstream DNS relays (override via `oops.yml` `dns.upstreams`) |
+| `OOPS_HEALTHCHECK_TIMEOUT` | `CONFIG.HEALTHCHECK.TIMEOUT` | `duration` | `10m` | Maximum wait time for container to become healthy |
+| `OOPS_HEALTHCHECK_INTERVAL`| `CONFIG.HEALTHCHECK.INTERVAL`| `duration` | `3s` | Polling interval between health checks |
+| `OOPS_STOP_TIMEOUT` | `CONFIG.CONTAINER.STOP_TIMEOUT`| `duration` | `30s` | Default timeout for graceful container stop |
+| `OOPS_BACKUP_RETENTION` | `CONFIG.BACKUP.RETENTION` | `duration` | `7d` | Retention window for database and data dump archives |
+| `OOPS_BACKUP_DIR` | `CONFIG.BACKUP.DIR` | `string` | `./backups` | Target directory for backup files |
 | `MYSQL_ROOT_PASSWORD` | `CONFIG.MYSQL.ROOT_PASSWORD` | `string` | `""` | Root password for MySQL container exec |
 | `POSTGRES_PASSWORD` | `CONFIG.POSTGRES.PASSWORD` | `string` | `""` | Admin password for Postgres exec |
 

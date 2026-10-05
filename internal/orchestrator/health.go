@@ -13,21 +13,15 @@ import (
 	"github.com/docker/docker/client"
 )
 
-// GetHealthcheckTimeout reads OOPS_HEALTHCHECK_TIMEOUT with fallback to HEALTHCHECK_TIMEOUT_SECONDS (default 10m)
+// GetHealthcheckTimeout reads OOPS_HEALTHCHECK_TIMEOUT (default 10m)
 func GetHealthcheckTimeout() time.Duration {
 	val := os.Getenv("OOPS_HEALTHCHECK_TIMEOUT")
-	if val == "" {
-		val = os.Getenv("HEALTHCHECK_TIMEOUT_SECONDS")
-	}
 	return ParseDurationWithDefault(val, 10*time.Minute)
 }
 
-// GetHealthcheckInterval reads OOPS_HEALTHCHECK_INTERVAL with fallback to HEALTHCHECK_INTERVAL_SECONDS (default 3s)
+// GetHealthcheckInterval reads OOPS_HEALTHCHECK_INTERVAL (default 3s)
 func GetHealthcheckInterval() time.Duration {
 	val := os.Getenv("OOPS_HEALTHCHECK_INTERVAL")
-	if val == "" {
-		val = os.Getenv("HEALTHCHECK_INTERVAL_SECONDS")
-	}
 	return ParseDurationWithDefault(val, 3*time.Second)
 }
 

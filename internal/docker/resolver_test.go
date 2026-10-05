@@ -287,8 +287,8 @@ services:
     image: redis:7-alpine
 `), 0644)
 
-	// Create stacks/oops.yml
-	os.WriteFile(filepath.Join(stacksDir, "oops.yml"), []byte(`
+	// Create oops.yml at root
+	os.WriteFile(filepath.Join(tmpDir, "oops.yml"), []byte(`
 registries:
   gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
   gh: ghcr.io/myorg
@@ -363,7 +363,7 @@ services:
     image: my-worker:latest
 `), 0644)
 
-	_ = os.WriteFile(filepath.Join(stacksDir, "oops.yml"), []byte(`
+	_ = os.WriteFile(filepath.Join(tmpDir, "oops.yml"), []byte(`
 profiles:
   core:
     - /edge

@@ -29,12 +29,9 @@ func ParseDurationWithDefault(raw string, defaultDur time.Duration) time.Duratio
 	return defaultDur
 }
 
-// GetDefaultStopTimeout reads OOPS_STOP_TIMEOUT with fallback to STOP_TIMEOUT_SECONDS and 30s default
+// GetDefaultStopTimeout reads OOPS_STOP_TIMEOUT with 30s default
 func GetDefaultStopTimeout() time.Duration {
 	val := os.Getenv("OOPS_STOP_TIMEOUT")
-	if val == "" {
-		val = os.Getenv("STOP_TIMEOUT_SECONDS")
-	}
 	return ParseDurationWithDefault(val, 30*time.Second)
 }
 

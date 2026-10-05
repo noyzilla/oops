@@ -89,7 +89,7 @@ backups:
     - name: certs
       path: data/caddy
 `
-	_ = os.WriteFile(filepath.Join(workDir, "stacks", "oops.yml"), []byte(oopsYaml), 0644)
+	_ = os.WriteFile(filepath.Join(workDir, "oops.yml"), []byte(oopsYaml), 0644)
 
 	// Execute data backup
 	err := backup.ExecuteDataBackup(nil, workDir, backupDir, nil, 7*24*time.Hour)

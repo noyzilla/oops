@@ -26,10 +26,7 @@ func newServerCmd() *cobra.Command {
 			if port == "" {
 				port = os.Getenv("OOPS_PORT")
 				if port == "" {
-					port = os.Getenv("PORT")
-					if port == "" {
-						port = "80"
-					}
+					port = "80"
 				}
 			}
 

@@ -32,14 +32,6 @@ type BackupConfig struct {
 	Data      []DataBackupTarget `yaml:"data,omitempty"`
 }
 
-// ColimaConfig defines VM resource settings for macOS Colima workstation
-type ColimaConfig struct {
-	CPU    int    `yaml:"cpu,omitempty"`
-	Memory int    `yaml:"memory,omitempty"`
-	Disk   int    `yaml:"disk,omitempty"`
-	VMType string `yaml:"vm_type,omitempty"`
-}
-
 // DNSConfig defines upstream DNS relays and shared static DNS records in oops.yml
 type DNSConfig struct {
 	Upstreams []string `yaml:"upstreams,omitempty"`
@@ -64,37 +56,24 @@ func (d *DNSConfig) GetUpstreams() []string {
 	return nil
 }
 
-// OopsConfig represents the unified configuration in oops.yml / config.yml
+// OopsConfig represents the unified configuration in oops.yml
 type OopsConfig struct {
 	Registries map[string]string   `yaml:"registries,omitempty"`
-	Aliases    map[string]string   `yaml:"aliases,omitempty"` // alias for registries
 	Profiles   map[string][]string `yaml:"profiles,omitempty"`
 	Backups    BackupConfig        `yaml:"backups,omitempty"`
 	DNS        DNSConfig           `yaml:"dns,omitempty"`
-	Colima     ColimaConfig        `yaml:"colima,omitempty"`
 }
 
-// LoadOopsConfig finds and parses oops.yml / config.yml
+// LoadOopsConfig finds and parses oops.yml / oops.yaml
 func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 	cfg := &OopsConfig{
 		Registries: make(map[string]string),
-		Aliases:    make(map[string]string),
 		Profiles:   make(map[string][]string),
 	}
 
 	candidates := []string{
 		filepath.Join(workDir, "oops.yml"),
 		filepath.Join(workDir, "oops.yaml"),
-		filepath.Join(workDir, "stacks", "oops.yml"),
-		filepath.Join(workDir, "stacks", "oops.yaml"),
-		filepath.Join(workDir, "config.yml"),
-		filepath.Join(workDir, "config.yaml"),
-		filepath.Join(workDir, "stacks", "config.yml"),
-		filepath.Join(workDir, "stacks", "config.yaml"),
-		filepath.Join(workDir, "groups.yml"),
-		filepath.Join(workDir, "groups.yaml"),
-		filepath.Join(workDir, "stacks", "groups.yml"),
-		filepath.Join(workDir, "stacks", "groups.yaml"),
 	}
 
 	for _, c := range candidates {
@@ -111,11 +90,6 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 
 			// Merge registries
 			for k, v := range fileCfg.Registries {
-				if _, exists := cfg.Registries[k]; !exists {
-					cfg.Registries[k] = strings.TrimRight(v, "/")
-				}
-			}
-			for k, v := range fileCfg.Aliases {
 				if _, exists := cfg.Registries[k]; !exists {
 					cfg.Registries[k] = strings.TrimRight(v, "/")
 				}
@@ -147,19 +121,7 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 				cfg.DNS.Records = fileCfg.DNS.Records
 			}
 
-			// Merge colima
-			if fileCfg.Colima.CPU > 0 && cfg.Colima.CPU == 0 {
-				cfg.Colima.CPU = fileCfg.Colima.CPU
-			}
-			if fileCfg.Colima.Memory > 0 && cfg.Colima.Memory == 0 {
-				cfg.Colima.Memory = fileCfg.Colima.Memory
-			}
-			if fileCfg.Colima.Disk > 0 && cfg.Colima.Disk == 0 {
-				cfg.Colima.Disk = fileCfg.Colima.Disk
-			}
-			if fileCfg.Colima.VMType != "" && cfg.Colima.VMType == "" {
-				cfg.Colima.VMType = fileCfg.Colima.VMType
-			}
+			break
 		}
 	}
 

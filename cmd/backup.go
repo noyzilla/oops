@@ -161,10 +161,7 @@ func resolveBackupConfig(customRetention string) (retention time.Duration, backu
 	if customRetention == "" {
 		customRetention = os.Getenv("OOPS_BACKUP_RETENTION")
 		if customRetention == "" {
-			customRetention = os.Getenv("BACKUP_RETENTION_DAYS")
-			if customRetention == "" {
-				customRetention = "7d"
-			}
+			customRetention = "7d"
 		}
 	}
 
@@ -175,10 +172,7 @@ func resolveBackupConfig(customRetention string) (retention time.Duration, backu
 
 	backupDir = os.Getenv("OOPS_BACKUP_DIR")
 	if backupDir == "" {
-		backupDir = os.Getenv("BACKUP_DIR")
-		if backupDir == "" {
-			backupDir = "./backups"
-		}
+		backupDir = "./backups"
 	}
 
 	return ret, backupDir, nil

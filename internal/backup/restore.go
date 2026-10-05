@@ -260,7 +260,7 @@ func isWorkspaceValid(workDir string) bool {
 	if fi, err := os.Stat(filepath.Join(workDir, "stacks")); err == nil && fi.IsDir() {
 		return true
 	}
-	for _, c := range []string{"compose.yml", "compose.yaml", "docker-compose.yml", "docker-compose.yaml", "oops.yml", "config.yml"} {
+	for _, c := range []string{"compose.yml", "compose.yaml", "oops.yml", "oops.yaml"} {
 		if _, err := os.Stat(filepath.Join(workDir, c)); err == nil {
 			return true
 		}
