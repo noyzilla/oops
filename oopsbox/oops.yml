@@ -23,7 +23,7 @@ registries:
 #   oops up @lab            # Starts custom project profile
 #   oops up @all            # Starts all stacks dynamically (built-in engine selector)
 #   oops switch @lab        # Switches active profile and stops other services
-#   devoops start           # Starts default profile on workstation
+#   oopsbox start           # Starts default profile on workstation
 # ------------------------------------------------------------------------------
 profiles:
   # Default Development Profile (Caddy Edge Router + Oops DNS Daemon)

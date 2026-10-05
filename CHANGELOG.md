@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Changed
+- Renamed workstation CLI and driver scripts from `devoops` to `oopsbox` (`bin/oopsbox`, `bin/oopsbox-mac`, `bin/oopsbox-linux`).
+- Renamed workstation configuration template from `devoops.yml.example` to `oopsbox.yml.example` (and active config lookup to `oopsbox.yml`).
+- Renamed living specification from `docs/specs/devoops.md` to `docs/specs/oopsbox.md`.
+
 ## [0.7.0] - 2026-10-04
 
 ### Added

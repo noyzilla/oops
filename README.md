@@ -33,7 +33,7 @@ Oops and Oopsbox eliminate DevOps complexity through three foundational principl
 ```text
 oopsbox/
 ├── oops.yml              # Master Config: profiles (@default, @lab), registry shortcuts, backups, DNS
-├── devoops.yml           # Workstation Settings: VM engine (OrbStack/Colima), resources, local DNS
+├── oopsbox.yml           # Workstation Settings: VM engine (OrbStack/Colima), resources, local DNS
 ├── stacks/               # Pure Git-Tracked Infrastructure as Code (IaC)
 │   ├── edge/             # Group: Ingress Reverse Proxy (Caddy) + Oops Daemon (net-edge)
 │   │   ├── compose.yml
@@ -45,14 +45,14 @@ oopsbox/
 │   │   └── compose.yml
 │   └── apps/             # Group: Application Services (web-app, worker)
 │       └── compose.yml
-├── bin/                  # Workstation Developer Tools (devoops, devoops-mac, devoops-linux)
+├── bin/                  # Workstation Developer Tools (oopsbox, oopsbox-mac, oopsbox-linux)
 ├── data/                 # Live container storage (High-IOPS persistent host volumes)
 └── backups/              # Automated database dumps & filesystem data archives
 ```
 
 ### Why Oopsbox?
 
-- **1-Command Workstation Setup**: Run `./bin/devoops install` and `devoops start` to boot the VM, set up host networking, register the macOS/Linux DNS resolver, and trust root SSL certificates.
+- **1-Command Workstation Setup**: Run `./bin/oopsbox install` and `oopsbox start` to boot the VM, set up host networking, register the macOS/Linux DNS resolver, and trust root SSL certificates.
 - **Automated Local HTTPS**: Caddy Edge Proxy automatically issues and serves valid TLS certificates with green locks for `https://*.web.oops`.
 - **Embedded Zero-Config DNS**: Containers are instantly resolvable by hostname (e.g. `mysql.oops`, `redis.oops`, `host.oops`, `vm.oops`) through the embedded Oops DNS engine.
 - **Strict Network Isolation**: Enforces least privilege across `net-edge` (public ingress) and `net-db` (isolated backend).
@@ -186,13 +186,13 @@ git clone https://github.com/noyzilla/oops.git
 cd oops/oopsbox
 
 # Initialize workstation environment (.env, storage, DNS resolver, global PATH)
-./bin/devoops install
+./bin/oopsbox install
 
-# Start environment (devoops is now globally available in PATH)
-devoops start
+# Start environment (oopsbox is now globally available in PATH)
+oopsbox start
 
 # Install local root SSL certificate for green lock HTTPS (*.web.oops)
-devoops install-cert
+oopsbox install-cert
 ```
 
 ---
@@ -203,7 +203,7 @@ devoops install-cert
 - [Domain Glossary & Ubiquitous Language](CONTEXT.md)
 - [Oopsbox Master Blueprint Guide](oopsbox/README.md)
 - [CLI Orchestration Specification](docs/specs/cli.md)
-- [DevOops Workstation Tooling Specification](docs/specs/devoops.md)
+- [Oopsbox Workstation Tooling Specification](docs/specs/oopsbox.md)
 - [Native DNS Daemon Specification](docs/specs/dns.md)
 - [Webhook Daemon Specification](docs/specs/webhook.md)
 - [System Documentation Taxonomy](docs/README.md)

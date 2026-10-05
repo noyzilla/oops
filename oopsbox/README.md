@@ -9,8 +9,8 @@ Oopsbox is the production-ready, turnkey Infrastructure as Code (IaC) blueprint 
 ├── .env                  # Environment variables & secrets (copy from .env.example)
 ├── .env.example          # Credentials template (Committed)
 ├── oops.yml              # Center Master Config: registries, groups, backups, shared dns (Committed)
-├── devoops.yml           # Local Workstation Engine & DNS settings (git-ignored)
-├── devoops.yml.example   # Workstation configuration template (Committed)
+├── oopsbox.yml           # Local Workstation Engine & DNS settings (git-ignored)
+├── oopsbox.yml.example   # Workstation configuration template (Committed)
 ├── stacks/               # All Multi-Stack Definitions (Pure IaC, Git-tracked)
 │   ├── edge/             # Group: Ingress Reverse Proxy, Auto-SSL & Oops Daemon (net-edge)
 │   │   ├── compose.yml
@@ -25,9 +25,9 @@ Oopsbox is the production-ready, turnkey Infrastructure as Code (IaC) blueprint 
 │   └── apps/             # Group: Application Services (web-app, worker)
 │       └── compose.yml
 ├── bin/                  # Workstation Dev Tooling (macOS/Linux - Excluded on Prod)
-│   ├── devoops           # Main Dispatcher (Auto-detects OS)
-│   ├── devoops-mac       # macOS Helper (VM engine, firewall, routes, keychain cert)
-│   └── devoops-linux     # Linux Desktop Helper
+│   ├── oopsbox           # Main Dispatcher (Auto-detects OS)
+│   ├── oopsbox-mac       # macOS Helper (VM engine, firewall, routes, keychain cert)
+│   └── oopsbox-linux     # Linux Desktop Helper
 ├── data/                 # Live realtime container storage (High-IOPS persistent volume)
 │   ├── mysql/            # MySQL storage
 │   ├── postgres/         # PostgreSQL storage
@@ -70,28 +70,28 @@ graph TD
 
 ## Quickstart (Local Development)
 
-### One-Command Setup (`./bin/devoops install`)
-Run the automated installation to initialize credentials, storage, macOS DNS resolver, and register `devoops` to global PATH:
+### One-Command Setup (`./bin/oopsbox install`)
+Run the automated installation to initialize credentials, storage, macOS DNS resolver, and register `oopsbox` to global PATH:
 ```bash
-./bin/devoops install
+./bin/oopsbox install
 ```
 
-### Start Dev Environment (`devoops start`)
+### Start Dev Environment (`oopsbox start`)
 Starts VM routing (if using Colima) and boots the default profile (`profiles.default` in `oops.yml`):
 ```bash
-devoops start
+oopsbox start
 ```
 
-### Install Trusted Local SSL Certificate (`devoops install-cert`)
+### Install Trusted Local SSL Certificate (`oopsbox install-cert`)
 Adds Caddy's local root CA certificate to macOS Keychain (enables green lock for `https://*.web.oops`):
 ```bash
-devoops install-cert
+oopsbox install-cert
 ```
 
-### Switch Active Oopsbox (`devoops switch <path>`)
+### Switch Active Oopsbox (`oopsbox switch <path>`)
 Seamlessly switch between multiple isolated organization workspaces without port or container name collisions:
 ```bash
-devoops switch ~/Workspaces/another-org/oopsbox
+oopsbox switch ~/Workspaces/another-org/oopsbox
 ```
 
 ---

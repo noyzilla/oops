@@ -59,10 +59,10 @@ cp -R "$SRC_DIR/."* "$TARGET_DIR/" 2>/dev/null || true
 # 4. Make developer tool scripts executable
 chmod +x "$TARGET_DIR/bin/"* 2>/dev/null || true
 
-# 5. Run DevOops Initialization
-if [ -f "$TARGET_DIR/bin/devoops" ]; then
+# 5. Run Oopsbox Initialization
+if [ -f "$TARGET_DIR/bin/oopsbox" ]; then
     echo -e "\n==> Initializing workstation configuration..."
-    (cd "$TARGET_DIR" && ./bin/devoops install)
+    (cd "$TARGET_DIR" && ./bin/oopsbox install)
 fi
 
 # 6. Install Global Oops Wrapper Script if writable
@@ -107,6 +107,6 @@ else
 fi
 
 echo -e "To start your environment:"
-echo -e "  1. ${BOLD}devoops start${NC}"
-echo -e "  2. ${BOLD}devoops install-cert${NC} (to enable local trusted HTTPS for *.web.oops)"
+echo -e "  1. ${BOLD}oopsbox start${NC}"
+echo -e "  2. ${BOLD}oopsbox install-cert${NC} (to enable local trusted HTTPS for *.web.oops)"
 echo -e "${BOLD}${GREEN}==============================================================================${NC}\n"
