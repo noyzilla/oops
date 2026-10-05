@@ -1,13 +1,13 @@
 ---
 name: jarn-release
-description: End-to-end automated GitHub Release lifecycle, including SemVer calculation, CHANGELOG drafting, and tag publishing.
+description: End-to-end automated release lifecycle, including SemVer calculation, CHANGELOG drafting, and tag publishing across any Git host.
 ---
 
 # Jarn Release Lifecycle
 
 > **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill).
 
-**Description**: Automates the version release process by analyzing Git commit history, calculating Semantic Versioning (SemVer), updating the `CHANGELOG.md`, and publishing a formal GitHub Release via the GitHub CLI (`gh`).
+**Description**: Automates the version release process by analyzing Git commit history, calculating Semantic Versioning (SemVer), updating the `CHANGELOG.md`, and creating formal Git tags or repository releases.
 
 **Primary Objective**: To ensure releases are created safely and consistently without manual version guessing or manual changelog writing.
 
@@ -55,8 +55,8 @@ After switching to `main`, verify `git status` is clean. If not, halt and report
 ## Release Readiness
 
 After pre-conditions are resolved and the agent is on a clean `main`, verify:
-- **GitHub CLI**: `command -v gh` confirms `gh` is available.
 - **Commits Exist**: `git log <last_tag>..HEAD --oneline` returns at least one non-chore commit.
+- **Remote Configured**: `git remote -v` confirms a valid upstream or origin remote.
 
 ---
 
@@ -113,11 +113,18 @@ Once the release is published, the working context must be reset:
 
 ## Publish and Verify
 
-Use the GitHub CLI to create the release and tag simultaneously:
-```bash
-gh release create vX.Y.Z --generate-notes --title "Release vX.Y.Z"
-```
-*(Using `--generate-notes` leverages GitHub's automatic release notes generation based on merged PRs, ensuring a clean release payload).*
+Create the annotated Git tag and push to remote:
 
-- Verify the release was created successfully by checking `gh release view vX.Y.Z`.
-- Report the release URL, tag, and verification result to the user.
+```bash
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+### Platform CLI Integration (Optional)
+If repository host CLI tooling is available, create a formal release alongside the tag:
+- **GitHub (`gh` available)**: `gh release create vX.Y.Z --generate-notes --title "Release vX.Y.Z"` (include any built `dist/` or `bin/` assets if applicable).
+- **GitLab (`glab` available)**: `glab release create vX.Y.Z --notes "Release vX.Y.Z"`
+
+### Verification
+- Verify the tag exists locally and remotely via `git tag -l vX.Y.Z`.
+- Report the release version, tag, and publish confirmation to the user.

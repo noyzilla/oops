@@ -56,7 +56,7 @@ When modifying specific layers or subsystems, update the designated locations an
 | **Living Specifications** | `docs/specs/` | `git diff --check` and verify spec contract alignment |
 | **Architectural Decisions (ADR)** | `docs/adr/` | `git diff --check` and verify filename status lifecycle |
 | **Development & Runbooks** | `docs/development/` | `git diff --check` and test script execution |
-| **Automation & Shell Scripts** | `scripts/*.sh`, `.agents/scripts/*.sh` | `sh -n <touched_script>` and dry-run execution |
+| **Automation & Shell Scripts** | `*.sh`, `scripts/*.sh`, `.agents/scripts/*.sh` | `sh -n <touched_script>` and dry-run execution |
 | **Universal Standards & Rules** | `.agents/rules/jarn-*.md`, `AGENTS.md` | `git diff --check` and verify rule frontmatter/links |
 | **Jarn Skills** | `.agents/skills/jarn-*` | `git diff --check` and verify skill frontmatter/links |
 | **Documentation Only** | `docs/`, `*.md` | `git diff --check` and verify Markdown links |
@@ -84,5 +84,5 @@ When specialized expertise or operational procedures are required, activate the 
 - [jarn-decisions](.agents/skills/jarn-decisions/SKILL.md): Manage the lifecycle of Architectural Decision Records (`docs/adr/`) with zero-token filtering.
 - [jarn-review](.agents/skills/jarn-review/SKILL.md): Autonomous quality gate runbook (GATE 3) to inspect git status, run targeted verification, audit commit conventions, and synthesize pre-merge evidence against jarn-quality.md.
 - [jarn-diagnostics](.agents/skills/jarn-diagnostics/SKILL.md): Isolated defect investigation procedure bounded strictly to the living spec's blast-radius matrix without blind codebase scans.
-- [jarn-release](.agents/skills/jarn-release/SKILL.md): End-to-end automated GitHub Release lifecycle, including SemVer calculation, CHANGELOG drafting, and tag publishing.
+- [jarn-release](.agents/skills/jarn-release/SKILL.md): End-to-end automated release lifecycle, including SemVer calculation, CHANGELOG drafting, and tag publishing across any Git host.
 - [jarn-framework-update](.agents/skills/jarn-framework-update/SKILL.md): Update the installed Jarn framework, execute Shadow Merge, and identify required project migrations.
