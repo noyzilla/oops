@@ -3,7 +3,7 @@
 This file tracks the active focus, immediate next actions, and backlog deliverables for the repository.
 
 ## Active Focus
-- Release `v0.9.0` successfully published (Multi-OS raw binary releases, `oopsbox.tar.gz` blueprint package, and `oopsbox upgrade` in-place workstation updates).
+- Release `v0.10.0` successfully published (Standalone `install-cli.sh` and primary native CLI binary installer).
 
 ## Immediate Next Actions
-- [ ] Monitor release feedback and community usage of `v0.9.0`.
+- [ ] Monitor release feedback and community usage of `v0.10.0`.

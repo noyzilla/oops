@@ -6,6 +6,15 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-05
+
+### Added
+- Standalone 1-line CLI installer script (`install-cli.sh`) supporting auto-detection of operating system (`darwin`, `linux`) and architecture (`arm64`, `amd64`) with customizable installation destination.
+- Native standalone `oops` CLI binary installation as primary in `install.sh`, `oopsbox-mac`, and `oopsbox-linux` with automatic PATH symlinking and Docker wrapper fallback.
+
+### Changed
+- Streamlined Quickstart documentation in `README.md` to prioritize unified 1-line installation workflows.
+
 ## [0.9.0] - 2026-10-05
 
 ### Added
