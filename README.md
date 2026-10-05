@@ -166,6 +166,28 @@ Install Oopsbox and the global CLI wrapper with one command:
 curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash
 ```
 
+### Download Standalone CLI Binary (Native)
+Download the pre-compiled, static binary directly for your OS & architecture:
+```bash
+# macOS (Apple Silicon / arm64)
+curl -fsSL https://github.com/noyzilla/oops/releases/latest/download/oops-darwin-arm64 -o /usr/local/bin/oops && chmod +x /usr/local/bin/oops
+
+# macOS (Intel / amd64)
+curl -fsSL https://github.com/noyzilla/oops/releases/latest/download/oops-darwin-amd64 -o /usr/local/bin/oops && chmod +x /usr/local/bin/oops
+
+# Linux (x86_64 / amd64)
+curl -fsSL https://github.com/noyzilla/oops/releases/latest/download/oops-linux-amd64 -o /usr/local/bin/oops && chmod +x /usr/local/bin/oops
+
+# Linux (ARM64 / aarch64)
+curl -fsSL https://github.com/noyzilla/oops/releases/latest/download/oops-linux-arm64 -o /usr/local/bin/oops && chmod +x /usr/local/bin/oops
+```
+
+### Upgrading Oopsbox
+Upgrade workstation scripts (`bin/`) and example templates in-place without touching your data or custom configuration:
+```bash
+oopsbox upgrade
+```
+
 ### Run Oops from Anywhere (Docker Wrapper)
 To run `oops` without installing Go toolchains or in locked-down environments (e.g. Google Container-Optimized OS / COS), point `OOPSBOX_DIR` to your workspace and add this alias to your shell profile (`~/.bashrc` or `~/.zshrc`):
 

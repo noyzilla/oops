@@ -94,6 +94,13 @@ Seamlessly switch between multiple isolated organization workspaces without port
 oopsbox switch ~/Workspaces/another-org/oopsbox
 ```
 
+### Upgrade Workstation Scripts & Templates (`oopsbox upgrade [tag]`)
+Safely upgrade `bin/` scripts (`oopsbox`, `oopsbox-mac`, `oopsbox-linux`) and example templates in-place without touching your data or custom configuration:
+```bash
+oopsbox upgrade           # Upgrade to latest release
+oopsbox upgrade v0.9.0    # Upgrade to a specific release version
+```
+
 ---
 
 ## Unified Configuration (`oops.yml`)
