@@ -6,15 +6,19 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-05
+
 ### Added
 - Single-source Active Box pointer (`~/.oops/active_box`) recorded automatically on `oopsbox start`, `oopsbox switch`, and `oopsbox install`.
 - Active Box Mismatch Guard (`ValidateActiveBox`) in `oops` CLI to prevent accidental execution across different Oopsbox repositories on the same workstation.
 - `--wipe-all` flag on `oops down` with interactive confirmation (and `-y, --yes` bypass) to forcefully stop and remove all containers on the Docker daemon.
+- Seamless multi-box handover via `oopsbox switch <path>` to stop the current active box and initialize the new target box cleanly.
 
 ### Changed
 - Renamed workstation CLI and driver scripts from `devoops` to `oopsbox` (`bin/oopsbox`, `bin/oopsbox-mac`, `bin/oopsbox-linux`).
 - Renamed workstation configuration template from `devoops.yml.example` to `oopsbox.yml.example` (and active config lookup to `oopsbox.yml`).
 - Renamed living specification from `docs/specs/devoops.md` to `docs/specs/oopsbox.md`.
+- Removed all legacy backward-compatibility fallbacks, obsolete struct fields (`Colima`, `Aliases`), and deprecated environment variables (`STOP_TIMEOUT_SECONDS`, `HEALTHCHECK_*_SECONDS`, `PORT`, `BACKUP_RETENTION_DAYS`, `BACKUP_DIR`, `OOPS_HOSTS_FILE`) for clean-break canonical parity.
 
 ## [0.7.0] - 2026-10-04
 
