@@ -2,12 +2,9 @@
 set -e
 
 # ==============================================================================
-# Oops & Oopsbox One-Line Installer
+# Oops CLI One-Line Standalone Installer
 # Usage:
-#   # Install to current directory:
 #   curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash
-#   # Install to specified project directory:
-#   curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash -s -- <project-directory>
 # ==============================================================================
 
 # ANSI Color Codes
@@ -19,173 +16,134 @@ BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 echo -e "${BOLD}${BLUE}==============================================================================${NC}"
-echo -e "${BOLD}${BLUE}  Oops & Oopsbox Installer${NC}"
+echo -e "${BOLD}${BLUE}  Oops CLI Standalone Installer${NC}"
 echo -e "${BOLD}${BLUE}==============================================================================${NC}"
 
-# 1. Determine Target Installation Directory
-TARGET_INPUT=""
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --dir|-d|--path|-o)
-            TARGET_INPUT="$2"
-            shift 2
-            ;;
-        -*)
-            shift
-            ;;
-        *)
-            if [[ -z "$TARGET_INPUT" ]]; then
-                TARGET_INPUT="$1"
-            fi
-            shift
-            ;;
-    esac
-done
-
-if [[ -n "$TARGET_INPUT" ]]; then
-    TARGET_DIR="$TARGET_INPUT"
-else
-    TARGET_DIR="$(pwd)"
-fi
-
-# Expand tilde if present
-TARGET_DIR="${TARGET_DIR/#\~/$HOME}"
-
-# Ensure target directory exists and resolve absolute path
-mkdir -p "$TARGET_DIR"
-TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
-
-echo -e "==> Target Directory: ${BOLD}${TARGET_DIR}${NC}"
-
-# 2. Check Prerequisite Tools
-command -v curl >/dev/null 2>&1 || { echo -e "${RED}Error: curl is required but not installed.${NC}" >&2; exit 1; }
-command -v tar >/dev/null 2>&1 || { echo -e "${RED}Error: tar is required but not installed.${NC}" >&2; exit 1; }
-
-# 3. Download and Extract Oopsbox Blueprint
-TMP_DIR="$(mktemp -d)"
-cleanup() {
-    rm -rf "$TMP_DIR"
-}
-trap cleanup EXIT INT TERM
-
-echo -e "==> Downloading Oopsbox blueprint from GitHub..."
-if curl -fsSL https://github.com/noyzilla/oops/releases/latest/download/oopsbox.tar.gz -o "$TMP_DIR/oopsbox.tar.gz" 2>/dev/null && [[ -s "$TMP_DIR/oopsbox.tar.gz" ]]; then
-    echo -e "==> Extracting release blueprint..."
-    mkdir -p "$TMP_DIR/extracted"
-    tar -xzf "$TMP_DIR/oopsbox.tar.gz" -C "$TMP_DIR/extracted"
-    SRC_DIR="$TMP_DIR/extracted"
-else
-    echo -e "==> Downloading fallback blueprint from main branch..."
-    curl -fsSL https://github.com/noyzilla/oops/archive/refs/heads/main.tar.gz -o "$TMP_DIR/oops.tar.gz"
-    echo -e "==> Extracting blueprint..."
-    tar -xzf "$TMP_DIR/oops.tar.gz" -C "$TMP_DIR"
-    if [[ -d "$TMP_DIR/oops-main/oopsbox" ]]; then
-        SRC_DIR="$TMP_DIR/oops-main/oopsbox"
-    else
-        echo -e "${RED}Error: Failed to locate oopsbox directory in downloaded archive.${NC}" >&2
-        exit 1
-    fi
-fi
-
-# Copy all blueprint files & directories into target directory
-mkdir -p "$TARGET_DIR"
-cp -R "$SRC_DIR/." "$TARGET_DIR/"
-
-# 4. Download and Install Native Oops CLI Binary as Primary
-CLI_INSTALLED=false
+# 1. Detect Operating System & Architecture
 OS_RAW="$(uname -s)"
 case "$OS_RAW" in
     Darwin*) OS="darwin" ;;
     Linux*)  OS="linux" ;;
-    *)       OS="" ;;
+    *)       echo -e "${RED}Error: Unsupported operating system: ${OS_RAW}${NC}" >&2; exit 1 ;;
 esac
 
 ARCH_RAW="$(uname -m)"
 case "$ARCH_RAW" in
-    x86_64|amd64)        ARCH="amd64" ;;
+    x86_64|amd64)         ARCH="amd64" ;;
     arm64|aarch64|armv8*) ARCH="arm64" ;;
-    *)                   ARCH="" ;;
+    *)                    echo -e "${RED}Error: Unsupported architecture: ${ARCH_RAW}${NC}" >&2; exit 1 ;;
 esac
 
-mkdir -p "$TARGET_DIR/bin"
+echo -e "==> Detected Platform: ${BOLD}${OS}-${ARCH}${NC}"
 
-if [[ -n "$OS" && -n "$ARCH" ]]; then
-    echo -e "==> Downloading native Oops CLI binary for ${OS}-${ARCH}..."
-    BINARY_URL="https://github.com/noyzilla/oops/releases/latest/download/oops-${OS}-${ARCH}"
-    if curl -fsSL "$BINARY_URL" -o "$TARGET_DIR/bin/oops" 2>/dev/null && [[ -s "$TARGET_DIR/bin/oops" ]]; then
-        chmod +x "$TARGET_DIR/bin/oops"
-        CLI_INSTALLED=true
-        echo -e "${GREEN}✓ Downloaded native Oops CLI to ${TARGET_DIR}/bin/oops${NC}"
-    else
-        echo -e "${YELLOW}Notice: Native release binary not found; will use wrapper fallback.${NC}"
-    fi
-fi
+# 2. Check Prerequisite Tools
+command -v curl >/dev/null 2>&1 || { echo -e "${RED}Error: curl is required but not installed.${NC}" >&2; exit 1; }
 
-# Make developer tool scripts executable
-chmod +x "$TARGET_DIR/bin/"* 2>/dev/null || true
+# 3. Determine Target Binary Installation Path
+TARGET_BIN_DIR=""
+USE_SUDO=false
 
-# 5. Link Global Oops CLI (Native Binary Primary, Docker Wrapper Fallback)
-GLOBAL_OOPS_INSTALLED=false
-CANDIDATE_DIRS=("/usr/local/bin" "$HOME/.local/bin")
 if [[ -f /etc/os-release ]] && (grep -qi "Container-Optimized OS" /etc/os-release 2>/dev/null || grep -qi "^ID=.*cos" /etc/os-release 2>/dev/null); then
-    CANDIDATE_DIRS=("/var/lib/google/bin" "/usr/local/bin" "$HOME/.local/bin")
-    if [[ ! -d "/var/lib/google/bin" ]] && [[ -w "/var/lib/google" ]]; then
-        mkdir -p "/var/lib/google/bin" 2>/dev/null || true
-    fi
-fi
-
-for CANDIDATE_DIR in "${CANDIDATE_DIRS[@]}"; do
-    if [[ -d "$CANDIDATE_DIR" && -w "$CANDIDATE_DIR" ]]; then
-        if [[ "$CLI_INSTALLED" == true ]]; then
-            ln -sf "$TARGET_DIR/bin/oops" "$CANDIDATE_DIR/oops"
-            GLOBAL_OOPS_INSTALLED=true
-            echo -e "${GREEN}✓ Linked native oops CLI binary at ${CANDIDATE_DIR}/oops${NC}"
-            break
-        else
-            WRAPPER_PATH="$CANDIDATE_DIR/oops"
-            cat > "$WRAPPER_PATH" <<'EOF'
-#!/bin/sh
-# Oops Docker CLI Wrapper Fallback
-BOX_DIR="${OOPSBOX_DIR:-$HOME/oopsbox}"
-exec docker run --rm -i \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v "${BOX_DIR}":"${BOX_DIR}" \
-  -w "${BOX_DIR}" \
-  -e OOPSBOX_DIR="${BOX_DIR}" \
-  ghcr.io/noyzilla/oops:latest "$@"
-EOF
-            chmod +x "$WRAPPER_PATH"
-            GLOBAL_OOPS_INSTALLED=true
-            echo -e "${YELLOW}✓ Installed global oops Docker wrapper fallback at ${WRAPPER_PATH}${NC}"
-            break
+    TARGET_BIN_DIR="/var/lib/google/bin"
+    if [[ ! -d "$TARGET_BIN_DIR" ]]; then
+        if [[ -w "/var/lib/google" ]]; then
+            mkdir -p "$TARGET_BIN_DIR"
+        elif command -v sudo >/dev/null 2>&1; then
+            sudo mkdir -p "$TARGET_BIN_DIR"
         fi
     fi
-done
+fi
 
-# 6. Run Oopsbox Initialization
-if [[ -f "$TARGET_DIR/bin/oopsbox" ]]; then
-    echo -e "\n==> Initializing workstation configuration..."
-    (cd "$TARGET_DIR" && ./bin/oopsbox install)
+if [[ -z "$TARGET_BIN_DIR" ]]; then
+    if [[ -d "/usr/local/bin" && -w "/usr/local/bin" ]]; then
+        TARGET_BIN_DIR="/usr/local/bin"
+    elif [[ -w "/usr/local" ]]; then
+        mkdir -p "/usr/local/bin"
+        TARGET_BIN_DIR="/usr/local/bin"
+    elif command -v sudo >/dev/null 2>&1; then
+        TARGET_BIN_DIR="/usr/local/bin"
+        USE_SUDO=true
+    else
+        TARGET_BIN_DIR="$HOME/.local/bin"
+        mkdir -p "$TARGET_BIN_DIR"
+    fi
+fi
+
+echo -e "==> Installation Destination: ${BOLD}${TARGET_BIN_DIR}/oops${NC}"
+
+# 4. Download Oops Binary
+TMP_FILE="$(mktemp)"
+cleanup() {
+    rm -f "$TMP_FILE"
+}
+trap cleanup EXIT INT TERM
+
+BINARY_URL="https://github.com/noyzilla/oops/releases/latest/download/oops-${OS}-${ARCH}"
+echo -e "==> Downloading latest release binary from GitHub..."
+if ! curl -fsSL "$BINARY_URL" -o "$TMP_FILE" || [[ ! -s "$TMP_FILE" ]]; then
+    echo -e "${RED}Error: Failed to download binary from ${BINARY_URL}.${NC}" >&2
+    echo -e "${YELLOW}Please verify internet access or compile from source via: go install github.com/noyzilla/oops@latest${NC}" >&2
+    exit 1
+fi
+
+chmod +x "$TMP_FILE"
+
+if [[ "$USE_SUDO" == true ]]; then
+    echo -e "==> Requesting sudo permissions to install to ${TARGET_BIN_DIR}..."
+    sudo mkdir -p "$TARGET_BIN_DIR"
+    sudo cp "$TMP_FILE" "$TARGET_BIN_DIR/oops"
+    sudo chmod +x "$TARGET_BIN_DIR/oops"
+else
+    mkdir -p "$TARGET_BIN_DIR"
+    cp "$TMP_FILE" "$TARGET_BIN_DIR/oops"
+    chmod +x "$TARGET_BIN_DIR/oops"
+fi
+
+echo -e "${GREEN}✓ Successfully installed Oops CLI binary to ${TARGET_BIN_DIR}/oops${NC}"
+
+# 5. Configure Shell Auto-completion
+SHELL_CONFIGURED=false
+
+# Configure Zsh
+if [[ -f "$HOME/.zshrc" ]]; then
+    if ! grep -q "oops completion" "$HOME/.zshrc" 2>/dev/null; then
+        echo -e "\n# Oops CLI autocompletion" >> "$HOME/.zshrc"
+        echo -e "if command -v oops >/dev/null 2>&1; then\n  source <(oops completion zsh)\nfi" >> "$HOME/.zshrc"
+        SHELL_CONFIGURED=true
+        echo -e "${GREEN}✓ Configured shell completion in ~/.zshrc${NC}"
+    fi
+fi
+
+# Configure Bash
+if [[ -f "$HOME/.bashrc" ]]; then
+    if ! grep -q "oops completion" "$HOME/.bashrc" 2>/dev/null; then
+        echo -e "\n# Oops CLI autocompletion" >> "$HOME/.bashrc"
+        echo -e "if command -v oops >/dev/null 2>&1; then\n  source <(oops completion bash)\nfi" >> "$HOME/.bashrc"
+        SHELL_CONFIGURED=true
+        echo -e "${GREEN}✓ Configured shell completion in ~/.bashrc${NC}"
+    fi
+fi
+
+# 6. Verify PATH
+if [[ ":$PATH:" != *":$TARGET_BIN_DIR:"* ]]; then
+    echo -e "${YELLOW}Warning: ${TARGET_BIN_DIR} is not in your PATH.${NC}"
+    echo -e "Please add the following line to your shell profile (~/.zshrc or ~/.bashrc):"
+    echo -e "  ${BOLD}export PATH=\"${TARGET_BIN_DIR}:\$PATH\"${NC}"
 fi
 
 # 7. Print Completion & Quickstart Instructions
 echo -e "\n${BOLD}${GREEN}==============================================================================${NC}"
-echo -e "${BOLD}${GREEN}  Oopsbox Installation Complete!${NC}"
+echo -e "${BOLD}${GREEN}  Oops CLI Installation Complete!${NC}"
 echo -e "${BOLD}${GREEN}==============================================================================${NC}"
-echo -e "Oopsbox Location: ${BOLD}${TARGET_DIR}${NC}\n"
+echo -e "Version: ${BOLD}$("$TARGET_BIN_DIR/oops" --help 2>&1 | head -n 1)${NC}\n"
 
-if [[ "$GLOBAL_OOPS_INSTALLED" == true ]]; then
-    echo -e "You can run ${BOLD}oops${NC} from any directory:"
-    echo -e "  ${BOLD}export OOPSBOX_DIR=\"${TARGET_DIR}\"${NC}"
-    echo -e "  ${BOLD}oops up${NC}\n"
-else
-    echo -e "Add this alias to your shell profile (~/.bashrc or ~/.zshrc):"
-    echo -e "  ${BOLD}export OOPSBOX_DIR=\"${TARGET_DIR}\"${NC}"
-    echo -e "  ${BOLD}alias oops='${TARGET_DIR}/bin/oops'${NC}\n"
-fi
+echo -e "Quickstart:"
+echo -e "  1. Create a new Oopsbox workspace:"
+echo -e "     ${BOLD}oops box create ~/oopsbox${NC}"
+echo -e "  2. Boot the environment:"
+echo -e "     ${BOLD}cd ~/oopsbox && oops box start${NC}"
+echo -e "  3. Verify status:"
+echo -e "     ${BOLD}oops status${NC}\n"
 
-echo -e "To start your environment:"
-echo -e "  1. ${BOLD}cd ${TARGET_DIR}${NC}"
-echo -e "  2. ${BOLD}oopsbox start${NC}"
-echo -e "  3. ${BOLD}oopsbox install-cert${NC} (to enable local trusted HTTPS for *.web.oops)"
+echo -e "Tip: Tab completion is active! Type ${BOLD}oops box <tab>${NC} to view available subcommands."
 echo -e "${BOLD}${GREEN}==============================================================================${NC}\n"

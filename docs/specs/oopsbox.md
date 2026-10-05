@@ -1,7 +1,7 @@
 ---
 title: Oopsbox Workstation Tooling Suite
 status: active
-tags: [oopsbox, local-dev, macos, linux, colima, resolver, ssl-ca]
+tags: [oopsbox, local-dev, macos, linux, colima, orbstack, resolver, ssl-ca, cli]
 synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/cli.md", "docs/specs/dns.md"]
 ---
 
@@ -15,78 +15,85 @@ synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/cli.md", "docs/specs/dns
 
 ## Overview & Scope
 
-`oopsbox` is the developer workstation suite located in `oopsbox/bin/` (`bin/oopsbox`, `bin/oopsbox-mac`, `bin/oopsbox-linux`). It orchestrates local development environments on macOS and Linux desktop machines, abstracting VM provisioning (Colima / Lima), host firewall packet filtering (`pfctl` / `iptables`), loopback routing, local DNS resolver integration (`/etc/resolver/`), and root CA certificate trust for local TLS wildcard domains (`https://*.web.oops` or `https://*.test`).
+`oopsbox` is the developer workstation orchestration suite. Integrated directly into the native Go CLI as `oops box <command>`, it manages local development environments on macOS and Linux desktop machines, abstracting VM and container engine provisioning (OrbStack / Colima / Docker Engine), host firewall packet filtering, local DNS resolver integration (`/etc/resolver/`), and root CA certificate trust for local TLS wildcard domains (`https://*.web.oops` or custom TLDs).
 
 ## Domain Context & Ubiquitous Language
 
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
-- **Oopsbox Dispatcher (`bin/oopsbox`)**: OS-detecting entrypoint script that delegates to OS-specific drivers (`oopsbox-mac` or `oopsbox-linux`).
-- **VM Driver (`oopsbox-mac`)**: macOS-specific management script managing Colima/Lima VM, port forwarders, firewall anchors, and Keychain root certificate insertion.
-- **Linux Driver (`oopsbox-linux`)**: Linux-native management script managing systemd Docker services, iptables routing, and desktop NSS certificate databases.
+- **Oops Box Manager (`oops box`)**: Native Go CLI command group for creating, activating, starting, switching, and securing Oopsbox workspaces.
+- **Active Box State (`~/.oops/active_box`)**: System file recording the absolute path of the currently active Oopsbox workspace on the machine.
+- **Release Blueprint (`oopsbox.tar.gz`)**: Tarball release asset containing the clean Oopsbox workspace structure (`stacks/`, `data/`, `oopsbox.yml.example`).
+- **VM / Container Engine**: The underlying virtualization and container engine (`orbstack`, `colima`, or `docker`).
 - **Local TLD Resolver**: macOS `/etc/resolver/<domain>` entry forwarding local domain resolution to the Oops embedded DNS watcher.
-- **Local Root CA**: Caddy-generated internal root certificate installed into the host OS trust store.
+- **Local Root CA**: Caddy-generated internal root certificate installed into the host OS trust store or macOS Keychain.
 
 ## Business Rules & Logic Invariants
 
-### OS Dispatch Protocol
-- `bin/oopsbox` detects host operating system via `uname -s`.
-- On `Darwin` (macOS), invokes `bin/oopsbox-mac`.
-- On `Linux`, invokes `bin/oopsbox-linux`.
-- On unsupported operating systems (Windows/WSL without Linux shell), outputs an actionable error message and exits with Code 1.
+### Workspace Creation & Blueprint Download (`oops box create <path>`)
+When provisioning a new workspace via `oops box create <path>`:
+- **Target Directory Setup**: Expands `~` and relative paths to absolute canonical path, creating target directory if it does not exist.
+- **Dynamic Blueprint Fetch**: Downloads the latest official release blueprint `oopsbox.tar.gz` from GitHub Releases (`https://github.com/noyzilla/oops/releases/latest/download/oopsbox.tar.gz`), extracting it cleanly into the target directory. If the release asset is unreachable, falls back to `https://github.com/noyzilla/oops/archive/refs/heads/main.tar.gz` (extracting `oopsbox/`).
+- **Cryptographic Credential Generation**:
+  - Automatically generates a 48-character cryptographic string for `OOPS_SECRET`.
+  - Automatically generates a single shared 32-character secure password for `MYSQL_ROOT_PASSWORD`, `POSTGRES_PASSWORD`, and `REDIS_PASSWORD`.
+  - Generates `.env` from template if not present.
+- **Default Config Initialization**: Copies `oopsbox.yml.example` to `oopsbox.yml` if `oopsbox.yml` does not exist.
+- **Automatic Active Box Registration**: Automatically writes the new workspace canonical path to `~/.oops/active_box`.
 
-### Multi-Engine Runtime & VM Optimization
-- **Multi-Engine Runtime Selection (`engine.type`)**: Configured via `engine.type` in `oopsbox.yml` (copied from `oopsbox.yml.example` at root) or `OOPS_ENGINE_TYPE` environment variable:
-  - `auto` (Default): Autodetects available engines in priority order: `orbstack` -> `colima` -> `docker`.
-  - `orbstack`: Launches OrbStack VM (`orb start`), providing native direct container IP routing without requiring `iptables` or manual `route add` configurations.
-  - `colima`: Launches Colima VM with configured CPU, Memory, Disk, and VZ hypervisor, applying internal kernel sysctl, firewall watchers, and subnet route bindings.
-  - `docker`: Directly connects to active Docker daemon or Docker Desktop.
-- **Configurable DNS TLD (`dns.tld`)**: Configured in `oopsbox.yml` (`dns.tld`) or `OOPS_DNS_TLD` (default: `oops`).
-- **Static DNS Mapping (`data/oops/dns.records`)**: Auto-generates and maintains `data/oops/dns.records` mapping `host.<tld>` to the workstation host IP (gateway) and `vm.<tld>` to the VM/engine IP.
-- **Direct Bridge / Route**: Configures host-to-VM routing (e.g. `10.200.0.0/16` or Colima interface IP) when running under Colima so containers can be reached directly via IP or reverse proxy.
-- **Host Firewall Anchors (`pfctl`)**: Binds local ports (80/443/53) or forwards traffic into the local Docker subnet via dedicated packet filter rules (`/etc/pf.anchors/oopsbox`).
-- **macOS Local DNS Resolver**: Creates `/etc/resolver/<tld>` pointing to the container DNS IP to ensure local subdomains resolve seamlessly without `/etc/hosts` pollution.
-- **Keychain Local SSL CA**: Extracts `root.crt` from the Caddy container volume and installs it into macOS System Keychain (`security add-trusted-cert -d -r trustRoot`) to guarantee green HTTPS locks in Google Chrome, Safari, and Curl.
+### Active Box Management (`oops box active [path]`)
+- **Display Active Box**: Running `oops box active` without arguments prints the current active workspace path and its validation status.
+- **Set Active Box**: Running `oops box active <path>` validates that the target path contains valid compose stacks (`stacks/`) and writes the path to `~/.oops/active_box`.
 
-### Linux Native Dev Rules
-- Detects local Docker Engine daemon (`systemctl status docker`).
-- Installs root CA into system trust store (`/usr/local/share/ca-certificates/` or `/etc/ca-certificates/trust-source/anchors/` and runs `update-ca-certificates`).
-- Adds local systemd-resolved or NetworkManager DNS forwarder.
+### Engine Runtime & Boot Lifecycle (`oops box start`)
+- **Engine Auto-Detection & Boot (`engine.type`)**:
+  - Checks `engine.type` in `oopsbox.yml` or `OOPS_ENGINE_TYPE` env var (default: `auto`).
+  - `auto`: Prioritizes `orbstack` -> `colima` -> `docker`.
+  - `orbstack`: Ensures OrbStack is running (`orb start` on macOS).
+  - `colima`: Ensures Colima is running with configured CPU/Memory/Disk specs.
+  - `docker`: Verifies Docker daemon connectivity (`docker info`).
+- **Static DNS Mapping (`data/oops/dns.records`)**: Generates and updates `data/oops/dns.records` mapping `host.<tld>` to host gateway IP and `vm.<tld>` to container engine IP.
+- **macOS Local DNS Resolver**: Configures `/etc/resolver/<tld>` pointing to local DNS listener (`127.0.0.1:53` or VM IP).
+- **Default Profile Boot**: Automatically delegates to `oops up` to boot default services (`caddy-proxy`, `oops`, etc.).
+
+### Multi-Box Switching (`oops box switch <path>`)
+When switching between isolated organization workspaces:
+- **Graceful Teardown**: Runs `oops down` on the currently active box to release shared container names (`caddy-proxy`, `mysql`, `postgres`, `redis`, `oops`) and host ports.
+- **Zero Data Loss**: Persistent service data remains intact in `./data/`.
+- **State Handover**: Sets `~/.oops/active_box` to the target path and invokes `oops box start` on the target workspace.
+
+### CA Certificate Trust (`oops box cert`)
+- Exports Caddy root CA (`root.crt`) from the Caddy container volume (`caddy_data` or `stacks/edge/data/caddy/pki/authorities/local/root.crt`).
+- Installs root CA into macOS System Keychain (`security add-trusted-cert -d -r trustRoot`) or Linux system trust store (`/usr/local/share/ca-certificates/` and `update-ca-certificates`).
 
 ## Interface & Subcommands Specification
 
 | Subcommand | Arguments | Description |
 | :--- | :--- | :--- |
-| `oopsbox install` | *(none)* | Automated workstation setup: initializes storage, `.env`, VM/routes, DNS resolver, and registers `oopsbox` to global PATH |
-| `oopsbox start` | *(none)* | Boots VM/daemon, configures network/DNS, and starts default oops runtime (`oops up`) |
-| `oopsbox install-cert` | *(none)* | Exports Caddy local root CA from container volume and installs it into OS Trust Store / macOS Keychain |
-| `oopsbox stop` | *(none)* | Stops services and shuts down running stacks via `oops down` to release container names and ports |
-| `oopsbox switch` | `<path>` | Multi-box handover: Tears down current active workspace (`oops down`), re-links global CLI, and boots target Oopsbox environment |
-| `oopsbox upgrade` | `[tag]` | In-place workstation upgrade: fetches latest (or tagged) release blueprint, safely updates `bin/` scripts, template examples, and re-links global symlink without touching user data or custom `.env` |
-
-### Multi-Box Switching Invariant (`oopsbox switch <path>`)
-When switching between isolated organization workspaces (e.g. `~/Workspaces/org-a/oopsbox` -> `~/Workspaces/org-b/oopsbox`):
-- **Container Name Cleanup**: Fixed container names (`caddy-proxy`, `mysql`, `postgres`, `redis`, `oops`) cannot coexist across multiple workspaces. `oopsbox switch` executes a full graceful `down` on the current workspace before booting the target workspace.
-- **Zero Data Loss**: Because service data is persisted in host directories (`./data/`), tearing down containers does not delete databases or persistent volumes.
-- **Active Box State Recording (`~/.oops/active_box`)**: Writes absolute path of active workspace to `~/.oops/active_box` on `oopsbox start`, `oopsbox switch`, and `oopsbox install`. The `oops` CLI inspects this state to prevent accidental cross-box collisions.
-- **Global Symlink Handover**: Atomically updates `/usr/local/bin/oopsbox` to target the active Oopsbox's `bin/oopsbox`.
-
-> **Note**: For managing stacks, profiles, container health, logs, and DNS records, developers use `oops <command>` directly (e.g. `oops up @lab`, `oops switch`, `oops status`, `oops dns`).
+| `oops box create` | `<path>` | Downloads latest release blueprint, generates secure credentials in `.env`, initializes `oopsbox.yml`, and sets active box |
+| `oops box active` | `[path]` | Displays or sets the currently active Oopsbox workspace in `~/.oops/active_box` |
+| `oops box list` | *(none)* | Lists known and active Oopsbox workspaces |
+| `oops box start` | *(none)* | Boots container engine (OrbStack/Colima/Docker), configures resolver, syncs DNS records, and starts default profile (`oops up`) |
+| `oops box stop` | *(none)* | Stops all running stacks via `oops down` on the active box |
+| `oops box switch` | `<path>` | Gracefully tears down current box, updates active box, and starts target box |
+| `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store / Keychain |
 
 ## Dependency & Blast-Radius Matrix
 
-- **Upstream Callers**: Developer terminal, onboarding scripts, local dev workflows.
-- **Downstream Dependencies**: Docker Engine, Colima (`colima`), macOS `pfctl`, macOS `security` (Keychain), `sudo`, Caddy PKI volume.
+- **Upstream Callers**: Developer terminal (`oops box <cmd>`), CI/CD scripts.
+- **Downstream Dependencies**: GitHub Releases API / curl, Docker Engine, OrbStack, Colima, macOS `/etc/resolver/`, macOS `security`, Linux `update-ca-certificates`.
 - **Bounded Blast Radius**:
-  - `oopsbox/bin/oopsbox`: OS router.
-  - `oopsbox/bin/oopsbox-mac`: macOS driver.
-  - `oopsbox/bin/oopsbox-linux`: Linux driver.
-  - `oopsbox/README.md`: Workstation developer documentation.
+  - `cmd/box.go`: Cobra CLI subcommand definitions.
+  - `internal/box/`: Workspace lifecycle, blueprint extraction, credential generator, engine controller.
+  - `cmd/root.go`: Active box resolution & validation.
+  - `install.sh`: Standalone CLI installer and completion setup.
 
 ## Verification & Acceptance Criteria
 
-- **Syntax Validation**: `sh -n oopsbox/bin/oopsbox` and `bash -n oopsbox/bin/oopsbox-mac` and `bash -n oopsbox/bin/oopsbox-linux` exit with Code 0.
-- **Execution Scenarios**:
-  - Running `bin/oopsbox` or `bin/oopsbox --help` displays all subcommands cleanly (including `switch`).
-  - Running `bin/oopsbox start` boots VM engine, configures networking/resolver, and delegates to `oops up`.
-  - Running `bin/oopsbox stop` delegates to `oops down`.
-  - Running `bin/oopsbox switch <path>` tears down current containers and starts the target Oopsbox cleanly without port or name collisions.
+- **Unit Tests**:
+  - `go test -v -race ./internal/box/... ./cmd/...` exits with Code 0.
+  - Random credential generator produces 48-char alphanumeric secrets and 32-char passwords.
+  - Active box resolution and validation functions handle non-existent, invalid, and valid directories.
+- **CLI Behavior**:
+  - `oops box --help` displays all subcommands cleanly.
+  - `oops box active` displays active box and validation status.
+  - Tab completion correctly suggests `oops box` and all subcommands (`create`, `active`, `list`, `start`, `stop`, `switch`, `cert`).

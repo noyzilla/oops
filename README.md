@@ -45,14 +45,13 @@ oopsbox/
 │   │   └── compose.yml
 │   └── apps/             # Group: Application Services (web-app, worker)
 │       └── compose.yml
-├── bin/                  # Workstation Developer Tools (oopsbox, oopsbox-mac, oopsbox-linux)
 ├── data/                 # Live container storage (High-IOPS persistent host volumes)
 └── backups/              # Automated database dumps & filesystem data archives
 ```
 
 ### Why Oopsbox?
 
-- **1-Command Workstation Setup**: Run `./bin/oopsbox install` and `oopsbox start` to boot the VM, set up host networking, register the macOS/Linux DNS resolver, and trust root SSL certificates.
+- **1-Command Workstation Setup**: Run `oops box create ~/oopsbox` and `oops box start` to boot the VM, set up host networking, register the macOS/Linux DNS resolver, and trust root SSL certificates.
 - **Automated Local HTTPS**: Caddy Edge Proxy automatically issues and serves valid TLS certificates with green locks for `https://*.web.oops`.
 - **Embedded Zero-Config DNS**: Containers are instantly resolvable by hostname (e.g. `mysql.oops`, `redis.oops`, `host.oops`, `vm.oops`) through the embedded Oops DNS engine.
 - **Strict Network Isolation**: Enforces least privilege across `net-edge` (public ingress) and `net-db` (isolated backend).
@@ -160,30 +159,30 @@ curl -X POST \
 
 ## Quickstart
 
-### 1-Line Installer: Oopsbox & CLI (Complete Blueprint)
-Install the full Oopsbox workstation blueprint and native CLI:
+### 1-Line Standalone Installer: Oops CLI
+Auto-detects your OS and architecture (`darwin/arm64`, `darwin/amd64`, `linux/arm64`, `linux/amd64`, Google Container-Optimized OS), installs the native binary, and configures shell tab completion:
 ```bash
-# Default: Install directly into the current directory
 curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash
-
-# Custom directory: Install into a specific project path (e.g. ~/oopsbox or ./my-project)
-curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bash -s -- ~/oopsbox
 ```
 
-### 1-Line Installer: Oops CLI Only (Standalone)
-Auto-detects your OS and architecture (`darwin/arm64`, `darwin/amd64`, `linux/arm64`, `linux/amd64`) and installs the standalone binary:
+### Provisioning & Booting an Oopsbox Workspace
+Create a brand new workstation workspace from the latest release blueprint and boot it:
 ```bash
-# Default install to /usr/local/bin/oops (or ~/.local/bin/oops)
-curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install-cli.sh | bash
+# 1. Create a new workspace (downloads blueprint, generates .env credentials, sets active box)
+oops box create ~/oopsbox
 
-# Custom installation path:
-curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install-cli.sh | bash -s -- /usr/local/bin/oops
+# 2. Boot engine, configure DNS resolver, and start default services
+cd ~/oopsbox
+oops box start
+
+# 3. Install local Caddy CA root certificate into Keychain/Trust store for trusted HTTPS
+oops box cert
 ```
 
-### Upgrading Oopsbox
-Upgrade workstation scripts (`bin/`) and example templates in-place without touching your data or custom configuration:
+### Multi-Box Switching
+Switch seamlessly between isolated project workspaces:
 ```bash
-oopsbox upgrade
+oops box switch ~/Workspaces/client-b/oopsbox
 ```
 
 ### Run Oops from Anywhere (Docker Wrapper)

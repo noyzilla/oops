@@ -6,6 +6,20 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Added
+- Native Go `oops box` CLI subcommand suite (`create`, `active`, `list`, `start`, `stop`, `switch`, `cert`) for complete workspace lifecycle management without external bash wrappers.
+- Dynamic blueprint download and extraction from latest GitHub Release asset `oopsbox.tar.gz` (with fallback to `main` branch archive) on `oops box create <path>`.
+- Cryptographic credential generation for `OOPS_SECRET` (48 chars) and shared database passwords (32 chars) upon workspace creation.
+- Built-in shell tab auto-completion for Zsh and Bash (`oops completion`) with automatic configuration in `install.sh`.
+
+### Changed
+- Converted `install.sh` to a standalone Oops CLI binary installer with Google Container-Optimized OS (COS) support and shell completion setup.
+- Synchronized living specifications in `docs/specs/oopsbox.md` and `docs/specs/cli.md`.
+
+### Removed
+- Removed legacy `oopsbox/bin/` workstation shell scripts (`oopsbox`, `oopsbox-mac`, `oopsbox-linux`) in favor of native Go `oops box` CLI.
+- Removed redundant `install-cli.sh` in favor of unified standalone installer `install.sh`.
+
 ## [0.11.0] - 2026-10-05
 
 ### Added

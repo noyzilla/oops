@@ -99,7 +99,7 @@ func ValidateActiveBox(workDir string) error {
 	activeBoxCanonical := CanonicalPath(activeBox)
 
 	if workDirCanonical != activeBoxCanonical {
-		return fmt.Errorf("active oopsbox mismatch!\n  Active Box : %s\n  Target Box : %s\n\nRunning containers belong to the active box. To switch active context, run:\n  oopsbox switch %s", activeBox, CanonicalPath(workDir), CanonicalPath(workDir))
+		return fmt.Errorf("active oopsbox mismatch!\n  Active Box : %s\n  Target Box : %s\n\nRunning containers belong to the active box. To switch active context, run:\n  oops box switch %s", activeBox, CanonicalPath(workDir), CanonicalPath(workDir))
 	}
 
 	return nil
@@ -173,6 +173,7 @@ func expandHome(path string) string {
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&targetDir, "dir", "C", "", "Target oopsbox working directory (default: OOPSBOX_DIR, ~/.oops/active_box, or auto-detect)")
 
+	rootCmd.AddCommand(newBoxCmd())
 	rootCmd.AddCommand(newServerCmd())
 	rootCmd.AddCommand(newUpCmd())
 	rootCmd.AddCommand(newStopCmd())

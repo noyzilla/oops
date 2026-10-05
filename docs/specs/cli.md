@@ -191,6 +191,14 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops dns add` | `<domain> <ip>` | Adds or updates static DNS record in `config/oops/dns` (supports `.wildcard`) |
 | `oops dns del` | `<domain>` | Deletes static DNS record from `config/oops/dns` |
 | `oops dns reload` | *(none)* | Validates `config/oops/dns` and triggers atomic reload across running daemon |
+| `oops box create` | `<path>` | Creates new Oopsbox workspace from release blueprint, generates credentials, and sets active box |
+| `oops box active` | `[path]` | Displays or sets the active Oopsbox workspace in `~/.oops/active_box` |
+| `oops box list` | *(none)* | Lists known and active Oopsbox workspaces |
+| `oops box start` | *(none)* | Boots VM engine (OrbStack/Colima/Docker), configures resolver, and starts default stack |
+| `oops box stop` | *(none)* | Stops all running stacks via `oops down` on the active box |
+| `oops box switch` | `<path>` | Gracefully tears down current box, updates active box, and starts target box |
+| `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store / Keychain |
+| `oops completion` | `[bash|zsh|fish|powershell]` | Generates shell auto-completion script for the specified shell |
 | `oops server` | `[-p, --port 80] [-c, --config <path>]` | Starts webhook deployment and DNS discovery daemon (aliases: `webhook`, `daemon`) |
 
 ---

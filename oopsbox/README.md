@@ -24,10 +24,6 @@ Oopsbox is the production-ready, turnkey Infrastructure as Code (IaC) blueprint 
 │   │   └── compose.yml
 │   └── apps/             # Group: Application Services (web-app, worker)
 │       └── compose.yml
-├── bin/                  # Workstation Dev Tooling (macOS/Linux - Excluded on Prod)
-│   ├── oopsbox           # Main Dispatcher (Auto-detects OS)
-│   ├── oopsbox-mac       # macOS Helper (VM engine, firewall, routes, keychain cert)
-│   └── oopsbox-linux     # Linux Desktop Helper
 ├── data/                 # Live realtime container storage (High-IOPS persistent volume)
 │   ├── mysql/            # MySQL storage
 │   ├── postgres/         # PostgreSQL storage
@@ -70,35 +66,29 @@ graph TD
 
 ## Quickstart (Local Development)
 
-### One-Command Setup (`./bin/oopsbox install`)
-Run the automated installation to initialize credentials, storage, macOS DNS resolver, and register `oopsbox` to global PATH:
+### Create or Initialize Workspace (`oops box create <path>`)
+Provision a new Oopsbox workspace from the latest official blueprint with generated cryptographic credentials and active box registration:
 ```bash
-./bin/oopsbox install
+oops box create ~/oopsbox
 ```
 
-### Start Dev Environment (`oopsbox start`)
-Starts VM routing (if using Colima) and boots the default profile (`profiles.default` in `oops.yml`):
+### Start Dev Environment (`oops box start`)
+Starts VM engine (OrbStack/Colima/Docker), configures local DNS resolver, syncs DNS records, and boots default stack:
 ```bash
-oopsbox start
+cd ~/oopsbox
+oops box start
 ```
 
-### Install Trusted Local SSL Certificate (`oopsbox install-cert`)
-Adds Caddy's local root CA certificate to macOS Keychain (enables green lock for `https://*.web.oops`):
+### Install Trusted Local SSL Certificate (`oops box cert`)
+Adds Caddy's local root CA certificate to macOS Keychain or Linux system trust store (enables green locks for `https://*.web.oops`):
 ```bash
-oopsbox install-cert
+oops box cert
 ```
 
-### Switch Active Oopsbox (`oopsbox switch <path>`)
+### Switch Active Oopsbox (`oops box switch <path>`)
 Seamlessly switch between multiple isolated organization workspaces without port or container name collisions:
 ```bash
-oopsbox switch ~/Workspaces/another-org/oopsbox
-```
-
-### Upgrade Workstation Scripts & Templates (`oopsbox upgrade [tag]`)
-Safely upgrade `bin/` scripts (`oopsbox`, `oopsbox-mac`, `oopsbox-linux`) and example templates in-place without touching your data or custom configuration:
-```bash
-oopsbox upgrade           # Upgrade to latest release
-oopsbox upgrade v0.9.0    # Upgrade to a specific release version
+oops box switch ~/Workspaces/another-org/oopsbox
 ```
 
 ---
