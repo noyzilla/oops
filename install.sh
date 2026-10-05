@@ -126,7 +126,15 @@ chmod +x "$TARGET_DIR/bin/"* 2>/dev/null || true
 
 # 5. Link Global Oops CLI (Native Binary Primary, Docker Wrapper Fallback)
 GLOBAL_OOPS_INSTALLED=false
-for CANDIDATE_DIR in "/usr/local/bin" "$HOME/.local/bin"; do
+CANDIDATE_DIRS=("/usr/local/bin" "$HOME/.local/bin")
+if [[ -f /etc/os-release ]] && (grep -qi "Container-Optimized OS" /etc/os-release 2>/dev/null || grep -qi "^ID=.*cos" /etc/os-release 2>/dev/null); then
+    CANDIDATE_DIRS=("/var/lib/google/bin" "/usr/local/bin" "$HOME/.local/bin")
+    if [[ ! -d "/var/lib/google/bin" ]] && [[ -w "/var/lib/google" ]]; then
+        mkdir -p "/var/lib/google/bin" 2>/dev/null || true
+    fi
+fi
+
+for CANDIDATE_DIR in "${CANDIDATE_DIRS[@]}"; do
     if [[ -d "$CANDIDATE_DIR" && -w "$CANDIDATE_DIR" ]]; then
         if [[ "$CLI_INSTALLED" == true ]]; then
             ln -sf "$TARGET_DIR/bin/oops" "$CANDIDATE_DIR/oops"

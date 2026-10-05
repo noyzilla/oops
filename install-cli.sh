@@ -22,11 +22,19 @@ echo -e "${BOLD}${BLUE}=========================================================
 # 1. Check prerequisite tools
 command -v curl >/dev/null 2>&1 || { echo -e "${RED}Error: curl is required but not installed.${NC}" >&2; exit 1; }
 
-# 2. Detect OS
+# 2. Detect OS & Distribution
 OS_RAW="$(uname -s)"
+IS_COS=false
 case "$OS_RAW" in
     Darwin*) OS="darwin" ;;
-    Linux*)  OS="linux" ;;
+    Linux*)
+        OS="linux"
+        if [ -f /etc/os-release ]; then
+            if grep -qi "Container-Optimized OS" /etc/os-release 2>/dev/null || grep -qi "^ID=.*cos" /etc/os-release 2>/dev/null; then
+                IS_COS=true
+            fi
+        fi
+        ;;
     *)
         echo -e "${RED}Error: Unsupported operating system: ${OS_RAW}${NC}" >&2
         exit 1
@@ -44,7 +52,11 @@ case "$ARCH_RAW" in
         ;;
 esac
 
-echo -e "==> Detected Platform: ${BOLD}${OS}/${ARCH}${NC}"
+if [ "$IS_COS" = true ]; then
+    echo -e "==> Detected Platform: ${BOLD}${OS}/${ARCH} (Google Container-Optimized OS)${NC}"
+else
+    echo -e "==> Detected Platform: ${BOLD}${OS}/${ARCH}${NC}"
+fi
 
 # 4. Determine Installation Target Path
 TARGET_INPUT="${1:-${INSTALL_PATH:-}}"
@@ -72,8 +84,12 @@ if [ -n "$TARGET_INPUT" ]; then
         DEST_FILE="$TARGET_INPUT"
     fi
 else
-    # Default search order: /usr/local/bin/oops -> $HOME/.local/bin/oops
-    if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
+    # Default search order:
+    # 1. Google Container-Optimized OS: /var/lib/google/bin/oops
+    # 2. Standard Linux / macOS: /usr/local/bin/oops -> $HOME/.local/bin/oops
+    if [ "$IS_COS" = true ]; then
+        DEST_FILE="/var/lib/google/bin/oops"
+    elif [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
         DEST_FILE="/usr/local/bin/oops"
     elif [ -d "$HOME/.local/bin" ]; then
         DEST_FILE="$HOME/.local/bin/oops"

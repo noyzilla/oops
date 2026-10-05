@@ -120,12 +120,19 @@ cmd_install() {
 
     # Register oopsbox to global system PATH
     echo -e "Registering 'oopsbox' to global system PATH..."
-    if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
-        ln -sf "$BIN_DIR/oopsbox" /usr/local/bin/oopsbox
-        echo -e "${GREEN}✓ Symlink created: /usr/local/bin/oopsbox${NC}"
+    local link_target="/usr/local/bin"
+    if [ -f /etc/os-release ] && (grep -qi "Container-Optimized OS" /etc/os-release 2>/dev/null || grep -qi "^ID=.*cos" /etc/os-release 2>/dev/null); then
+        link_target="/var/lib/google/bin"
+        mkdir -p "$link_target" 2>/dev/null || true
+    fi
+
+    if [ -d "$link_target" ] && [ -w "$link_target" ]; then
+        ln -sf "$BIN_DIR/oopsbox" "$link_target/oopsbox"
+        echo -e "${GREEN}✓ Symlink created: $link_target/oopsbox${NC}"
     elif sudo -n true 2>/dev/null || [ -n "$SUDO_USER" ]; then
-        sudo ln -sf "$BIN_DIR/oopsbox" /usr/local/bin/oopsbox
-        echo -e "${GREEN}✓ Symlink created: /usr/local/bin/oopsbox${NC}"
+        sudo mkdir -p "$link_target" 2>/dev/null || true
+        sudo ln -sf "$BIN_DIR/oopsbox" "$link_target/oopsbox"
+        echo -e "${GREEN}✓ Symlink created: $link_target/oopsbox${NC}"
     else
         mkdir -p "$HOME/.local/bin"
         ln -sf "$BIN_DIR/oopsbox" "$HOME/.local/bin/oopsbox"
@@ -344,8 +351,14 @@ cmd_upgrade() {
     echo -e "==> Downloading native Oops CLI binary (linux-${arch})..."
     if curl -fsSL "$cli_url" -o "$OOPSBOX_DIR/bin/oops" 2>/dev/null && [ -s "$OOPSBOX_DIR/bin/oops" ]; then
         chmod +x "$OOPSBOX_DIR/bin/oops"
-        if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
-            ln -sf "$OOPSBOX_DIR/bin/oops" /usr/local/bin/oops
+        local link_target="/usr/local/bin"
+        if [ -f /etc/os-release ] && (grep -qi "Container-Optimized OS" /etc/os-release 2>/dev/null || grep -qi "^ID=.*cos" /etc/os-release 2>/dev/null); then
+            link_target="/var/lib/google/bin"
+            mkdir -p "$link_target" 2>/dev/null || true
+        fi
+
+        if [ -d "$link_target" ] && [ -w "$link_target" ]; then
+            ln -sf "$OOPSBOX_DIR/bin/oops" "$link_target/oops"
         elif [ -d "$HOME/.local/bin" ]; then
             mkdir -p "$HOME/.local/bin"
             ln -sf "$OOPSBOX_DIR/bin/oops" "$HOME/.local/bin/oops"
@@ -361,8 +374,14 @@ cmd_upgrade() {
     done
 
     # Re-link global CLI symlink
-    if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
-        ln -sf "$OOPSBOX_DIR/bin/oopsbox" /usr/local/bin/oopsbox
+    local link_target="/usr/local/bin"
+    if [ -f /etc/os-release ] && (grep -qi "Container-Optimized OS" /etc/os-release 2>/dev/null || grep -qi "^ID=.*cos" /etc/os-release 2>/dev/null); then
+        link_target="/var/lib/google/bin"
+        mkdir -p "$link_target" 2>/dev/null || true
+    fi
+
+    if [ -d "$link_target" ] && [ -w "$link_target" ]; then
+        ln -sf "$OOPSBOX_DIR/bin/oopsbox" "$link_target/oopsbox"
     elif [ -d "$HOME/.local/bin" ]; then
         mkdir -p "$HOME/.local/bin"
         ln -sf "$OOPSBOX_DIR/bin/oopsbox" "$HOME/.local/bin/oopsbox"
