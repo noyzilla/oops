@@ -32,6 +32,7 @@ services:
       OOPS_BACKUP_DIR: ${OOPS_BACKUP_DIR:-/oopsbox/backups}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     labels:
       # Ingress through Caddy
       caddy: "${OOPS_DOMAIN:-oops.web.oops}"

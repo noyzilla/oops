@@ -12,7 +12,7 @@ services:
     networks:
       - net-db
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -30,7 +30,7 @@ services:
     networks:
       - net-db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -40,13 +40,16 @@ services:
     container_name: redis
     hostname: redis.oops
     restart: unless-stopped
+    command: [ "sh", "-c", "if [ -n \"$${REDIS_PASSWORD}\" ]; then exec redis-server --requirepass \"$${REDIS_PASSWORD}\"; else exec redis-server; fi" ]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     volumes:
       - ../../data/redis:/data
       # - redis_data:/data
     networks:
       - net-db
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG; else redis-cli ping | grep PONG; fi" ]
       interval: 5s
       timeout: 3s
       retries: 5

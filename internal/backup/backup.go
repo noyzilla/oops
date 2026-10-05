@@ -78,12 +78,25 @@ func DumpRedis(ctx context.Context, containerTarget string, w io.Writer) error {
 	if containerTarget == "" {
 		containerTarget = "redis"
 	}
+	pass := os.Getenv("REDIS_PASSWORD")
+
+	var saveArgs []string
+	var rdbArgs []string
+
+	if pass != "" {
+		saveArgs = []string{"exec", containerTarget, "redis-cli", "-a", pass, "--no-auth-warning", "SAVE"}
+		rdbArgs = []string{"exec", containerTarget, "redis-cli", "-a", pass, "--no-auth-warning", "--rdb", "-"}
+	} else {
+		saveArgs = []string{"exec", containerTarget, "redis-cli", "SAVE"}
+		rdbArgs = []string{"exec", containerTarget, "redis-cli", "--rdb", "-"}
+	}
+
 	// Best-effort SAVE inside container to ensure latest dirty data is persisted
-	saveCmd := exec.CommandContext(ctx, "docker", "exec", containerTarget, "redis-cli", "SAVE")
+	saveCmd := exec.CommandContext(ctx, "docker", saveArgs...)
 	_ = saveCmd.Run()
 
 	// Stream point-in-time RDB dump to writer
-	cmd := exec.CommandContext(ctx, "docker", "exec", containerTarget, "redis-cli", "--rdb", "-")
+	cmd := exec.CommandContext(ctx, "docker", rdbArgs...)
 	cmd.Stdout = w
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
