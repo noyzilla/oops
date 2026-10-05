@@ -6,7 +6,17 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
-## [0.10.0] - 2026-10-05
+## [0.11.0] - 2026-10-05
+
+### Added
+- Flexible project directory target support in `install.sh` (`curl ... | bash -s -- <project-directory>`) with seamless default installation into the current directory (`$(pwd)`).
+
+### Changed
+- Made `oops` root command explicitly display the Help menu by default upon execution without subcommands.
+- Updated `install.sh` to use clean, readable Bash idioms and unified `README.md` quickstart installation guides.
+
+### Removed
+- Removed legacy single-container `docker-compose.yml` from repository root in favor of modular multi-stack manifests under `oopsbox/stacks/`.
 
 ### Added
 - Standalone 1-line CLI installer script (`install-cli.sh`) supporting auto-detection of operating system (`darwin`, `linux`) and architecture (`arm64`, `amd64`) with customizable installation destination.
