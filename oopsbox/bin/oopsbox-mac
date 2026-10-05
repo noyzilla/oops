@@ -60,16 +60,25 @@ update_static_hosts() {
         local engine=$(detect_engine)
         if [ "$engine" = "colima" ] && command -v colima >/dev/null 2>&1 && colima status >/dev/null 2>&1; then
             vm_ip=$(colima ssh -- ip addr show col0 2>/dev/null | grep 'inet ' | awk '{ print $2 }' | cut -d/ -f1)
+            host_ip=$(colima ssh -- ip route show default 2>/dev/null | awk '{ print $3 }' | head -n 1)
+            if [ -z "$host_ip" ] && [ -n "$vm_ip" ]; then
+                host_ip=$(echo "$vm_ip" | sed 's/\.[0-9]*$/\.1/')
+            fi
         elif [ "$engine" = "orbstack" ]; then
-            vm_ip=$(docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null || echo "127.0.0.1")
-            host_ip="127.0.0.1"
+            local bridge_gw=$(docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null || true)
+            bridge_gw="${bridge_gw:-192.168.215.1}"
+            vm_ip="$bridge_gw"
+            host_ip="$bridge_gw"
         else
-            vm_ip=$(docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null || echo "127.0.0.1")
+            local bridge_gw=$(docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null || true)
+            bridge_gw="${bridge_gw:-172.17.0.1}"
+            vm_ip="$bridge_gw"
+            host_ip="$bridge_gw"
         fi
     fi
 
     if [ -n "$vm_ip" ]; then
-        if [ -z "$host_ip" ]; then
+        if [ -z "$host_ip" ] || [ "$host_ip" = "127.0.0.1" ]; then
             host_ip=$(echo "$vm_ip" | sed 's/\.[0-9]*$/\.1/')
         fi
 
