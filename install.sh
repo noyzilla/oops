@@ -101,32 +101,33 @@ echo -e "${GREEN}✓ Successfully installed Oops CLI binary to ${TARGET_BIN_DIR}
 # 5. Configure Shell Auto-completion
 SHELL_CONFIGURED=false
 
-# Configure Zsh
-if [[ -f "$HOME/.zshrc" ]]; then
-    if ! grep -q "oops completion" "$HOME/.zshrc" 2>/dev/null; then
-        echo -e "\n# Oops CLI autocompletion" >> "$HOME/.zshrc"
-        echo -e "if command -v oops >/dev/null 2>&1; then\n  source <(oops completion zsh)\nfi" >> "$HOME/.zshrc"
-        SHELL_CONFIGURED=true
-        echo -e "${GREEN}✓ Configured shell completion in ~/.zshrc${NC}"
-    fi
+# 5. Configure Shell PATH & Auto-completion
+SHELL_PROFILES=()
+[[ -f "$HOME/.bashrc" ]] && SHELL_PROFILES+=("$HOME/.bashrc")
+[[ -f "$HOME/.zshrc" ]] && SHELL_PROFILES+=("$HOME/.zshrc")
+[[ -f "$HOME/.profile" ]] && SHELL_PROFILES+=("$HOME/.profile")
+
+if [[ ${#SHELL_PROFILES[@]} -eq 0 ]]; then
+    SHELL_PROFILES+=("$HOME/.bashrc")
 fi
 
-# Configure Bash
-if [[ -f "$HOME/.bashrc" ]]; then
-    if ! grep -q "oops completion" "$HOME/.bashrc" 2>/dev/null; then
-        echo -e "\n# Oops CLI autocompletion" >> "$HOME/.bashrc"
-        echo -e "if command -v oops >/dev/null 2>&1; then\n  source <(oops completion bash)\nfi" >> "$HOME/.bashrc"
-        SHELL_CONFIGURED=true
-        echo -e "${GREEN}✓ Configured shell completion in ~/.bashrc${NC}"
+for PROFILE in "${SHELL_PROFILES[@]}"; do
+    # 5.1 Ensure TARGET_BIN_DIR is in PATH
+    if ! grep -q "$TARGET_BIN_DIR" "$PROFILE" 2>/dev/null; then
+        echo -e "\n# Oops CLI PATH" >> "$PROFILE"
+        echo -e "export PATH=\"${TARGET_BIN_DIR}:\$PATH\"" >> "$PROFILE"
+        echo -e "${GREEN}✓ Added ${TARGET_BIN_DIR} to PATH in ${PROFILE}${NC}"
     fi
-fi
 
-# 6. Verify PATH
-if [[ ":$PATH:" != *":$TARGET_BIN_DIR:"* ]]; then
-    echo -e "${YELLOW}Warning: ${TARGET_BIN_DIR} is not in your PATH.${NC}"
-    echo -e "Please add the following line to your shell profile (~/.zshrc or ~/.bashrc):"
-    echo -e "  ${BOLD}export PATH=\"${TARGET_BIN_DIR}:\$PATH\"${NC}"
-fi
+    # 5.2 Configure Shell Autocompletion
+    if ! grep -q "oops completion" "$PROFILE" 2>/dev/null; then
+        SHELL_TYPE="bash"
+        [[ "$PROFILE" == *".zshrc"* ]] && SHELL_TYPE="zsh"
+        echo -e "\n# Oops CLI autocompletion" >> "$PROFILE"
+        echo -e "if command -v oops >/dev/null 2>&1; then\n  source <(oops completion ${SHELL_TYPE})\nfi" >> "$PROFILE"
+        echo -e "${GREEN}✓ Configured shell completion in ${PROFILE}${NC}"
+    fi
+done
 
 # 7. Print Completion & Quickstart Instructions
 echo -e "\n${BOLD}${GREEN}==============================================================================${NC}"
