@@ -103,8 +103,9 @@ For each matched service in target order:
   - If container has no native healthcheck but has `oops.health.url`: Send HTTP GET requests until 200 OK is received.
   - If status is `"unhealthy"` or polling exceeds `OOPS_HEALTHCHECK_TIMEOUT` (default 10m / 600s): Abort the update sequence immediately, print container logs, and exit with Code 1.
 
-### Database Management (`oops db <engine>[:<target>] <action>`)
-- **Syntax**: `oops db mysql[:<target>] <create|passwd|list|drop> [args...]` (also accepts shorthand `mysql/create`, `mysql-create`, `mysql passwd`, `mysql password`).
+### Database Management (`oops db <mysql|pg>[:<target>] <action>`)
+- **Supported Engines**: `mysql`, `pg` (synonym: `postgres`)
+- **Syntax**: `oops db mysql[:<target>] <create|passwd|list|drop> [args...]`
 - **Target Resolution**:
   - `mysql` -> Default container `mysql`
   - `mysql:<target>` (e.g. `mysql:mysql-analytics`) -> Target container `mysql-analytics`
@@ -136,6 +137,16 @@ For each matched service in target order:
     ```sql
     ALTER ROLE "<user>" WITH PASSWORD '<new_pass>';
     ```
+
+### Container Status Inspection (`oops status [targets...]`)
+- **Container Discovery**: Connects to Docker Engine API (`/var/run/docker.sock`) to inspect active containers, health status, primary IP, and port bindings.
+- **Port Formatting Rules**:
+  - **Protocol Default**: TCP is default (e.g. `*:80`). Append `/udp` only for UDP ports (e.g. `*:53/udp`).
+  - **Identical Port Simplification**: If host port equals container port (e.g. `80->80`), show `*:80` and omit `->80`. Use `->` only when ports differ (e.g. `*:[9001,9002]->9000`).
+  - **Host IP Prefixes**: All-interface bindings (`0.0.0.0` / `::`) get `*:` prefix (`*:80`). Loopback bindings (`127.0.0.1` / `localhost`) get `#:` prefix (`#:8080`). Specific interface bindings get `<ip>:` prefix (`192.168.1.50:8080`).
+  - **Deduplication**: Identical mappings across IPv4 and IPv6 are merged into a single entry (`*:80`).
+  - **Multi-Port Grouping**: Multiple host ports mapped to the same container port are grouped into array notation (`*:[9001,9002,9003]->9000`).
+  - **Internal Ports**: Unbound container ports are appended without parentheses (`*:80, *:443, 2019`).
 
 ### Automated Backup Suite (`oops backup`, `oops backup-db`, `oops backup-data`)
 - **Unified Full Backup (`oops backup [-r <duration|int>]`)**:
@@ -180,12 +191,12 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops logs` | `[targets...] [--tail 50] [-f]` | Tail service logs across target services or stacks |
 | `oops pull` | `[targets...] [--all]` | Pulls images for targets, default group, all stacks, or registry aliases |
 | `oops update` | `[targets...] [--all] [-i, --image <img/alias>] [-d 0s]` | Executes sequential rolling update with health check and delay gap |
-| `oops db` | `<engine>[:<target>] <action>` | DB provisioning (`create`, `passwd`, `list`, `drop`) |
+| `oops db` | `<mysql|pg>[:<target>] <action>` | DB provisioning for `mysql` or `pg` (`postgres`): `create`, `passwd`, `list`, `drop` |
 | `oops backup` | `[-r 7d]` | Executes unified full backup (DB dumps + data volumes) and retention prune |
 | `oops backup prune` | `[-r 7d]` | Prunes all expired backup archives (DB and data) |
-| `oops backup-db` | `[targets...] [-r 7d]` | Executes DB dump and retention prune (alias: `db-backup`) |
+| `oops backup-db` | `[targets...] [-r 7d]` | Executes DB dump and retention prune |
 | `oops backup-db prune` | `[-r 7d]` | Prunes expired DB dump archives |
-| `oops backup-data` | `[targets...] [-r 7d]` | Executes data volume tar archives and retention prune (alias: `data-backup`) |
+| `oops backup-data` | `[targets...] [-r 7d]` | Executes data volume tar archives and retention prune |
 | `oops backup-data prune` | `[-r 7d]` | Prunes expired data volume archives |
 | `oops dns` | `[list]` | Inspects active DNS records, static mappings, and discovery routes |
 | `oops dns add` | `<domain> <ip>` | Adds or updates static DNS record in `config/oops/dns` (supports `.wildcard`) |
@@ -203,7 +214,7 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops completion` | `[bash|zsh|fish|powershell]` | Generates shell auto-completion script for the specified shell |
 | `oops version` | `[-v, --version]` | Displays the active Oops version, OS architecture, and build information |
 | `oops selfupdate` | `[-c, --check] [-f, --force]` | Self-updates the oops binary to the latest release published on GitHub |
-| `oops server` | `[-p, --port 80] [-c, --config <path>]` | Starts webhook deployment and DNS discovery daemon (aliases: `webhook`, `daemon`) |
+| `oops server` | `[-p, --port 8080] [-c, --config <path>]` | Starts webhook deployment and DNS discovery daemon |
 
 ---
 
@@ -214,6 +225,12 @@ Upon tag releases (`v*.*.*`), standalone statically-linked executable binaries (
 - `oops-linux-arm64`
 - `oops-darwin-amd64`
 - `oops-darwin-arm64`
+
+Release Mode is `host-release` (declared in `AGENTS.md`):
+- **Release object**: Created by the release operator (`jarn-release`) from the matching `CHANGELOG.md` section, either before or after the tag push.
+- **CI role**: The `Release Multi-OS Binaries` workflow builds assets, then polls (up to 10 minutes, every 10 seconds) until the release exists and uploads assets with `--clobber`. CI never creates the release, which prevents duplicates.
+- **Timeout**: If the release is still missing, the job fails with an actionable error; create the release and re-run the failed job.
+- **Version injection**: The tag `vX.Y.Z` is injected as `cmd.Version` via `-ldflags -X`.
 
 ---
 
