@@ -88,12 +88,14 @@ chmod +x "$TMP_FILE"
 if [[ "$USE_SUDO" == true ]]; then
     echo -e "==> Requesting sudo permissions to install to ${TARGET_BIN_DIR}..."
     sudo mkdir -p "$TARGET_BIN_DIR"
+    sudo chmod 755 "$TARGET_BIN_DIR"
     sudo cp "$TMP_FILE" "$TARGET_BIN_DIR/oops"
-    sudo chmod +x "$TARGET_BIN_DIR/oops"
+    sudo chmod 755 "$TARGET_BIN_DIR/oops"
 else
     mkdir -p "$TARGET_BIN_DIR"
+    chmod 755 "$TARGET_BIN_DIR"
     cp "$TMP_FILE" "$TARGET_BIN_DIR/oops"
-    chmod +x "$TARGET_BIN_DIR/oops"
+    chmod 755 "$TARGET_BIN_DIR/oops"
 fi
 
 echo -e "${GREEN}✓ Successfully installed Oops CLI binary to ${TARGET_BIN_DIR}/oops${NC}"
