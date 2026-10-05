@@ -6,15 +6,23 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-05
+
 ### Added
 - Native Go `oops box` CLI subcommand suite (`create`, `active`, `list`, `start`, `stop`, `switch`, `cert`) for complete workspace lifecycle management without external bash wrappers.
 - Dynamic blueprint download and extraction from latest GitHub Release asset `oopsbox.tar.gz` (with fallback to `main` branch archive) on `oops box create <path>`.
 - Cryptographic credential generation for `OOPS_SECRET` (48 chars) and shared database passwords (32 chars) upon workspace creation.
 - Built-in shell tab auto-completion for Zsh and Bash (`oops completion`) with automatic configuration in `install.sh`.
+- Google Container-Optimized OS (COS) auto-detection in `install.sh` targeting `/var/lib/google/bin/`.
+- Redis password authentication and container healthcheck support.
 
 ### Changed
 - Converted `install.sh` to a standalone Oops CLI binary installer with Google Container-Optimized OS (COS) support and shell completion setup.
 - Synchronized living specifications in `docs/specs/oopsbox.md` and `docs/specs/cli.md`.
+
+### Fixed
+- Auto-detected and injected workspace root `.env` via `--env-file` during `docker compose` execution across sub-stacks.
+- Resolved `host.oops` to container-accessible Docker bridge gateway IP (`192.168.215.1`) instead of loopback.
 
 ### Removed
 - Removed legacy `oopsbox/bin/` workstation shell scripts (`oopsbox`, `oopsbox-mac`, `oopsbox-linux`) in favor of native Go `oops box` CLI.
