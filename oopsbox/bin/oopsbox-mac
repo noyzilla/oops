@@ -29,6 +29,12 @@ generate_password() {
     fi
 }
 
+set_active_box() {
+    local box_path="$1"
+    mkdir -p "$HOME/.oops"
+    echo "$box_path" > "$HOME/.oops/active_box"
+}
+
 get_dns_tld() {
     local tld="${OOPS_DNS_TLD:-${DNS_TLD}}"
     if [ -z "$tld" ]; then
@@ -351,6 +357,9 @@ EOF
     # 5. Runtime Engine Setup & Network Optimization
     start_and_configure_engine
 
+    # Record active box state
+    set_active_box "$OOPSBOX_DIR"
+
     echo -e "\n${GREEN}===============================================${NC}"
     echo -e "${GREEN}🎉 Oopsbox installation complete!${NC}"
     echo -e "You can now run ${BLUE}oopsbox${NC} from any terminal directory!"
@@ -369,6 +378,9 @@ cmd_start() {
     fi
 
     echo -e "${BLUE}==> [macOS] Starting Oopsbox Environment...${NC}"
+
+    # Record active box state
+    set_active_box "$OOPSBOX_DIR"
 
     # Check, start and configure runtime engine
     start_and_configure_engine
@@ -502,6 +514,9 @@ cmd_switch() {
             ln -sf "$target_bin" "$HOME/.local/bin/oopsbox"
         fi
     fi
+
+    # Record active box state
+    set_active_box "$target_path"
 
     # Step 3: Start target environment
     echo -e "${BLUE}==> Booting up target environment...${NC}"

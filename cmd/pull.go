@@ -17,6 +17,9 @@ func newPullCmd() *cobra.Command {
 		Long:  "Pulls latest container images across all stacks, a specific stack (/edge, /db), a group (@core, @all), or targeted services.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workDir := ResolveWorkDir(targetDir)
+			if err := ValidateActiveBox(workDir); err != nil {
+				return err
+			}
 
 			var targets []docker.ResolvedTarget
 			var err error

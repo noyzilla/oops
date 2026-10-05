@@ -410,3 +410,47 @@ func ExecuteGitPull(ctx context.Context, targetIDs []string, tag string) error {
 
 	return nil
 }
+
+// CountAllContainers returns the total number of containers currently on the Docker daemon.
+func CountAllContainers(ctx context.Context) (int, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return 0, fmt.Errorf("failed to create docker client: %v", err)
+	}
+	defer cli.Close()
+
+	containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return 0, fmt.Errorf("failed to list containers: %v", err)
+	}
+	return len(containers), nil
+}
+
+// WipeAllContainers forcefully stops and removes all containers on the Docker daemon.
+func WipeAllContainers(ctx context.Context) (int, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return 0, fmt.Errorf("failed to create docker client: %v", err)
+	}
+	defer cli.Close()
+
+	containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return 0, fmt.Errorf("failed to list containers: %v", err)
+	}
+
+	count := 0
+	for _, c := range containers {
+		err := cli.ContainerRemove(ctx, c.ID, container.RemoveOptions{
+			Force:         true,
+			RemoveVolumes: false,
+		})
+		if err != nil {
+			log.Printf("Warning: failed to remove container %s: %v", c.ID[:12], err)
+			continue
+		}
+		count++
+	}
+
+	return count, nil
+}

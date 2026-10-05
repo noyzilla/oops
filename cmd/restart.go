@@ -27,6 +27,9 @@ func newRestartCmd() *cobra.Command {
 			}
 
 			workDir := ResolveWorkDir(targetDir)
+			if err := ValidateActiveBox(workDir); err != nil {
+				return err
+			}
 			targets, err := docker.ResolveTargets(workDir, args)
 			if err != nil {
 				return err

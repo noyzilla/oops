@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Added
+- Single-source Active Box pointer (`~/.oops/active_box`) recorded automatically on `oopsbox start`, `oopsbox switch`, and `oopsbox install`.
+- Active Box Mismatch Guard (`ValidateActiveBox`) in `oops` CLI to prevent accidental execution across different Oopsbox repositories on the same workstation.
+- `--wipe-all` flag on `oops down` with interactive confirmation (and `-y, --yes` bypass) to forcefully stop and remove all containers on the Docker daemon.
+
 ### Changed
 - Renamed workstation CLI and driver scripts from `devoops` to `oopsbox` (`bin/oopsbox`, `bin/oopsbox-mac`, `bin/oopsbox-linux`).
 - Renamed workstation configuration template from `devoops.yml.example` to `oopsbox.yml.example` (and active config lookup to `oopsbox.yml`).

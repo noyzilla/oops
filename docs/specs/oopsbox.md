@@ -66,6 +66,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 When switching between isolated organization workspaces (e.g. `~/Workspaces/org-a/oopsbox` -> `~/Workspaces/org-b/oopsbox`):
 - **Container Name Cleanup**: Fixed container names (`caddy-proxy`, `mysql`, `postgres`, `redis`, `oops`) cannot coexist across multiple workspaces. `oopsbox switch` executes a full graceful `down` on the current workspace before booting the target workspace.
 - **Zero Data Loss**: Because service data is persisted in host directories (`./data/`), tearing down containers does not delete databases or persistent volumes.
+- **Active Box State Recording (`~/.oops/active_box`)**: Writes absolute path of active workspace to `~/.oops/active_box` on `oopsbox start`, `oopsbox switch`, and `oopsbox install`. The `oops` CLI inspects this state to prevent accidental cross-box collisions.
 - **Global Symlink Handover**: Atomically updates `/usr/local/bin/oopsbox` to target the active Oopsbox's `bin/oopsbox`.
 
 > **Note**: For managing stacks, profiles, container health, logs, and DNS records, developers use `oops <command>` directly (e.g. `oops up @lab`, `oops switch`, `oops status`, `oops dns`).

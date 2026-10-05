@@ -59,10 +59,17 @@ To ensure seamless multi-organization operations, eliminate accidental cross-env
 | :---: | :--- | :--- | :--- |
 | **1** | **Explicit Flag (`-C <dir>`, `--dir <dir>`)** | Given non-empty string | Highest precedence; explicitly overrides all shell environment variables and active directory contexts. |
 | **2** | **Current Directory (`.`)** | `hasComposeContent(".") == true` (contains `stacks/` directory or root `compose.yml`) | **Active Developer Context**: If a developer intentionally `cd`s into an Oopsbox workspace (e.g. `~/Workspaces/org-a/oopsbox`), `.` takes precedence over global environment variables (`OOPSBOX_DIR`) to prevent accidental operations on the wrong project. |
-| **3** | **Environment Variables (`OOPSBOX_DIR` / `OOPS_DIR`)** | Outside an Oopsbox directory (`hasComposeContent(".") == false`) | **Global Command Execution**: Allows executing `oops` commands from arbitrary directories (e.g. `~`, `~/projects/my-app`, `/tmp`) while targeting a specific registered Oopsbox hub. |
-| **4** | **Standard Workstation Default (`$HOME/oopsbox`)** | `hasComposeContent("$HOME/oopsbox") == true` | Standard turnkey installation path on macOS and developer workstations. |
-| **5** | **Standard Server Default (`/opt/oopsbox`)** | `hasComposeContent("/opt/oopsbox") == true` | Standard turnkey production deployment path on Linux cloud servers. |
-| **6** | **Fallback (`.`)** | None of the above matched | Returns `.` where subsequent validation (`DiscoverStacks`) returns a clear error if not an Oopsbox directory. |
+| **3** | **Active Box State (`~/.oops/active_box`)** | Outside an Oopsbox directory and `hasComposeContent(activeBox) == true` | **Workstation Active Hub**: Automatically targets the active box registered by `oopsbox start`, `oopsbox switch`, or `oopsbox install` without requiring manual env vars. |
+| **4** | **Environment Variable (`OOPSBOX_DIR`)** | Outside an Oopsbox directory and no active box | **Explicit Environment Override**: Allows overriding active workspace via shell session environment variable. |
+| **5** | **Standard Workstation Default (`$HOME/oopsbox`)** | `hasComposeContent("$HOME/oopsbox") == true` | Standard turnkey installation path on macOS and developer workstations. |
+| **6** | **Standard Server Default (`/opt/oopsbox`)** | `hasComposeContent("/opt/oopsbox") == true` | Standard turnkey production deployment path on Linux cloud servers. |
+| **7** | **Fallback (`.`)** | None of the above matched | Returns `.` where subsequent validation (`DiscoverStacks`) returns a clear error if not an Oopsbox directory. |
+
+#### Active Box Verification & Mismatch Guard
+To prevent accidental cross-box collisions when multiple Oopsbox repositories exist on the same workstation:
+- When executing lifecycle mutation commands (`up`, `restart`, `update`, `switch`, `pull`, `db`, `dns`), `ValidateActiveBox` verifies that the resolved target workspace matches `~/.oops/active_box`.
+- If a mismatch is detected (e.g., active box is `~/Workspaces/box1` while executing inside `~/Workspaces/box2`), execution aborts immediately with an actionable error directing the developer to run `oopsbox switch <path>`.
+- If `~/.oops/active_box` does not exist (single-box workstation or production server), validation passes transparently.
 
 #### Two-Stage Workspace Validation Invariants
 1. **Pre-Flight Inspection (`hasComposeContent`)**: Validates that candidate directories are accessible and contain either a `stacks/` subdirectory or compose manifests (`compose.yaml`, `compose.yml`, `docker-compose.yaml`, `docker-compose.yml`).
@@ -148,10 +155,11 @@ For each matched service in target order:
   - Optional flag with shorthand `-r` (default `7d`, accepts `7d`, `14d`, `30`, `24h`).
 
 ### Working Directory Auto-Discovery & Path Parity
-Oops commands can be invoked from any terminal directory. The working directory is determined using a 4-tier fallback:
+Oops commands can be invoked from any terminal directory. The working directory is determined using the strict hierarchy defined above:
 - **Explicit Flag (`-C, --dir <path>`)**: Highest priority. Expands `~` to the user's home directory.
-- **Environment Variable (`OOPS_DIR`)**: If set in the shell (e.g. `export OOPS_DIR=$HOME/oopsbox`).
 - **Current Directory (`.`)**: If `.` contains `stacks/` or compose files.
+- **Active Box State (`~/.oops/active_box`)**: Automatically probes active workspace recorded on the workstation.
+- **Environment Variable (`OOPSBOX_DIR`)**: If set in the shell (e.g. `export OOPSBOX_DIR=$HOME/oopsbox`).
 - **Default Oopsbox Paths**: Auto-probes `$HOME/oopsbox` (Local Dev) and `/opt/oopsbox` (Production Server).
 
 ---
@@ -166,7 +174,7 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops up` | `[targets...] [-d 0s]` | Starts stack or globbed services with optional inter-service delay (`-d`, `--delay`) |
 | `oops stop` | `[targets...] [-x, --except, --exclude <tgt>] [-d 0s]` | Gracefully stops target services, or stops all other services except specified exclusion targets |
 | `oops restart`| `[targets...] [-d 0s] [-i, --image <img/alias>]` | Restarts target services with stop hooks, delay gap, or image matching |
-| `oops down` | `[-d 0s]` | Tears down all stacks with stop hooks and inter-service delay (`-d`, `--delay`) |
+| `oops down` | `[-d 0s] [--wipe-all] [-y]` | Tears down all stacks with stop hooks and inter-service delay, or wipes all containers on Docker daemon (`--wipe-all`) |
 | `oops switch` | `<target> [-d 0s]` | Switches active profile: starts target group/stack and stops all other running services |
 | `oops status` | `[targets...]` | Formatted table of containers, health, and ports |
 | `oops logs` | `[targets...] [--tail 100] [-f]` | Tail service logs across target services or stacks |

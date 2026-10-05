@@ -27,6 +27,9 @@ func newSwitchCmd() *cobra.Command {
 			}
 
 			workDir := ResolveWorkDir(targetDir)
+			if err := ValidateActiveBox(workDir); err != nil {
+				return err
+			}
 
 			// 1. Resolve targets to start
 			upTargets, err := docker.ResolveTargets(workDir, []string{target})

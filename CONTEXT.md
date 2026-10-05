@@ -103,7 +103,7 @@ All environment variables follow the **[Topic] -> [Modifier] -> [Unit]** standar
 
 | Environment Variable | Internal Config Path | Type | Default | Description |
 | :--- | :--- | :---: | :---: | :--- |
-| `OOPS_DIR` | `CONFIG.CLI.WORK_DIR` | `string` | `""` | Target oopsbox directory (auto-probes `~/oopsbox`, `/opt/oopsbox`) |
+| `OOPSBOX_DIR` | `CONFIG.CLI.WORK_DIR` | `string` | `""` | Target oopsbox directory (auto-probes `~/.oops/active_box`, `~/oopsbox`, `/opt/oopsbox`) |
 | `OOPS_DOMAIN` | `CONFIG.SERVER.DOMAIN` | `string` | `""` | Optional ingress FQDN for webhook daemon |
 | `OOPS_PORT` | `CONFIG.SERVER.PORT` | `int / string` | `80` | Webhook HTTP daemon listening port (fallback: `PORT`) |
 | `OOPS_SECRET` | `CONFIG.WEBHOOK.SECRET` | `string` | `""` | Global fallback webhook secret token |

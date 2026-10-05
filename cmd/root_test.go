@@ -60,6 +60,8 @@ func TestSubcommandFlags(t *testing.T) {
 		{"stop", "except", "x"},
 		{"restart", "delay", "d"},
 		{"down", "delay", "d"},
+		{"down", "wipe-all", ""},
+		{"down", "yes", "y"},
 		{"update", "delay", "d"},
 		{"switch", "delay", "d"},
 		{"server", "port", "p"},
@@ -130,17 +132,47 @@ func TestResolveWorkDir(t *testing.T) {
 	}
 	os.Unsetenv("OOPSBOX_DIR")
 
-	// 3. OOPS_DIR env
-	os.Setenv("OOPS_DIR", "/tmp/env-oops")
-	if got := cmd.ResolveWorkDir(""); got != "/tmp/env-oops" {
-		t.Errorf("ResolveWorkDir with OOPS_DIR = %q, expected /tmp/env-oops", got)
-	}
-	os.Unsetenv("OOPS_DIR")
-
 	// 4. Default fallback
 	fallback := cmd.ResolveWorkDir("")
 	if fallback == "" {
 		t.Errorf("ResolveWorkDir(\"\") returned empty string")
+	}
+}
+
+func TestActiveBox_SetGetValidate(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "oopsbox-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Test Set and Get
+	err = cmd.SetActiveBox(tmpDir)
+	if err != nil {
+		t.Fatalf("SetActiveBox failed: %v", err)
+	}
+
+	got, err := cmd.GetActiveBox()
+	if err != nil {
+		t.Fatalf("GetActiveBox failed: %v", err)
+	}
+	if got != tmpDir {
+		t.Errorf("GetActiveBox = %q, expected %q", got, tmpDir)
+	}
+
+	// Validate matching path succeeds
+	if err := cmd.ValidateActiveBox(tmpDir); err != nil {
+		t.Errorf("ValidateActiveBox with matching path failed: %v", err)
+	}
+
+	// Validate mismatched path fails
+	otherDir, _ := os.MkdirTemp("", "oopsbox-other-*")
+	defer os.RemoveAll(otherDir)
+
+	if err := cmd.ValidateActiveBox(otherDir); err == nil {
+		t.Errorf("ValidateActiveBox with mismatched path expected error, got nil")
+	} else if !strings.Contains(err.Error(), "active oopsbox mismatch") {
+		t.Errorf("expected mismatch error, got: %v", err)
 	}
 }
 

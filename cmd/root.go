@@ -30,7 +30,79 @@ func GetRootCommand() *cobra.Command {
 	return rootCmd
 }
 
-// ResolveWorkDir returns the resolved working directory based on -C/--dir, current directory, OOPSBOX_DIR/OOPS_DIR, or well-known paths
+// GetActiveBox reads the active oopsbox path from ~/.oops/active_box if present.
+func GetActiveBox() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return "", nil
+	}
+	activeFile := filepath.Join(home, ".oops", "active_box")
+	data, err := os.ReadFile(activeFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	path := strings.TrimSpace(string(data))
+	if path == "" {
+		return "", nil
+	}
+	return expandHome(path), nil
+}
+
+// SetActiveBox writes the active oopsbox path to ~/.oops/active_box.
+func SetActiveBox(path string) error {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return nil
+	}
+	dir := filepath.Join(home, ".oops")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	activeFile := filepath.Join(dir, "active_box")
+	return os.WriteFile(activeFile, []byte(strings.TrimSpace(path)+"\n"), 0644)
+}
+
+// CanonicalPath returns absolute and symlink-evaluated path for reliable comparison.
+func CanonicalPath(path string) string {
+	expanded := expandHome(path)
+	abs, err := filepath.Abs(expanded)
+	if err != nil {
+		abs = expanded
+	}
+	eval, err := filepath.EvalSymlinks(abs)
+	if err == nil {
+		return eval
+	}
+	return abs
+}
+
+// ValidateActiveBox verifies that workDir matches the active box recorded in ~/.oops/active_box.
+// If ~/.oops/active_box does not exist, validation succeeds (single box / server mode).
+func ValidateActiveBox(workDir string) error {
+	activeBox, err := GetActiveBox()
+	if err != nil || activeBox == "" {
+		return nil
+	}
+
+	// If active box path on disk was removed, do not block
+	if fi, err := os.Stat(activeBox); err != nil || !fi.IsDir() {
+		return nil
+	}
+
+	workDirCanonical := CanonicalPath(workDir)
+	activeBoxCanonical := CanonicalPath(activeBox)
+
+	if workDirCanonical != activeBoxCanonical {
+		return fmt.Errorf("active oopsbox mismatch!\n  Active Box : %s\n  Target Box : %s\n\nRunning containers belong to the active box. To switch active context, run:\n  oopsbox switch %s", activeBox, CanonicalPath(workDir), CanonicalPath(workDir))
+	}
+
+	return nil
+}
+
+// ResolveWorkDir returns the resolved working directory based on -C/--dir, current directory, ~/.oops/active_box, OOPSBOX_DIR, or well-known paths
 func ResolveWorkDir(customDir string) string {
 	// 1. Explicit -C / --dir flag (highest precedence)
 	if customDir != "" {
@@ -42,16 +114,19 @@ func ResolveWorkDir(customDir string) string {
 		return "."
 	}
 
-	// 3. Environment variables (when outside an oopsbox directory)
+	// 3. Active box state (~/.oops/active_box)
+	if activeBox, err := GetActiveBox(); err == nil && activeBox != "" {
+		if hasComposeContent(activeBox) {
+			return activeBox
+		}
+	}
+
+	// 4. Environment variable (when outside an oopsbox directory and no active_box)
 	if envDir := os.Getenv("OOPSBOX_DIR"); envDir != "" {
 		return expandHome(envDir)
 	}
 
-	if envDir := os.Getenv("OOPS_DIR"); envDir != "" {
-		return expandHome(envDir)
-	}
-
-	// 4. Check $HOME/oopsbox
+	// 5. Check $HOME/oopsbox
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
 		homeOopsbox := filepath.Join(home, "oopsbox")
 		if hasComposeContent(homeOopsbox) {
@@ -59,7 +134,7 @@ func ResolveWorkDir(customDir string) string {
 		}
 	}
 
-	// 5. Check /opt/oopsbox
+	// 6. Check /opt/oopsbox
 	optOopsbox := "/opt/oopsbox"
 	if hasComposeContent(optOopsbox) {
 		return optOopsbox
@@ -93,7 +168,7 @@ func expandHome(path string) string {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&targetDir, "dir", "C", "", "Target oopsbox working directory (default: OOPS_DIR or auto-detect)")
+	rootCmd.PersistentFlags().StringVarP(&targetDir, "dir", "C", "", "Target oopsbox working directory (default: OOPSBOX_DIR, ~/.oops/active_box, or auto-detect)")
 
 	rootCmd.AddCommand(newServerCmd())
 	rootCmd.AddCommand(newUpCmd())

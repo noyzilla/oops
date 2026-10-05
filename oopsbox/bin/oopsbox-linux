@@ -27,6 +27,12 @@ generate_password() {
     fi
 }
 
+set_active_box() {
+    local box_path="$1"
+    mkdir -p "$HOME/.oops"
+    echo "$box_path" > "$HOME/.oops/active_box"
+}
+
 get_yaml_file() {
     for f in "oopsbox.yml" "oopsbox.yaml" "oops.yml" "oops.yaml"; do
         if [ -f "$f" ]; then
@@ -129,6 +135,9 @@ cmd_install() {
         update_static_hosts
     fi
 
+    # Record active box state
+    set_active_box "$OOPSBOX_DIR"
+
     echo -e "\n${GREEN}===============================================${NC}"
     echo -e "${GREEN}🎉 Oopsbox installation complete!${NC}"
     echo -e "You can now run ${BLUE}oopsbox${NC} from any terminal directory!"
@@ -152,6 +161,9 @@ cmd_start() {
     fi
 
     update_static_hosts
+
+    # Record active box state
+    set_active_box "$OOPSBOX_DIR"
 
     echo -e "${BLUE}==> [Linux] Starting Oopsbox Environment...${NC}"
     if run_oops up; then
@@ -255,6 +267,9 @@ cmd_switch() {
             ln -sf "$target_bin" "$HOME/.local/bin/oopsbox"
         fi
     fi
+
+    # Record active box state
+    set_active_box "$target_path"
 
     # Step 3: Start target environment
     echo -e "${BLUE}==> Booting up target environment...${NC}"
