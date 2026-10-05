@@ -54,7 +54,22 @@ jobs:
       - name: Publish Release Assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
         run: |
-          echo "==> Uploading release assets to ${{ github.ref_name }}..."
-          gh release upload "${{ github.ref_name }}" dist/* --clobber || \
-          (sleep 5 && gh release upload "${{ github.ref_name }}" dist/* --clobber)
+          # Release Mode is host-release: the release object is created from the
+          # CHANGELOG section by the release operator, possibly after the tag push.
+          # Wait for it instead of creating it here, to avoid duplicates.
+          echo "==> Waiting for release ${TAG} to exist on the host..."
+          attempts=60
+          interval=10
+          for i in $(seq 1 "${attempts}"); do
+            if gh release view "${TAG}" >/dev/null 2>&1; then
+              echo "==> Release ${TAG} found. Uploading assets..."
+              gh release upload "${TAG}" dist/* --clobber
+              exit 0
+            fi
+            echo "    [${i}/${attempts}] release not found yet, retrying in ${interval}s..."
+            sleep "${interval}"
+          done
+          echo "::error::Release ${TAG} was not created within $((attempts * interval))s. Create it (gh release create ${TAG} --title \"Release ${TAG}\" --notes-file <notes>) and re-run this job."
+          exit 1

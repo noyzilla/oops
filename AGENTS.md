@@ -41,6 +41,7 @@ Configure the active lifecycle commands below for your specific tech stack. Run 
 - **Run Linter / Style**: `golangci-lint run`
 - **Build Project**: `go build -v -o oops .`
 - **Run Local Dev**: `go run main.go`
+- **Release Mode**: `host-release` (see `jarn-release` skill; `.github/workflows/release.yml` waits for the release object created from the CHANGELOG section and then uploads binaries; CI never creates the release itself)
 
 ## Change Routing Matrix
 

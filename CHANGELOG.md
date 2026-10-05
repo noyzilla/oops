@@ -6,6 +6,13 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Changed
+- Updated Jarn framework from v0.10.0 to v0.10.1 and declared `Release Mode: host-release` in `AGENTS.md`.
+- Release workflow now waits (up to 10 minutes) for the host release object before uploading assets, instead of failing after a single 5-second retry.
+
+### Fixed
+- Release workflow no longer fails with `release not found` when the tag is pushed before the release object is created.
+
 ## [0.13.0] - 2026-10-05
 
 ### Added

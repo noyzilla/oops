@@ -120,11 +120,35 @@ git tag -a vX.Y.Z -m "Release vX.Y.Z"
 git push origin vX.Y.Z
 ```
 
-### Platform CLI Integration (Optional)
-If repository host CLI tooling is available, create a formal release alongside the tag:
-- **GitHub (`gh` available)**: `gh release create vX.Y.Z --generate-notes --title "Release vX.Y.Z"` (include any built `dist/` or `bin/` assets if applicable).
-- **GitLab (`glab` available)**: `glab release create vX.Y.Z --notes "Release vX.Y.Z"`
+### Release Mode
+
+Release publication behavior is governed by the `Release Mode` declared in the project `AGENTS.md` (Project Execution Commands). Creating only a tag is never a silent default; it is valid only when the mode is `tag-only`.
+
+| Mode | Meaning | Done when |
+| :--- | :--- | :--- |
+| `tag-only` | Release means declaring the version shipped. No release object, no CI. | Tag exists on remote. |
+| `host-release` | A release object must exist on the repository host. | Release view command exits 0. |
+| `ci-release` | CI creates the release from the pushed tag. | CI-created release is visible on the host. |
+
+#### Mode Resolution
+- Read `Release Mode` from `AGENTS.md`. If declared, use it.
+- If missing or still a template placeholder, infer from the remote host (`git remote get-url origin`) and existing CI release workflows (for example `.github/workflows/*release*`, `.gitlab-ci.yml`).
+  - **Trigger Level 1**: Include the inferred mode in the Execution Plan and wait for user confirmation.
+  - **Trigger Level 2**: Halt if the mode cannot be inferred unambiguously. Never fall back to tag-only silently.
+
+#### Host Release Commands (`host-release`)
+Use the CLI matching the remote host, with notes extracted from the matching version section of `CHANGELOG.md` (write to a temporary file under `.scratch/`):
+- **GitHub**: `gh release create vX.Y.Z --title "Release vX.Y.Z" --notes-file <notes>` (attach built `dist/` or `bin/` assets if applicable).
+- **GitLab**: `glab release create vX.Y.Z --notes-file <notes>`
+- **Gitea / Forgejo**: `tea releases create --tag vX.Y.Z --title "Release vX.Y.Z" --note-file <notes>`
+- **Other hosts**: Halt and ask the user.
+
+If the CLI is missing or unauthenticated, halt and report. Do not downgrade to tag-only.
+
+#### CI Release (`ci-release`)
+Push the tag, then wait for the CI pipeline and verify the release object. Do not create the release manually, to avoid duplicates.
 
 ### Verification
-- Verify the tag exists locally and remotely via `git tag -l vX.Y.Z`.
-- Report the release version, tag, and publish confirmation to the user.
+- Verify the tag exists locally and remotely via `git tag -l vX.Y.Z` and `git ls-remote --tags origin vX.Y.Z`.
+- Verify the release object per mode: `gh release view vX.Y.Z` or `glab release view vX.Y.Z` (`host-release` and `ci-release`).
+- Report the release version, tag, resolved mode with its source (declared or inferred), and publish confirmation to the user.
