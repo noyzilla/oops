@@ -49,12 +49,9 @@ jobs:
           sha256sum oops-* oopsbox.tar.gz > checksums.txt
 
       - name: Publish Release Assets
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/oops-linux-amd64
-            dist/oops-linux-arm64
-            dist/oops-darwin-amd64
-            dist/oops-darwin-arm64
-            dist/oopsbox.tar.gz
-            dist/checksums.txt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "==> Uploading release assets to ${{ github.ref_name }}..."
+          gh release upload "${{ github.ref_name }}" dist/* --clobber || \
+          (sleep 5 && gh release upload "${{ github.ref_name }}" dist/* --clobber)
