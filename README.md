@@ -196,21 +196,6 @@ alias oops='docker run --rm -i \
   ghcr.io/noyzilla/oops:latest'
 ```
 
-### Manual Git Clone Setup
-```bash
-git clone https://github.com/noyzilla/oops.git
-cd oops/oopsbox
-
-# Initialize workstation environment (.env, storage, DNS resolver, global PATH)
-./bin/oopsbox install
-
-# Start environment (oopsbox is now globally available in PATH)
-oopsbox start
-
-# Install local root SSL certificate for green lock HTTPS (*.web.oops)
-oopsbox install-cert
-```
-
 ---
 
 ## Architecture & Specifications
