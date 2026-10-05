@@ -12,8 +12,8 @@ import (
 func newDBCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "db <engine>[:<target>] <action> [args...]",
-		Short: "Database provisioning and credentials management (mysql, pg)",
-		Long:  "Manages database and user provisioning. Actions: create, passwd, list, drop.",
+		Short: "Database provisioning and credentials management for mysql or pg (postgres)",
+		Long:  "Manages database and user provisioning for supported engines: mysql, pg (postgres). Actions: create, passwd, list, drop.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 2 {
 				return cmd.Help()

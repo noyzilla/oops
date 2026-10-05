@@ -130,9 +130,8 @@ func newDNSAddCmd() *cobra.Command {
 
 func newDNSDelCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "del <domain>",
-		Aliases: []string{"delete", "rm"},
-		Short:   "Delete a custom DNS record from data/oops/dns.records",
+		Use:   "del <domain>",
+		Short: "Delete a custom DNS record from data/oops/dns.records",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workDir := ResolveWorkDir(targetDir)

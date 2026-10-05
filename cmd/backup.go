@@ -65,9 +65,8 @@ func newBackupDBCmd() *cobra.Command {
 	var retention string
 
 	cmd := &cobra.Command{
-		Use:     "backup-db [targets...]",
-		Aliases: []string{"db-backup"},
-		Short:   "Executes database dump and retention prune (mysql, postgres)",
+		Use:   "backup-db [targets...]",
+		Short: "Executes database dump and retention prune (mysql, postgres)",
 		Long:    "Executes compressed database backups for mysql, postgres, and redis containers, and prunes old archives.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ret, backupDir, err := resolveBackupConfig(retention)
@@ -113,9 +112,8 @@ func newBackupDataCmd() *cobra.Command {
 	var retention string
 
 	cmd := &cobra.Command{
-		Use:     "backup-data [targets...]",
-		Aliases: []string{"data-backup"},
-		Short:   "Executes data volume and filesystem archives (uploads, storage) and retention prune",
+		Use:   "backup-data [targets...]",
+		Short: "Executes data volume and filesystem archives (uploads, storage) and retention prune",
 		Long:    "Executes compressed tar archives for paths defined in oops.yml (backups.data), and prunes old archives.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ret, backupDir, err := resolveBackupConfig(retention)

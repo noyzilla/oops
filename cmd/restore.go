@@ -35,9 +35,8 @@ func newRestoreDBCmd() *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:     "restore-db <engine>[:target] <db_name> [backup_file]",
-		Aliases: []string{"db-restore"},
-		Short:   "Restores database dump into container with confirmation guard",
+		Use:   "restore-db <engine>[:target] <db_name> [backup_file]",
+		Short: "Restores database dump into container with confirmation guard",
 		Long:    "Restores .sql or .sql.gz database dump into a running database container (mysql, postgres).",
 		Args:    cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -68,9 +67,8 @@ func newRestoreDataCmd() *cobra.Command {
 	var dryRun bool
 
 	cmd := &cobra.Command{
-		Use:     "restore-data <target_name|backup_file>",
-		Aliases: []string{"data-restore"},
-		Short:   "Restores filesystem data volume archive with dry-run preview and confirmation",
+		Use:   "restore-data <target_name|backup_file>",
+		Short: "Restores filesystem data volume archive with dry-run preview and confirmation",
 		Long:    "Extracts compressed tar archive into workspace root based on manifest or relative paths.",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

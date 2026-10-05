@@ -31,8 +31,8 @@ WORKDIR /root/
 # Copy the pre-built binary file from the previous stage
 COPY --from=builder /app/oops /usr/local/bin/oops
 
-# Expose port 8080 and 80 to the outside world
-EXPOSE 8080 80
+# Expose port 8080 and 53 to the outside world
+EXPOSE 8080 53
 
 # Default entrypoint
 ENTRYPOINT ["oops"]
