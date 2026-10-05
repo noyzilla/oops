@@ -6,7 +6,24 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
-## [0.12.0] - 2026-10-05
+## [0.13.0] - 2026-10-05
+
+### Added
+- Native self-update command `oops selfupdate` with `--check` (`-c`) and `--force` (`-f`) flags to upgrade binary directly from GitHub releases.
+- Version discovery commands and flags (`oops version`, `oops -v`, `oops --version`) using Go runtime `debug.ReadBuildInfo()` and CI `-ldflags` SemVer injection.
+- Container IP lookup command `oops ip <service>` to query network IP addresses by service name, container name, or domain.
+- Global container IP table command `oops ips` listing all active Docker container IP addresses sorted numerically by IP.
+- Full log streaming command `oops logs [targets...]` supporting single containers, sub-stacks (`/edge`, `/db`), multi-services, wildcards (`app..`), default tail of 50 lines, and follow mode (`-f`).
+- Dynamic Docker bridge subnet discovery (`DiscoverDockerSubnets`) and Colima VM NAT routing configuration (`SetupColimaRouting`).
+
+### Changed
+- Sorted DNS inspection table (`oops dns list`) numerically by IP address instead of lexicographical hostname.
+- Updated default `oops logs` tail length to 50 lines (approx. 1 terminal screen height).
+
+### Fixed
+- Replaced hardcoded macOS gateway IPs with dynamic Docker container gateway inspection (`GetHostGatewayIP`).
+- Resolved `/etc/resolver/<tld>` target to the active `oops` container IP address (`GetOopsContainerIP`).
+- Fixed compose variable interpolation errors during `oops logs` by automatically detecting and passing workspace `.env` file.
 
 ### Added
 - Native Go `oops box` CLI subcommand suite (`create`, `active`, `list`, `start`, `stop`, `switch`, `cert`) for complete workspace lifecycle management without external bash wrappers.

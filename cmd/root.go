@@ -4,12 +4,35 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
 
-var targetDir string
+var (
+	// Version is the active Oops version, overridden at build time via LDFLAGS
+	Version   = ""
+	targetDir string
+)
+
+// GetVersion returns the active Oops version, discovered from LDFLAGS, build info, or fallback.
+func GetVersion() string {
+	if Version != "" {
+		return Version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		if bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+			return strings.TrimPrefix(bi.Main.Version, "v")
+		}
+		for _, setting := range bi.Settings {
+			if setting.Key == "vcs.revision" && len(setting.Value) >= 7 {
+				return "dev-" + setting.Value[:7]
+			}
+		}
+	}
+	return "0.12.0"
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "oops",
@@ -170,9 +193,24 @@ func expandHome(path string) string {
 	return path
 }
 
-func init() {
-	rootCmd.PersistentFlags().StringVarP(&targetDir, "dir", "C", "", "Target oopsbox working directory (default: OOPSBOX_DIR, ~/.oops/active_box, or auto-detect)")
+func newVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Print the oops version",
+		Run: func(cmd *cobra.Command, args []string) {
+			cmd.Printf("oops version %s\n", GetVersion())
+		},
+	}
+}
 
+func init() {
+	rootCmd.Version = GetVersion()
+	rootCmd.PersistentFlags().StringVarP(&targetDir, "dir", "C", "", "Target oopsbox working directory (default: OOPSBOX_DIR, ~/.oops/active_box, or auto-detect)")
+	rootCmd.SetVersionTemplate("oops version {{.Version}}\n")
+	rootCmd.Flags().BoolP("version", "v", false, "Print version information")
+
+	rootCmd.AddCommand(newVersionCmd())
+	rootCmd.AddCommand(newSelfUpdateCmd())
 	rootCmd.AddCommand(newBoxCmd())
 	rootCmd.AddCommand(newServerCmd())
 	rootCmd.AddCommand(newUpCmd())
@@ -192,4 +230,6 @@ func init() {
 	rootCmd.AddCommand(newRestoreDBCmd())
 	rootCmd.AddCommand(newRestoreDataCmd())
 	rootCmd.AddCommand(newDNSCmd())
+	rootCmd.AddCommand(newIPCmd())
+	rootCmd.AddCommand(newIPsCmd())
 }

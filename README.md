@@ -113,16 +113,43 @@ oops restore backups/mysql_backup_20261004.sql.gz
 oops restore backups/data_uploads_20261004.tar.gz --dry-run
 ```
 
-### Native DNS Inspection & Management
+### Native DNS & Container IP Inspection
 ```bash
-# Inspect active DNS resolution table (Containers + Custom Records)
+# Inspect active DNS resolution table (sorted numerically by IP)
 oops dns
 oops dns get mysql.oops
+
+# Query individual container IP
+oops ip mysql
+oops ip caddy
+
+# List all container IPs sorted by IP
+oops ips
 
 # Manage custom static / wildcard DNS records
 oops dns set api.internal 10.0.0.5
 oops dns set .staging.oops 127.0.0.1
 oops dns del api.internal
+```
+
+### Live Log Streaming
+```bash
+# Stream live logs across stacks, services, or wildcards (default tail: 50 lines)
+oops logs mysql -f
+oops logs /edge
+oops logs /db --tail 20
+oops logs app.. -f
+```
+
+### CLI Version & Self-Update
+```bash
+# Display binary version & build information
+oops -v
+oops version
+
+# Self-update oops binary directly from GitHub releases
+oops selfupdate
+oops selfupdate --check
 ```
 
 ---

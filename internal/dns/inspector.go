@@ -142,10 +142,33 @@ func CollectStaticRecords(workDir string) []DNSRecord {
 	}
 
 	sort.Slice(records, func(i, j int) bool {
+		if records[i].IP != records[j].IP {
+			return CompareIP(records[i].IP, records[j].IP)
+		}
 		return records[i].Hostname < records[j].Hostname
 	})
 
 	return records
+}
+
+// CompareIP returns true if ipStr1 is numerically less than ipStr2
+func CompareIP(ipStr1, ipStr2 string) bool {
+	ip1 := net.ParseIP(ipStr1)
+	ip2 := net.ParseIP(ipStr2)
+	if ip1 == nil || ip2 == nil {
+		return ipStr1 < ipStr2
+	}
+	ip1 = ip1.To16()
+	ip2 = ip2.To16()
+	for i := 0; i < len(ip1) && i < len(ip2); i++ {
+		if ip1[i] < ip2[i] {
+			return true
+		}
+		if ip1[i] > ip2[i] {
+			return false
+		}
+	}
+	return ipStr1 < ipStr2
 }
 
 // CollectContainerRecords inspects all running docker containers and maps hostnames
@@ -203,6 +226,9 @@ func CollectContainerRecords(ctx context.Context, cli *client.Client) []DNSRecor
 	}
 
 	sort.Slice(records, func(i, j int) bool {
+		if records[i].IP != records[j].IP {
+			return CompareIP(records[i].IP, records[j].IP)
+		}
 		return records[i].Hostname < records[j].Hostname
 	})
 
@@ -213,17 +239,36 @@ func CollectContainerRecords(ctx context.Context, cli *client.Client) []DNSRecor
 func LookupRecord(ctx context.Context, workDir string, domain string, dockerCli *client.Client) (*DNSRecord, error) {
 	domain = strings.TrimSpace(domain)
 	if domain == "" {
-		return nil, fmt.Errorf("domain cannot be empty")
+		return nil, fmt.Errorf("domain or service name cannot be empty")
 	}
 
 	// 1. Check running containers first
 	if dockerCli != nil {
 		containers := CollectContainerRecords(ctx, dockerCli)
+		targetLower := strings.ToLower(domain)
+
+		// 1a. Exact hostname or container name match
 		for _, c := range containers {
-			if strings.EqualFold(c.Hostname, domain) {
+			if strings.EqualFold(c.Hostname, domain) || strings.EqualFold(c.Container, domain) {
 				return &c, nil
 			}
-			// Wildcard match check
+		}
+		// 1b. Container prefix or suffix match (e.g. "caddy" matches "caddy-proxy" or "oops-caddy")
+		for _, c := range containers {
+			cLower := strings.ToLower(c.Container)
+			if strings.HasPrefix(cLower, targetLower+"-") || strings.HasPrefix(cLower, targetLower+"_") ||
+				strings.HasSuffix(cLower, "-"+targetLower) || strings.HasSuffix(cLower, "_"+targetLower) {
+				return &c, nil
+			}
+		}
+		// 1c. Substring match (e.g. "caddy" in "my-caddy-proxy")
+		for _, c := range containers {
+			if strings.Contains(strings.ToLower(c.Container), targetLower) {
+				return &c, nil
+			}
+		}
+		// 1d. Wildcard hostname match check
+		for _, c := range containers {
 			if strings.HasPrefix(c.Hostname, ".") {
 				apex := strings.TrimPrefix(c.Hostname, ".")
 				if strings.EqualFold(domain, apex) || strings.HasSuffix(strings.ToLower(domain), strings.ToLower(c.Hostname)) {
@@ -247,7 +292,7 @@ func LookupRecord(ctx context.Context, workDir string, domain string, dockerCli 
 		}
 	}
 
-	return nil, fmt.Errorf("no DNS record found for %q", domain)
+	return nil, fmt.Errorf("no container or DNS record found matching %q", domain)
 }
 
 // InspectDNSRecords aggregates both static and dynamic DNS records into a report

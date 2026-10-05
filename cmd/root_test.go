@@ -31,6 +31,11 @@ func TestRootCommandSubcommands(t *testing.T) {
 		"restore-db",
 		"restore-data",
 		"dns",
+		"box",
+		"version",
+		"selfupdate",
+		"ip",
+		"ips",
 	}
 
 	for _, sub := range expectedSubcommands {
@@ -44,6 +49,37 @@ func TestRootCommandSubcommands(t *testing.T) {
 		if !found {
 			t.Errorf("expected subcommand %q not found in root command", sub)
 		}
+	}
+}
+
+func TestVersionOutput(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"VersionFlagShort", []string{"-v"}},
+		{"VersionFlagLong", []string{"--version"}},
+		{"VersionSubcommand", []string{"version"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rootCmd := cmd.GetRootCommand()
+			buf := new(bytes.Buffer)
+			rootCmd.SetOut(buf)
+			rootCmd.SetErr(buf)
+			rootCmd.SetArgs(tt.args)
+
+			err := rootCmd.Execute()
+			if err != nil {
+				t.Fatalf("unexpected error executing %v: %v", tt.args, err)
+			}
+
+			out := buf.String()
+			if !strings.Contains(out, "oops version") {
+				t.Errorf("expected version output for %v, got: %q", tt.args, out)
+			}
+		})
 	}
 }
 

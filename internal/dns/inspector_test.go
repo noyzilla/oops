@@ -93,3 +93,24 @@ func TestLookupRecord(t *testing.T) {
 		t.Errorf("expected error for nonexistent domain, got nil")
 	}
 }
+
+func TestCompareIP(t *testing.T) {
+	tests := []struct {
+		ip1      string
+		ip2      string
+		expected bool
+	}{
+		{"172.17.0.2", "172.17.0.10", true},
+		{"172.17.0.10", "172.17.0.2", false},
+		{"172.17.0.2", "192.168.1.1", true},
+		{"192.168.97.2", "192.168.97.10", true},
+		{"192.168.97.3", "192.168.97.3", false},
+	}
+
+	for _, tt := range tests {
+		got := dns.CompareIP(tt.ip1, tt.ip2)
+		if got != tt.expected {
+			t.Errorf("CompareIP(%q, %q) = %v, expected %v", tt.ip1, tt.ip2, got, tt.expected)
+		}
+	}
+}

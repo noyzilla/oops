@@ -177,7 +177,7 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops down` | `[-d 0s] [--wipe-all] [-y]` | Tears down all stacks with stop hooks and inter-service delay, or wipes all containers on Docker daemon (`--wipe-all`) |
 | `oops switch` | `<target> [-d 0s]` | Switches active profile: starts target group/stack and stops all other running services |
 | `oops status` | `[targets...]` | Formatted table of containers, health, and ports |
-| `oops logs` | `[targets...] [--tail 100] [-f]` | Tail service logs across target services or stacks |
+| `oops logs` | `[targets...] [--tail 50] [-f]` | Tail service logs across target services or stacks |
 | `oops pull` | `[targets...] [--all]` | Pulls images for targets, default group, all stacks, or registry aliases |
 | `oops update` | `[targets...] [--all] [-i, --image <img/alias>] [-d 0s]` | Executes sequential rolling update with health check and delay gap |
 | `oops db` | `<engine>[:<target>] <action>` | DB provisioning (`create`, `passwd`, `list`, `drop`) |
@@ -191,6 +191,8 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops dns add` | `<domain> <ip>` | Adds or updates static DNS record in `config/oops/dns` (supports `.wildcard`) |
 | `oops dns del` | `<domain>` | Deletes static DNS record from `config/oops/dns` |
 | `oops dns reload` | *(none)* | Validates `config/oops/dns` and triggers atomic reload across running daemon |
+| `oops ip` | `[service]` | Displays the IP address of a target container or lists all IPs if omitted |
+| `oops ips` | *(none)* | Lists all active Docker container IP addresses formatted and sorted by IP |
 | `oops box create` | `<path>` | Creates new Oopsbox workspace from release blueprint, generates credentials, and sets active box |
 | `oops box active` | `[path]` | Displays or sets the active Oopsbox workspace in `~/.oops/active_box` |
 | `oops box list` | *(none)* | Lists known and active Oopsbox workspaces |
@@ -199,6 +201,8 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops box switch` | `<path>` | Gracefully tears down current box, updates active box, and starts target box |
 | `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store / Keychain |
 | `oops completion` | `[bash|zsh|fish|powershell]` | Generates shell auto-completion script for the specified shell |
+| `oops version` | `[-v, --version]` | Displays the active Oops version, OS architecture, and build information |
+| `oops selfupdate` | `[-c, --check] [-f, --force]` | Self-updates the oops binary to the latest release published on GitHub |
 | `oops server` | `[-p, --port 80] [-c, --config <path>]` | Starts webhook deployment and DNS discovery daemon (aliases: `webhook`, `daemon`) |
 
 ---

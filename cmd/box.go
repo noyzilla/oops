@@ -145,20 +145,10 @@ func newBoxStartCmd() *cobra.Command {
 			}
 			log.Printf("==> Container Engine: %s", engine)
 
-			// 2. Setup macOS resolver if needed
-			if err := box.SetupMacOSResolver(cfg.DNS.TLD); err != nil {
-				log.Printf("Warning: DNS resolver setup notice: %v", err)
-			}
-
-			// 3. Sync static DNS records
-			if err := box.SyncStaticDNSRecords(workDir, cfg.DNS.TLD); err != nil {
-				log.Printf("Warning: DNS static record sync notice: %v", err)
-			}
-
-			// 4. Set active box
+			// 2. Set active box
 			_ = box.SetActiveBox(workDir)
 
-			// 5. Start default stack (or @default)
+			// 3. Start default stack (or @default)
 			targets, err := docker.ResolveTargets(workDir, nil)
 			if err != nil {
 				return fmt.Errorf("failed resolving startup targets: %w", err)
@@ -171,7 +161,24 @@ func newBoxStartCmd() *cobra.Command {
 			defer orch.Close()
 
 			log.Printf("==> Starting Oopsbox services (%d targets)...", len(targets))
-			return orch.Up(context.Background(), targets, 0)
+			if err := orch.Up(context.Background(), targets, 0); err != nil {
+				return err
+			}
+
+			// 4. Setup macOS resolver with active container IP
+			if err := box.SetupMacOSResolver(cfg.DNS.TLD); err != nil {
+				log.Printf("Warning: DNS resolver setup notice: %v", err)
+			}
+
+			// 5. Sync static DNS records
+			if err := box.SyncStaticDNSRecords(workDir, cfg.DNS.TLD); err != nil {
+				log.Printf("Warning: DNS static record sync notice: %v", err)
+			}
+
+			// 6. Setup Colima routing if applicable
+			_ = box.SetupColimaRouting()
+
+			return nil
 		},
 	}
 }
@@ -252,8 +259,6 @@ func newBoxSwitchCmd() *cobra.Command {
 			if _, err := box.EnsureEngineStarted(cfg); err != nil {
 				return err
 			}
-			_ = box.SetupMacOSResolver(cfg.DNS.TLD)
-			_ = box.SyncStaticDNSRecords(canonTarget, cfg.DNS.TLD)
 
 			targets, err := docker.ResolveTargets(canonTarget, nil)
 			if err != nil {
@@ -269,6 +274,10 @@ func newBoxSwitchCmd() *cobra.Command {
 			if err := orch.Up(context.Background(), targets, 0); err != nil {
 				return err
 			}
+
+			_ = box.SetupMacOSResolver(cfg.DNS.TLD)
+			_ = box.SyncStaticDNSRecords(canonTarget, cfg.DNS.TLD)
+			_ = box.SetupColimaRouting()
 
 			log.Printf("==> [Switch] Successfully switched active workspace to: %s", canonTarget)
 			return nil

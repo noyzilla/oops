@@ -24,6 +24,9 @@ jobs:
       - name: Build multi-OS binaries
         run: |
           mkdir -p dist
+          TAG_VER="${{ github.ref_name }}"
+          VERSION="${TAG_VER#v}"
+          echo "==> Building release version: ${VERSION}"
           targets=(
             "linux/amd64"
             "linux/arm64"
@@ -35,7 +38,7 @@ jobs:
             arch="${target##*/}"
             output="dist/oops-${os}-${arch}"
             echo "==> Building ${output}..."
-            CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" go build -ldflags="-s -w" -o "${output}" .
+            CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" go build -ldflags="-s -w -X github.com/noyzilla/oops/cmd.Version=${VERSION}" -o "${output}" .
           done
 
       - name: Package Oopsbox Blueprint
