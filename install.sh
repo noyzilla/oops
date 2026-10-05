@@ -72,16 +72,16 @@ WRAPPER_PATH=""
 for CANDIDATE_DIR in "/usr/local/bin" "$HOME/.local/bin"; do
     if [ -d "$CANDIDATE_DIR" ] && [ -w "$CANDIDATE_DIR" ]; then
         WRAPPER_PATH="$CANDIDATE_DIR/oops"
-        cat > "$WRAPPER_PATH" <<EOF
+        cat > "$WRAPPER_PATH" <<'EOF'
 #!/bin/sh
-# Oops Docker CLI Wrapper
-exec docker run --rm -i \\
-  -v /var/run/docker.sock:/var/run/docker.sock \\
-  -v "\${OOPSBOX_DIR:-\$HOME/oopsbox}":/workspace \\
-  -w /workspace \\
-  -e OOPS_DIR=/workspace \\
-  -e OOPSBOX_DIR=/workspace \\
-  ghcr.io/noyzilla/oops:latest "\$@"
+# Oops Docker CLI Wrapper with Same Host Path Mapping
+BOX_DIR="${OOPSBOX_DIR:-$HOME/oopsbox}"
+exec docker run --rm -i \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v "${BOX_DIR}":"${BOX_DIR}" \
+  -w "${BOX_DIR}" \
+  -e OOPSBOX_DIR="${BOX_DIR}" \
+  ghcr.io/noyzilla/oops:latest "$@"
 EOF
         chmod +x "$WRAPPER_PATH"
         WRAPPER_INSTALLED=true
@@ -103,7 +103,7 @@ if [ "$WRAPPER_INSTALLED" = true ]; then
 else
     echo -e "Add this alias to your shell profile (~/.bashrc or ~/.zshrc):"
     echo -e "  ${BOLD}export OOPSBOX_DIR=\"${TARGET_DIR}\"${NC}"
-    echo -e "  ${BOLD}alias oops='docker run --rm -i -v /var/run/docker.sock:/var/run/docker.sock -v \"\${OOPSBOX_DIR:-\$HOME/oopsbox}\":/workspace -w /workspace -e OOPS_DIR=/workspace -e OOPSBOX_DIR=/workspace ghcr.io/noyzilla/oops:latest'${NC}\n"
+    echo -e "  ${BOLD}alias oops='docker run --rm -i -v /var/run/docker.sock:/var/run/docker.sock -v \"\${OOPSBOX_DIR:-\$HOME/oopsbox}\":\"\${OOPSBOX_DIR:-\$HOME/oopsbox}\" -w \"\${OOPSBOX_DIR:-\$HOME/oopsbox}\" -e OOPSBOX_DIR=\"\${OOPSBOX_DIR:-\$HOME/oopsbox}\" ghcr.io/noyzilla/oops:latest'${NC}\n"
 fi
 
 echo -e "To start your environment:"

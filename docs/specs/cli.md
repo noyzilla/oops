@@ -52,14 +52,26 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
     - **Teardown (`oops down`)**: `[custom stacks...]` -> `/apps` -> `/tool` -> `/db` -> `/edge`
 
 ### Workspace Directory Resolution (`ResolveWorkDir`)
-The Oops CLI determines its working directory (`workDir`) according to the following precedence:
-- **Explicit Flag**: `-C <dir>` or `--dir <dir>` (Highest precedence).
-- **Environment Variables**: `OOPSBOX_DIR` (Primary) or `OOPS_DIR` (Secondary fallback).
-- **Current Directory Content**: Current directory `.` if it contains a `stacks/` directory or compose files (`compose.yml`, `docker-compose.yml`).
-- **Standard Well-Known Locations**:
-  - `$HOME/oopsbox` (if exists and contains compose content)
-  - `/opt/oopsbox` (if exists and contains compose content)
-- **Fallback**: Current working directory `.`.
+
+To ensure seamless multi-organization operations, eliminate accidental cross-environment execution, and guarantee 100% path parity across host and containerized runtimes, the Oops CLI resolves its target workspace directory (`workDir`) according to the following strict hierarchy:
+
+| Priority | Resolution Source | Condition / Invariant | Purpose & Rationale |
+| :---: | :--- | :--- | :--- |
+| **1** | **Explicit Flag (`-C <dir>`, `--dir <dir>`)** | Given non-empty string | Highest precedence; explicitly overrides all shell environment variables and active directory contexts. |
+| **2** | **Current Directory (`.`)** | `hasComposeContent(".") == true` (contains `stacks/` directory or root `compose.yml`) | **Active Developer Context**: If a developer intentionally `cd`s into an Oopsbox workspace (e.g. `~/Workspaces/org-a/oopsbox`), `.` takes precedence over global environment variables (`OOPSBOX_DIR`) to prevent accidental operations on the wrong project. |
+| **3** | **Environment Variables (`OOPSBOX_DIR` / `OOPS_DIR`)** | Outside an Oopsbox directory (`hasComposeContent(".") == false`) | **Global Command Execution**: Allows executing `oops` commands from arbitrary directories (e.g. `~`, `~/projects/my-app`, `/tmp`) while targeting a specific registered Oopsbox hub. |
+| **4** | **Standard Workstation Default (`$HOME/oopsbox`)** | `hasComposeContent("$HOME/oopsbox") == true` | Standard turnkey installation path on macOS and developer workstations. |
+| **5** | **Standard Server Default (`/opt/oopsbox`)** | `hasComposeContent("/opt/oopsbox") == true` | Standard turnkey production deployment path on Linux cloud servers. |
+| **6** | **Fallback (`.`)** | None of the above matched | Returns `.` where subsequent validation (`DiscoverStacks`) returns a clear error if not an Oopsbox directory. |
+
+#### Two-Stage Workspace Validation Invariants
+1. **Pre-Flight Inspection (`hasComposeContent`)**: Validates that candidate directories are accessible and contain either a `stacks/` subdirectory or compose manifests (`compose.yaml`, `compose.yml`, `docker-compose.yaml`, `docker-compose.yml`).
+2. **Execution Guard (`DiscoverStacks`)**: When executing lifecycle commands (`up`, `stop`, `restart`, `update`, `db`, `backup`), validates that at least one valid compose stack is discovered. If zero stacks exist, execution halts immediately with:
+   `Error: no compose stacks or services found in workspace "<workDir>"`.
+
+#### Docker Wrapper Same-Host-Path Binding Invariant
+When running the Oops CLI via Docker wrapper container (`ghcr.io/noyzilla/oops:latest`), the host directory MUST be bound to the **identical absolute path** inside the container (`-v "${OOPSBOX_DIR}":"${OOPSBOX_DIR}" -w "${OOPSBOX_DIR}"`):
+- **Why `/workspace` binding is forbidden**: Docker Compose passes working directory labels (`com.docker.compose.project.working_dir`) and relative volume bind mounts (`./caddy/Caddyfile`) to the host Docker daemon. If bound to `/workspace`, the host daemon attempts to locate `/workspace` on the host, causing path mismatches and volume failures. Same-host-path binding ensures 100% path parity with direct host execution.
 
 ### Sequential Lifecycle Hooks & Inter-Service Delay Protocol
 When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down`, or `oops up` targeting wildcards such as `app..` or whole stacks):

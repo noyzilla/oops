@@ -30,12 +30,19 @@ func GetRootCommand() *cobra.Command {
 	return rootCmd
 }
 
-// ResolveWorkDir returns the resolved working directory based on -C/--dir, OOPSBOX_DIR, OOPS_DIR, or auto-discovery
+// ResolveWorkDir returns the resolved working directory based on -C/--dir, current directory, OOPSBOX_DIR/OOPS_DIR, or well-known paths
 func ResolveWorkDir(customDir string) string {
+	// 1. Explicit -C / --dir flag (highest precedence)
 	if customDir != "" {
 		return expandHome(customDir)
 	}
 
+	// 2. Current directory if it is a valid oopsbox workspace
+	if hasComposeContent(".") {
+		return "."
+	}
+
+	// 3. Environment variables (when outside an oopsbox directory)
 	if envDir := os.Getenv("OOPSBOX_DIR"); envDir != "" {
 		return expandHome(envDir)
 	}
@@ -44,12 +51,7 @@ func ResolveWorkDir(customDir string) string {
 		return expandHome(envDir)
 	}
 
-	// Check if current directory has stacks/ or compose files
-	if hasComposeContent(".") {
-		return "."
-	}
-
-	// Check $HOME/oopsbox
+	// 4. Check $HOME/oopsbox
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
 		homeOopsbox := filepath.Join(home, "oopsbox")
 		if hasComposeContent(homeOopsbox) {
@@ -57,7 +59,7 @@ func ResolveWorkDir(customDir string) string {
 		}
 	}
 
-	// Check /opt/oopsbox
+	// 5. Check /opt/oopsbox
 	optOopsbox := "/opt/oopsbox"
 	if hasComposeContent(optOopsbox) {
 		return optOopsbox

@@ -174,10 +174,9 @@ export OOPSBOX_DIR="$HOME/oopsbox"
 
 alias oops='docker run --rm -i \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -v "${OOPSBOX_DIR:-$HOME/oopsbox}":/workspace \
-  -w /workspace \
-  -e OOPS_DIR=/workspace \
-  -e OOPSBOX_DIR=/workspace \
+  -v "${OOPSBOX_DIR:-$HOME/oopsbox}":"${OOPSBOX_DIR:-$HOME/oopsbox}" \
+  -w "${OOPSBOX_DIR:-$HOME/oopsbox}" \
+  -e OOPSBOX_DIR="${OOPSBOX_DIR:-$HOME/oopsbox}" \
   ghcr.io/noyzilla/oops:latest'
 ```
 
