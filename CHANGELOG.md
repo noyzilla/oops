@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [0.14.2] - 2026-10-06
+
+### Fixed
+- Fixed permission error (`Permission denied`) in `install.sh` on Google Container-Optimized OS (COS) when installing to `/var/lib/google/bin` by dynamically detecting directory write permissions and requesting `sudo` as needed.
+
 ## [0.14.1] - 2026-10-05
 
 ### Fixed
