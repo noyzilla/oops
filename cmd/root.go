@@ -15,6 +15,9 @@ var rootCmd = &cobra.Command{
 	Use:   "oops",
 	Short: "Oops: Unified DevOps Orchestration & Container Platform",
 	Long:  "Oops is a unified binary for managing multi-stack Docker Compose deployments and webhook automation.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
+	},
 }
 
 // Execute runs the root command.

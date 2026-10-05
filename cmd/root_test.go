@@ -102,19 +102,35 @@ func TestSubcommandFlags(t *testing.T) {
 }
 
 func TestHelpOutput(t *testing.T) {
-	rootCmd := cmd.GetRootCommand()
-	buf := new(bytes.Buffer)
-	rootCmd.SetOut(buf)
-	rootCmd.SetArgs([]string{"--help"})
-
-	err := rootCmd.Execute()
-	if err != nil {
-		t.Fatalf("unexpected error executing help: %v", err)
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"WithHelpFlag", []string{"--help"}},
+		{"BareCommand", []string{}},
 	}
 
-	out := buf.String()
-	if !strings.Contains(out, "managing multi-stack Docker Compose deployments") {
-		t.Errorf("help output missing expected description: %s", out)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rootCmd := cmd.GetRootCommand()
+			buf := new(bytes.Buffer)
+			rootCmd.SetOut(buf)
+			rootCmd.SetErr(buf)
+			rootCmd.SetArgs(tt.args)
+
+			err := rootCmd.Execute()
+			if err != nil {
+				t.Fatalf("unexpected error executing %v: %v", tt.args, err)
+			}
+
+			out := buf.String()
+			if !strings.Contains(out, "managing multi-stack Docker Compose deployments") {
+				t.Errorf("output missing expected description for args %v: %s", tt.args, out)
+			}
+			if !strings.Contains(out, "Available Commands:") {
+				t.Errorf("output missing command list for args %v: %s", tt.args, out)
+			}
+		})
 	}
 }
 

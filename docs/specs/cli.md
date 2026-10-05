@@ -170,7 +170,7 @@ Oops commands can be invoked from any terminal directory. The working directory 
 
 | Command | Arguments / Flags | Description |
 | :--- | :--- | :--- |
-| `oops` | `[-C, --dir <path>]` | Global persistent flag to target a specific oopsbox directory |
+| `oops` | `[-C, --dir <path>]` | Displays help menu and available subcommands (default root execution) |
 | `oops up` | `[targets...] [-d 0s]` | Starts stack or globbed services with optional inter-service delay (`-d`, `--delay`) |
 | `oops stop` | `[targets...] [-x, --except, --exclude <tgt>] [-d 0s]` | Gracefully stops target services, or stops all other services except specified exclusion targets |
 | `oops restart`| `[targets...] [-d 0s] [-i, --image <img/alias>]` | Restarts target services with stop hooks, delay gap, or image matching |
