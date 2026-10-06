@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
-## [Unreleased]
+## [v0.16.0] - 2026-10-06
 
 ### Added
 - Deploy Key Management: Added `oops key`, `oops key reset`, and `oops key set` commands for automated host-level `ed25519` SSH Deploy Key generation and configuration.
