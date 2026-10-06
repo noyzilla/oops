@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 
@@ -159,10 +160,13 @@ func newBoxStartCmd() *cobra.Command {
 				return err
 			}
 			defer orch.Close()
+			orch.WorkDir = workDir
 
 			log.Printf("==> Starting Oopsbox services (%d targets)...", len(targets))
-			if err := orch.Up(context.Background(), targets, 0); err != nil {
-				return err
+			upErr := orch.Up(context.Background(), targets, 0)
+			var blockedErr *orchestrator.BlockedError
+			if upErr != nil && !errors.As(upErr, &blockedErr) {
+				return upErr
 			}
 
 			// 4. Setup macOS resolver with active container IP
@@ -178,7 +182,7 @@ func newBoxStartCmd() *cobra.Command {
 			// 6. Setup Colima routing if applicable
 			_ = box.SetupColimaRouting()
 
-			return nil
+			return upErr
 		},
 	}
 }
@@ -270,9 +274,12 @@ func newBoxSwitchCmd() *cobra.Command {
 				return err
 			}
 			defer orch.Close()
+			orch.WorkDir = canonTarget
 
-			if err := orch.Up(context.Background(), targets, 0); err != nil {
-				return err
+			upErr := orch.Up(context.Background(), targets, 0)
+			var blockedErr *orchestrator.BlockedError
+			if upErr != nil && !errors.As(upErr, &blockedErr) {
+				return upErr
 			}
 
 			_ = box.SetupMacOSResolver(cfg.DNS.TLD)
@@ -280,7 +287,7 @@ func newBoxSwitchCmd() *cobra.Command {
 			_ = box.SetupColimaRouting()
 
 			log.Printf("==> [Switch] Successfully switched active workspace to: %s", canonTarget)
-			return nil
+			return upErr
 		},
 	}
 }

@@ -56,12 +56,19 @@ func (d *DNSConfig) GetUpstreams() []string {
 	return nil
 }
 
+// StorageConfig defines persistent storage guard settings in oops.yml
+type StorageConfig struct {
+	MountPrefixes []string `yaml:"mount_prefixes,omitempty"`
+}
+
 // OopsConfig represents the unified configuration in oops.yml
 type OopsConfig struct {
 	Registries map[string]string   `yaml:"registries,omitempty"`
 	Profiles   map[string][]string `yaml:"profiles,omitempty"`
 	Backups    BackupConfig        `yaml:"backups,omitempty"`
 	DNS        DNSConfig           `yaml:"dns,omitempty"`
+	Storage    StorageConfig       `yaml:"storage,omitempty"`
+	Priority   []string            `yaml:"priority,omitempty"`
 }
 
 // LoadOopsConfig finds and parses oops.yml / oops.yaml
@@ -120,6 +127,12 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 			if len(fileCfg.DNS.Records) > 0 && len(cfg.DNS.Records) == 0 {
 				cfg.DNS.Records = fileCfg.DNS.Records
 			}
+
+			// Merge storage guard settings; a present list (even empty) replaces the defaults
+			if fileCfg.Storage.MountPrefixes != nil {
+				cfg.Storage.MountPrefixes = fileCfg.Storage.MountPrefixes
+			}
+			cfg.Priority = fileCfg.Priority
 
 			break
 		}

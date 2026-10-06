@@ -2,7 +2,7 @@
 title: Oopsbox Workstation Tooling Suite
 status: active
 tags: [oopsbox, local-dev, macos, linux, colima, orbstack, resolver, ssl-ca, cli]
-synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/cli.md", "docs/specs/dns.md"]
+synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/cli.md", "docs/specs/dns.md", "docs/specs/storage-guard.md"]
 ---
 
 # Specification: Oopsbox Workstation Tooling Suite
@@ -11,7 +11,7 @@ synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/cli.md", "docs/specs/dns
 - **Target Audience**: Developers, Operators, and AI Coding Agents
 - **Parent Architecture**: [ARCHITECTURE.md](../../ARCHITECTURE.md)
 - **Ubiquitous Language**: [CONTEXT.md](../../CONTEXT.md)
-- **Companion Specs**: [docs/specs/cli.md](cli.md), [docs/specs/dns.md](dns.md)
+- **Companion Specs**: [docs/specs/cli.md](cli.md), [docs/specs/dns.md](dns.md), [docs/specs/storage-guard.md](storage-guard.md)
 
 ## Overview & Scope
 

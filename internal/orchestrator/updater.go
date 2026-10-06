@@ -17,6 +17,8 @@ import (
 // Orchestrator coordinates compose operations with Docker API and lifecycle hooks
 type Orchestrator struct {
 	dockerCli *client.Client
+	// WorkDir is the oopsbox root used by the storage guard; empty disables the guard
+	WorkDir string
 }
 
 // New creates a new Orchestrator instance
@@ -111,6 +113,14 @@ func RunComposeCommand(composePath string, args ...string) error {
 
 // Update executes sequential rolling updates across matched targets
 func (o *Orchestrator) Update(ctx context.Context, targets []docker.ResolvedTarget, delay time.Duration) error {
+	targets, guardErr := o.applyGuard(targets)
+	if err := o.updateAllowed(ctx, targets, delay); err != nil {
+		return err
+	}
+	return guardErr
+}
+
+func (o *Orchestrator) updateAllowed(ctx context.Context, targets []docker.ResolvedTarget, delay time.Duration) error {
 	for i, target := range targets {
 		log.Printf("==> [%d/%d] Rolling update service %s (Stack: %s)...", i+1, len(targets), target.ServiceName, target.StackName)
 
@@ -189,6 +199,14 @@ func (o *Orchestrator) Stop(ctx context.Context, targets []docker.ResolvedTarget
 
 // Restart executes graceful restart across matched targets sequentially
 func (o *Orchestrator) Restart(ctx context.Context, targets []docker.ResolvedTarget, delay time.Duration) error {
+	targets, guardErr := o.applyGuard(targets)
+	if err := o.restartAllowed(ctx, targets, delay); err != nil {
+		return err
+	}
+	return guardErr
+}
+
+func (o *Orchestrator) restartAllowed(ctx context.Context, targets []docker.ResolvedTarget, delay time.Duration) error {
 	for i, target := range targets {
 		log.Printf("==> [%d/%d] Restarting service %s (Stack: %s)...", i+1, len(targets), target.ServiceName, target.StackName)
 
@@ -215,6 +233,14 @@ func (o *Orchestrator) Restart(ctx context.Context, targets []docker.ResolvedTar
 
 // Up starts matched targets grouped by stack
 func (o *Orchestrator) Up(ctx context.Context, targets []docker.ResolvedTarget, delay time.Duration) error {
+	targets, guardErr := o.applyGuard(targets)
+	if err := o.upAllowed(targets, delay); err != nil {
+		return err
+	}
+	return guardErr
+}
+
+func (o *Orchestrator) upAllowed(targets []docker.ResolvedTarget, delay time.Duration) error {
 	stackServiceMap := make(map[string][]string)
 	stackComposeMap := make(map[string]string)
 	var orderedStacks []string

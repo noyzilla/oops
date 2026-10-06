@@ -1,8 +1,7 @@
 package cmd
 
 import (
-	"log"
-	"time"
+	"context"
 
 	"github.com/noyzilla/oops/internal/docker"
 	"github.com/noyzilla/oops/internal/orchestrator"
@@ -31,36 +30,14 @@ func newUpCmd() *cobra.Command {
 				return err
 			}
 
-			// Group targets by stack to start stacks cleanly
-			stackServiceMap := make(map[string][]string)
-			stackComposeMap := make(map[string]string)
-			var orderedStacks []string
-
-			for _, t := range targets {
-				if _, exists := stackServiceMap[t.StackName]; !exists {
-					orderedStacks = append(orderedStacks, t.StackName)
-					stackComposeMap[t.StackName] = t.ComposePath
-				}
-				stackServiceMap[t.StackName] = append(stackServiceMap[t.StackName], t.ServiceName)
+			orch, err := orchestrator.New()
+			if err != nil {
+				return err
 			}
+			defer orch.Close()
+			orch.WorkDir = workDir
 
-			for i, stack := range orderedStacks {
-				services := stackServiceMap[stack]
-				composePath := stackComposeMap[stack]
-
-				log.Printf("==> Starting stack /%s (Services: %v)...", stack, services)
-				cmdArgs := append([]string{"up", "-d"}, services...)
-				if err := orchestrator.RunComposeCommand(composePath, cmdArgs...); err != nil {
-					return err
-				}
-
-				if d > 0 && i < len(orderedStacks)-1 {
-					log.Printf("Pausing %v before starting next stack...", d)
-					time.Sleep(d)
-				}
-			}
-
-			return nil
+			return orch.Up(context.Background(), targets, d)
 		},
 	}
 

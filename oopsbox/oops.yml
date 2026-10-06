@@ -71,3 +71,18 @@ dns:
     # - api.internal 10.0.0.5
     # - .staging.oops 10.0.0.10
 
+# ------------------------------------------------------------------------------
+# Storage Guard (blocks services when data/ or backups/ links are unhealthy)
+# A symlinked data/ or backups/ is dead, or points under a mount prefix while the
+# target is still on the OS disk (persistent disk not mounted).
+#   mount_prefixes: replaces the default [/mnt, /media, /Volumes]; [] keeps only dead-link checks
+#   priority:       earlier = higher; unlisted = lowest; entries are /stack, service or @group.
+#                   Services using a bad link and every lower-priority service are blocked.
+#                   The edge stack is never blocked and always starts first.
+# ------------------------------------------------------------------------------
+#storage:
+#  mount_prefixes: [/mnt, /media, /Volumes]
+#priority:
+#  - /edge
+#  - /db
+#  - /apps

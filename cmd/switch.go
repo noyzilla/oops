@@ -48,6 +48,7 @@ func newSwitchCmd() *cobra.Command {
 				return err
 			}
 			defer orch.Close()
+			orch.WorkDir = workDir
 
 			log.Printf("==> [Switch] Activating profile: %s (%d services)...", target, len(upTargets))
 			if err := orch.Up(context.Background(), upTargets, d); err != nil {

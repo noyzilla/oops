@@ -40,6 +40,7 @@ func newRestartCmd() *cobra.Command {
 				return err
 			}
 			defer orch.Close()
+			orch.WorkDir = workDir
 
 			return orch.Restart(context.Background(), targets, d)
 		},

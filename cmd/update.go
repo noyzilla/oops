@@ -43,6 +43,7 @@ func newUpdateCmd() *cobra.Command {
 				return err
 			}
 			defer orch.Close()
+			orch.WorkDir = workDir
 
 			return orch.Update(context.Background(), targets, d)
 		},

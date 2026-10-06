@@ -2,7 +2,7 @@
 title: CLI Orchestration & Stack Management
 status: active
 tags: [cli, docker, compose, rolling-update, lifecycle-hooks, database, backup]
-synapses: ["ARCHITECTURE.md", "CONTEXT.md", "DESIGN.md", "docs/specs/webhook.md"]
+synapses: ["ARCHITECTURE.md", "CONTEXT.md", "DESIGN.md", "docs/specs/webhook.md", "docs/specs/storage-guard.md"]
 ---
 
 # Specification: CLI Orchestration & Stack Management
@@ -11,7 +11,7 @@ synapses: ["ARCHITECTURE.md", "CONTEXT.md", "DESIGN.md", "docs/specs/webhook.md"
 - **Target Audience**: Developers, Operators, and AI Coding Agents
 - **Parent Architecture**: [ARCHITECTURE.md](../../ARCHITECTURE.md)
 - **Ubiquitous Language**: [CONTEXT.md](../../CONTEXT.md)
-- **Companion Spec**: [docs/specs/webhook.md](webhook.md)
+- **Companion Spec**: [docs/specs/webhook.md](webhook.md), [docs/specs/storage-guard.md](storage-guard.md)
 
 ## Overview & Scope
 

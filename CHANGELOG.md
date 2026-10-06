@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+### Added
+- Storage Guard: `oops up`, `restart`, `update`, `switch` and `box start` validate `data/` and `backups/` symlinks before touching containers. Services whose bind mounts pass through a dead link, or a link whose target sits on the OS disk under a configured mount prefix, are blocked together with lower-priority services; unaffected services (edge first) still run and the command exits non-zero. Configure via `storage.mount_prefixes` and `priority` in `oops.yml`. See `docs/specs/storage-guard.md`.
+
+### Changed
+- `oops up` now reuses the orchestrator start logic instead of a duplicated inline implementation.
+
 ## [0.14.2] - 2026-10-06
 
 ### Fixed
