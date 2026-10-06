@@ -2,7 +2,7 @@
 title: Storage Guard
 status: active
 tags: [storage, mount, symlink, priority, safety, oopsbox]
-synapses: ["CONTEXT.md", "docs/specs/oopsbox.md", "docs/specs/cli.md"]
+synapses: ["CONTEXT.md", "docs/specs/oopsbox.md", "docs/specs/cli.md", "docs/architecture/data-persistent-storage.md"]
 ---
 
 # Specification: Storage Guard [ตัวป้องกันข้อมูลหลุดลง OS disk]
@@ -10,6 +10,7 @@ synapses: ["CONTEXT.md", "docs/specs/oopsbox.md", "docs/specs/cli.md"]
 - **Status**: Active
 - **Target Audience**: Developers, Operators, and AI Coding Agents
 - **Companion Specs**: [oopsbox.md](oopsbox.md), [cli.md](cli.md)
+- **Architecture Context**: [Persistent Data and Storage Path Abstraction](../architecture/data-persistent-storage.md)
 - **Ubiquitous Language**: [CONTEXT.md](../../CONTEXT.md)
 
 ## Overview & Scope
