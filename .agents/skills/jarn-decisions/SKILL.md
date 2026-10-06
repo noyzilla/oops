@@ -1,8 +1,8 @@
 ---
 name: jarn-decisions
 description: >-
-  Manage the lifecycle of Architectural Decision Records (ADRs) in docs/adr/,
-  evaluate trade-offs, and handle active vs .deprecated.md/.superseded.md file renaming
+  This skill manages the lifecycle of Architectural Decision Records (ADRs) in docs/adr/,
+  evaluates trade-offs, and handles active vs .deprecated.md/.superseded.md file renaming
   for zero-token filtering.
 ---
 

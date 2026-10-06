@@ -1,6 +1,6 @@
 ---
 name: jarn-release
-description: End-to-end automated release lifecycle, including SemVer calculation, CHANGELOG drafting, and tag publishing across any Git host.
+description: This skill runs the end-to-end release lifecycle, including SemVer calculation, CHANGELOG drafting, and tag publishing across any Git host.
 ---
 
 # Jarn Release Lifecycle
@@ -10,6 +10,16 @@ description: End-to-end automated release lifecycle, including SemVer calculatio
 **Description**: Automates the version release process by analyzing Git commit history, calculating Semantic Versioning (SemVer), updating the `CHANGELOG.md`, and creating formal Git tags or repository releases.
 
 **Primary Objective**: To ensure releases are created safely and consistently without manual version guessing or manual changelog writing.
+
+## Contents
+- Composite Intent & Trigger Levels
+- Pre-condition Resolution
+- Release Readiness
+- Release Preparation
+- Post-Release Cleanup
+- Publication Approval
+- Publish and Verify (Release Mode, Mode Resolution, Host Release Commands, CI Release, Verification)
+- Release Checklist
 
 ---
 
@@ -152,3 +162,16 @@ Push the tag, then wait for the CI pipeline and verify the release object. Do no
 - Verify the tag exists locally and remotely via `git tag -l vX.Y.Z` and `git ls-remote --tags origin vX.Y.Z`.
 - Verify the release object per mode: `gh release view vX.Y.Z` or `glab release view vX.Y.Z` (`host-release` and `ci-release`).
 - Report the release version, tag, resolved mode with its source (declared or inferred), and publish confirmation to the user.
+
+---
+
+## Release Checklist
+
+Copy this checklist into the response and tick each item as it completes.
+
+- [ ] Workspace is a clean `main` after Pre-condition Resolution. If dirty, halt and report.
+- [ ] Release Readiness verified (non-chore commits exist, remote configured). If not, halt; nothing to release.
+- [ ] SemVer bump calculated and changelog section drafted. If the bump is disputed, return to Analyze Commits and Calculate SemVer.
+- [ ] Release Mode resolved and publication approved per trigger level. If the mode is ambiguous under Trigger Level 2, halt.
+- [ ] Tag pushed and release verified per mode. If verification fails, return to Publish and Verify; never downgrade to tag-only.
+- [ ] `TASK.md` completed milestones cleared.

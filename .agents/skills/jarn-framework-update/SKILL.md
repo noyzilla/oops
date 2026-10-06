@@ -1,8 +1,8 @@
 ---
 name: jarn-framework-update
 description: >-
-  Update the installed Jarn framework, reload updated rules and skills, analyze changes to shared standards, and
-  execute an AI-driven Shadow Merge on project files.
+  This skill updates the installed Jarn framework, reloads updated rules and skills, analyzes changes to shared standards, and
+  executes an AI-driven Shadow Merge on project files.
 ---
 
 # Jarn Framework Update & Shadow Merge

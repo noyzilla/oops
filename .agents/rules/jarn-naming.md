@@ -51,8 +51,10 @@ This document defines the naming conventions for configurations, variables, slug
 
 ## Domain & Intent-Based Naming
 
-- **Domain Alignment**: All new or modified entity names, database columns, and API parameters match the ubiquitous language defined in `CONTEXT.md`.
+- **Ubiquitous Language Invariant (Domain Alignment)**: All system layers—including database columns, API parameters, variable names, and class definitions—MUST strictly use the exact vocabulary defined in `CONTEXT.md` (Domain Dictionary). Developers and AI agents are prohibited from inventing synonyms or new terms for established domain concepts.
 - **Intent-Based Naming**: Variables and functions reflect domain intent, not mechanism. Generic placeholders (`data`, `temp`, `helper`, `manager`, `process`) are avoided.
+- **Shared Technical Utilities & Tools**: Shared stateless tools, formatting engines, ID generators, or cryptographic helpers shared project-wide ARE PERMITTED under `pkg/utils/` or `shared/tools/`. They MUST be named specifically after their technical responsibility (e.g., `id-generator`, `number-formatter`, `date-utils`), avoiding generic catch-all names like `misc` or `stuff`.
+- **Domain Separation Invariant**: Shared utilities MUST remain strictly stateless and technical. Placing domain-specific business rules, entity logic, or database access inside shared utility files is strictly prohibited.
 - **Boolean Predicates**: Boolean variables and functions use clear prefixes (`is_active`, `has_access`, `can_modify`, `should_retry`).
 
 ## Filename Lifecycle Postfixes (Zero-Token Status Filtering)

@@ -1,7 +1,7 @@
 ---
 name: jarn-review
 description: >-
-  Automate pre-merge review and quality gate verification (GATE 3). Inspects git status, maps
+  This skill automates pre-merge review and quality gate verification (GATE 3). It inspects git status, maps
   files to the Change Routing Matrix, executes targeted tests, verifies code-spec
   parity, and audits compliance against jarn-quality.md.
 ---
@@ -56,3 +56,15 @@ Do NOT use this workflow when:
 - **Engineering Standards Audit**: Verify Conventional Commits, micro-commit granularity, stable references, and semantic numbering.
 - **Evidence Synthesis Report**: Compile an evidence-based summary detailing modified surfaces, targeted verification command logs (Exit Code 0), and DoD compliance against `jarn-quality.md` and `REVIEW.md`.
 - Present the walkthrough report to the human lead for final merge authorization.
+
+---
+
+## Review Checklist
+
+Copy this checklist into the response and tick each item as evidence is gathered. A failed item sends the work back; do not continue past it.
+
+- [ ] On an isolated branch and authorized by an explicit directive. If not, halt and return to GATE 2 (Step 0 Branch Isolation).
+- [ ] Every modified path is mapped to its targeted verification command. If a path has no mapping, return to Phase 2 and ask the lead.
+- [ ] Targeted commands exit 0 with logs captured. If any fail, report the failure and return to Phase 2 after the fix; never merge on a failure.
+- [ ] Code-spec parity confirmed for the change classification. If parity is missing, return to Phase 3 after the spec is updated.
+- [ ] Evidence report presented to the human lead for merge authorization.

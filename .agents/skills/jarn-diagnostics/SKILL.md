@@ -1,7 +1,7 @@
 ---
 name: jarn-diagnostics
 description: >-
-  Perform isolated, blast-radius-scoped defect diagnostics. Locates the feature spec
+  This skill performs isolated, blast-radius-scoped defect diagnostics. It locates the feature spec
   in docs/specs/, consults the dependency matrix, writes reproducing tests, and
   applies approved surgical fixes without blind full-codebase scans.
 ---
@@ -47,14 +47,18 @@ Inspect the `## Dependency & Blast-Radius Matrix` section inside `docs/specs/<su
 
 ### Phase: Reproduction & Root Cause Evidence
 - Locate an existing automated test or define a reproducing test plan within the bounded test suite identified in the living specification.
-- When the request is diagnosis-only, do not create tests or modify application source code.
+- **Diagnostic First Invariant**: Defect reports and error discussions are strictly Inquiry Mode. The AI MUST investigate and report findings without mutating codebase files.
 - If an existing reproducer is available, execute the targeted test command to confirm the expected failure and retain its log as empirical evidence.
 - Trace the divergence between the failing code and the specification invariants.
 
 ### Phase: Diagnosis Report & Approval Checkpoint
-- Report the observed symptom, evidence, root cause, affected bounded files, and minimal proposed fix.
-- If the user requested diagnosis only, stop after the report.
-- Before creating a reproducing test or applying a fix, obtain an explicit directive that authorizes the bounded repair.
+Present a structured 4-step Diagnostic Report before requesting execution authorization:
+1. **Symptom & Discovery**: Observed behavior, error tracebacks, or test failures.
+2. **Root Cause Analysis**: Underlying cause (why it broke, spec divergence, or unhandled edge case).
+3. **Blast Radius & Impact**: Bounded files, upstream callers, and downstream dependencies affected.
+4. **Proposed Fix & Verification Plan**: Minimal surgical repair plan and reproducing test strategy.
+
+- **Hard Stop**: Stop after presenting the 4-step report. Wait for an explicit human directive ("ทำเลย", "อนุมัติ", "proceed") before writing tests or applying surgical code fixes.
 
 ### Phase: Root Cause Analysis & Surgical Patching
 - Add or update the approved reproducing test and confirm it fails for the expected reason (Red state).
@@ -76,3 +80,16 @@ Inspect the `## Dependency & Blast-Radius Matrix` section inside `docs/specs/<su
     - Document the surgical fix applied.
     - Reference the reproducing test added.
 - Record the fix in `CHANGELOG.md` under `### Fixed`.
+
+---
+
+## Diagnostics Checklist
+
+Copy this checklist into the response and tick each item as it is satisfied.
+
+- [ ] Living spec located and bug classified (Spec-Conforming or Spec-Altering). If Spec-Altering, stop and hand off to `jarn-spec`.
+- [ ] Blast-radius matrix read and all inspection limited to its bounded files. If the root cause lies outside the matrix, return to Phase: Blast-Radius Matrix Extraction and flag the spec as incomplete.
+- [ ] Reproducer fails for the expected reason (Red). If it fails for another reason, return to Phase: Reproduction & Root Cause Evidence.
+- [ ] Explicit directive received before any test or fix is written.
+- [ ] Fix applied and reproducer passes (Green). If the regression suite fails, return to Phase: Root Cause Analysis & Surgical Patching and revise the fix.
+- [ ] `git status` shows only intended bounded files; commit logbook and `CHANGELOG.md` entry written.
