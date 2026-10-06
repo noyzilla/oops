@@ -2,7 +2,7 @@
 title: CLI Orchestration & Stack Management
 status: active
 tags: [cli, docker, compose, rolling-update, lifecycle-hooks, database, backup]
-synapses: ["ARCHITECTURE.md", "CONTEXT.md", "DESIGN.md", "docs/specs/webhook.md", "docs/specs/storage-guard.md"]
+synapses: ["ARCHITECTURE.md", "CONTEXT.md", "DESIGN.md", "docs/specs/webhook.md", "docs/specs/storage-guard.md", "docs/specs/deploy-key.md"]
 ---
 
 # Specification: CLI Orchestration & Stack Management
@@ -11,7 +11,7 @@ synapses: ["ARCHITECTURE.md", "CONTEXT.md", "DESIGN.md", "docs/specs/webhook.md"
 - **Target Audience**: Developers, Operators, and AI Coding Agents
 - **Parent Architecture**: [ARCHITECTURE.md](../../ARCHITECTURE.md)
 - **Ubiquitous Language**: [CONTEXT.md](../../CONTEXT.md)
-- **Companion Spec**: [docs/specs/webhook.md](webhook.md), [docs/specs/storage-guard.md](storage-guard.md)
+- **Companion Spec**: [docs/specs/webhook.md](webhook.md), [docs/specs/storage-guard.md](storage-guard.md), [docs/specs/deploy-key.md](deploy-key.md)
 
 ## Overview & Scope
 
@@ -200,6 +200,11 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops backup-data prune` | `[-r 7d]` | Prunes expired data volume archives |
 | `oops storage check` | `` | Reports dead links and unmounted paths used by containers and backups; exits non-zero when found |
 | `oops storage link` | `<target> [--name data] [--force]` | Links `<oopsbox>/data` to a persistent disk path after validation |
+| `oops key` | `` | Displays public deploy key (auto-generates ed25519 key if missing) |
+| `oops key reset` | `` | Regenerates a new ed25519 deploy key |
+| `oops key set` | `` | Sets custom deploy key from input |
+| `oops box clone` | `<repo> [path]` | Clones oopsbox workspace using deploy key (default path: `.`) |
+| `oops box pull` | `[path]` | Pulls latest Git updates for oopsbox workspace using deploy key |
 | `oops dns` | `[list]` | Inspects active DNS records, static mappings, and discovery routes |
 | `oops dns add` | `<domain> <ip>` | Adds or updates static DNS record in `config/oops/dns` (supports `.wildcard`) |
 | `oops dns del` | `<domain>` | Deletes static DNS record from `config/oops/dns` |

@@ -229,6 +229,7 @@ func init() {
 	rootCmd.AddCommand(newRestoreCmd())
 	rootCmd.AddCommand(newRestoreDBCmd())
 	rootCmd.AddCommand(newRestoreDataCmd())
+	rootCmd.AddCommand(newKeyCmd())
 	rootCmd.AddCommand(newStorageCmd())
 	rootCmd.AddCommand(newDNSCmd())
 	rootCmd.AddCommand(newIPCmd())

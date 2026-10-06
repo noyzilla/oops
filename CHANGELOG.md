@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+### Added
+- Deploy Key Management: Added `oops key`, `oops key reset`, and `oops key set` commands for automated host-level `ed25519` SSH Deploy Key generation and configuration.
+- Workspace Cloning: Added `oops box clone <repo> [path]` using local Deploy Keys, featuring automatic authentication failure detection with direct links to add keys on GitHub/GitLab.
+
 ## [0.15.0] - 2026-10-06
 
 ### Added
