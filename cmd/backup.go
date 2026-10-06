@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/noyzilla/oops/internal/backup"
+	"github.com/noyzilla/oops/internal/orchestrator"
 	"github.com/spf13/cobra"
 )
 
@@ -67,7 +68,7 @@ func newBackupDBCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "backup-db [targets...]",
 		Short: "Executes database dump and retention prune (mysql, postgres)",
-		Long:    "Executes compressed database backups for mysql, postgres, and redis containers, and prunes old archives.",
+		Long:  "Executes compressed database backups for mysql, postgres, and redis containers, and prunes old archives.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ret, backupDir, err := resolveBackupConfig(retention)
 			if err != nil {
@@ -114,7 +115,7 @@ func newBackupDataCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "backup-data [targets...]",
 		Short: "Executes data volume and filesystem archives (uploads, storage) and retention prune",
-		Long:    "Executes compressed tar archives for paths defined in oops.yml (backups.data), and prunes old archives.",
+		Long:  "Executes compressed tar archives for paths defined in oops.yml (backups.data), and prunes old archives.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ret, backupDir, err := resolveBackupConfig(retention)
 			if err != nil {
@@ -171,6 +172,11 @@ func resolveBackupConfig(customRetention string) (retention time.Duration, backu
 	backupDir = os.Getenv("OOPS_BACKUP_DIR")
 	if backupDir == "" {
 		backupDir = "./backups"
+	}
+
+	// Backups are not mounted into compose, so they are validated here instead of by the container guard
+	if err := orchestrator.CheckBackupDir(ResolveWorkDir(targetDir), backupDir); err != nil {
+		return 0, "", err
 	}
 
 	return ret, backupDir, nil

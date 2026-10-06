@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -39,8 +38,8 @@ func targetKey(t docker.ResolvedTarget) string {
 	return t.ComposePath + "|" + t.ServiceName
 }
 
-// bindSources returns resolved bind-mount sources per service from docker compose config
-func bindSources(composePath string) map[string][]string {
+// BindSources returns resolved bind-mount sources per service from docker compose config
+func BindSources(composePath string) map[string][]string {
 	args := []string{"compose"}
 	if envFile := FindEnvFile(composePath); envFile != "" {
 		args = append(args, "--env-file", envFile)
@@ -96,7 +95,7 @@ func priorityRanks(workDir string, entries []string) map[string]int {
 }
 
 // planGuard decides which targets are allowed and blocked given the detected Bad Links
-func planGuard(targets []docker.ResolvedTarget, problems []storage.Problem,
+func planGuard(targets []docker.ResolvedTarget, check func(source string) *storage.Problem,
 	binds func(composePath string) map[string][]string, ranks map[string]int, unlisted int) (allowed []docker.ResolvedTarget, blocked []BlockedService) {
 
 	rank := func(t docker.ResolvedTarget) int {
@@ -114,10 +113,9 @@ func planGuard(targets []docker.ResolvedTarget, problems []storage.Problem,
 			bindCache[t.ComposePath] = binds(t.ComposePath)
 		}
 		for _, src := range bindCache[t.ComposePath][t.ServiceName] {
-			for _, p := range problems {
-				if p.PassesThrough(src) {
-					affected[targetKey(t)] = fmt.Sprintf("%s -> %s: %s", p.LinkPath, p.Target, p.Reason)
-				}
+			if p := check(src); p != nil {
+				affected[targetKey(t)] = fmt.Sprintf("%s -> %s: %s", p.Path, p.Target, p.Reason)
+				break
 			}
 		}
 		if _, hit := affected[targetKey(t)]; hit && rank(t) < minRank {
@@ -148,6 +146,76 @@ func planGuard(targets []docker.ResolvedTarget, problems []storage.Problem,
 	return allowed, blocked
 }
 
+// StoragePrefixes returns the configured mount prefixes or the defaults when unset
+func StoragePrefixes(workDir string) []string {
+	cfg, err := docker.LoadOopsConfig(workDir)
+	if err != nil || cfg.Storage.MountPrefixes == nil {
+		return storage.DefaultMountPrefixes
+	}
+	return cfg.Storage.MountPrefixes
+}
+
+// CheckBackupDir refuses a backup directory that is a dead link or sits on the OS disk under a mount prefix.
+// It is deliberately independent of container management.
+func CheckBackupDir(workDir, backupDir string) error {
+	if p := storage.NewChecker().CheckPath(backupDir, StoragePrefixes(workDir), true); p != nil {
+		return fmt.Errorf("backup directory %s is unhealthy: %s -> %s: %s", backupDir, p.Path, p.Target, p.Reason)
+	}
+	return nil
+}
+
+// Finding is an unhealthy bind source or backup directory found by InspectBox
+type Finding struct {
+	Stack   string
+	Source  string
+	Problem storage.Problem
+}
+
+// InspectBox checks every bind source of every stack plus the backup directory
+func InspectBox(workDir, backupDir string) ([]Finding, error) {
+	_, composeMap, err := docker.DiscoverStacks(workDir)
+	if err != nil {
+		return nil, err
+	}
+	checker := storage.NewChecker()
+	prefixes := StoragePrefixes(workDir)
+
+	var stacks []string
+	for name := range composeMap {
+		stacks = append(stacks, name)
+	}
+	sort.Strings(stacks)
+
+	var findings []Finding
+	seen := make(map[string]bool)
+	for _, stack := range stacks {
+		binds := BindSources(composeMap[stack])
+		var services []string
+		for svc := range binds {
+			services = append(services, svc)
+		}
+		sort.Strings(services)
+		for _, svc := range services {
+			for _, src := range binds[svc] {
+				key := stack + "|" + src
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+				if p := checker.CheckPath(src, prefixes, false); p != nil {
+					findings = append(findings, Finding{Stack: stack + "/" + svc, Source: src, Problem: *p})
+				}
+			}
+		}
+	}
+	if backupDir != "" {
+		if p := checker.CheckPath(backupDir, prefixes, true); p != nil {
+			findings = append(findings, Finding{Stack: "backup", Source: backupDir, Problem: *p})
+		}
+	}
+	return findings, nil
+}
+
 // applyGuard filters targets through the storage guard. The returned error is a *BlockedError
 // when services were blocked; callers run the allowed targets first and then return it.
 func (o *Orchestrator) applyGuard(targets []docker.ResolvedTarget) ([]docker.ResolvedTarget, error) {
@@ -161,27 +229,20 @@ func (o *Orchestrator) applyGuard(targets []docker.ResolvedTarget) ([]docker.Res
 		return targets, nil
 	}
 
-	prefixes := cfg.Storage.MountPrefixes
-	if prefixes == nil {
-		prefixes = storage.DefaultMountPrefixes
-	}
-
-	// Bind sources from compose are absolute, so link paths must be absolute to compare
-	boxDir, err := filepath.Abs(o.WorkDir)
-	if err != nil {
-		boxDir = o.WorkDir
-	}
-
-	problems := storage.NewChecker().Inspect(boxDir, prefixes)
-	if len(problems) == 0 {
-		return targets, nil
-	}
-	for _, p := range problems {
-		log.Printf("ERROR: storage link %s -> %s is unhealthy: %s", p.LinkPath, p.Target, p.Reason)
+	checker := storage.NewChecker()
+	prefixes := StoragePrefixes(o.WorkDir)
+	logged := make(map[string]bool)
+	check := func(source string) *storage.Problem {
+		p := checker.CheckPath(source, prefixes, false)
+		if p != nil && !logged[p.Path] {
+			logged[p.Path] = true
+			log.Printf("ERROR: storage path %s -> %s is unhealthy: %s", p.Path, p.Target, p.Reason)
+		}
+		return p
 	}
 
 	ranks := priorityRanks(o.WorkDir, cfg.Priority)
-	allowed, blocked := planGuard(targets, problems, bindSources, ranks, len(cfg.Priority))
+	allowed, blocked := planGuard(targets, check, BindSources, ranks, len(cfg.Priority))
 	if len(blocked) == 0 {
 		return allowed, nil
 	}

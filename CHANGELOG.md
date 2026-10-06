@@ -7,10 +7,12 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
-- Storage Guard: `oops up`, `restart`, `update`, `switch` and `box start` validate `data/` and `backups/` symlinks before touching containers. Services whose bind mounts pass through a dead link, or a link whose target sits on the OS disk under a configured mount prefix, are blocked together with lower-priority services; unaffected services (edge first) still run and the command exits non-zero. Configure via `storage.mount_prefixes` and `priority` in `oops.yml`. See `docs/specs/storage-guard.md`.
+- Storage Guard: `oops up`, `restart`, `update`, `switch` and `box start` inspect every bind-mount source of the services they touch. Services using a path through a dead link, or a path under a configured mount prefix that is still on the OS disk, are blocked together with lower-priority services; unaffected services (edge first) still run and the command exits non-zero. Configure via `storage.mount_prefixes` and `priority` in `oops.yml`. See `docs/specs/storage-guard.md`.
+- Backup commands (`backup*`, `restore*`) refuse to run when `OOPS_BACKUP_DIR` is a dead link or sits on the OS disk under a mount prefix, independently of container management.
+- `oops storage check` reports dead links and unmounted paths; `oops storage link <target>` links the oopsbox `data` directory to a persistent disk after validation.
 
 ### Documentation
-- Added `docs/architecture/data-persistent-storage.md` describing persistent data and storage path abstraction best practices.
+- Added `docs/architecture/data-persistent-storage.md` describing persistent data and storage path abstraction best practices, including host-local backups and why whole-disk snapshots are discouraged.
 
 ### Changed
 - `oops up` now reuses the orchestrator start logic instead of a duplicated inline implementation.

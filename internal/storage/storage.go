@@ -1,5 +1,5 @@
-// Package storage validates persistent storage links (data/ and backups/) of an oopsbox
-// so containers never silently write to the OS disk when a persistent disk is missing.
+// Package storage validates host paths used for persistent data so containers and backups
+// never silently write to the OS disk when a persistent disk is missing or a link is dead.
 package storage
 
 import (
@@ -12,14 +12,11 @@ import (
 // DefaultMountPrefixes are the directory prefixes where persistent disks are expected to be mounted
 var DefaultMountPrefixes = []string{"/mnt", "/media", "/Volumes"}
 
-// LinkNames are the oopsbox root entries inspected by the guard
-var LinkNames = []string{"data", "backups"}
-
-// Problem describes a Bad Link
+// Problem describes an unhealthy storage path
 type Problem struct {
-	LinkPath string
-	Target   string
-	Reason   string
+	Path   string
+	Target string
+	Reason string
 }
 
 // Checker abstracts filesystem access so the rules can be tested without real mounts
@@ -53,43 +50,6 @@ func UnderPrefix(path, prefix string) bool {
 	return path == prefix || strings.HasPrefix(path, prefix+"/")
 }
 
-// Inspect checks every symlink named in LinkNames under boxDir and returns the Bad Links
-func (c Checker) Inspect(boxDir string, prefixes []string) []Problem {
-	var problems []Problem
-	for _, name := range LinkNames {
-		linkPath := filepath.Join(boxDir, name)
-		fi, err := c.Lstat(linkPath)
-		if err != nil || fi.Mode()&os.ModeSymlink == 0 {
-			continue
-		}
-
-		target, _ := c.Readlink(linkPath)
-		resolved, err := c.EvalSymlinks(linkPath)
-		if err != nil {
-			problems = append(problems, Problem{LinkPath: linkPath, Target: target, Reason: "link target does not exist"})
-			continue
-		}
-
-		if !c.MountCheck || !underAny(resolved, prefixes) {
-			continue
-		}
-
-		rootDev, errRoot := c.Device("/")
-		targetDev, errTarget := c.Device(resolved)
-		if errRoot != nil || errTarget != nil {
-			continue
-		}
-		if rootDev == targetDev {
-			problems = append(problems, Problem{
-				LinkPath: linkPath,
-				Target:   resolved,
-				Reason:   "target is on the OS disk (persistent disk not mounted)",
-			})
-		}
-	}
-	return problems
-}
-
 func underAny(path string, prefixes []string) bool {
 	for _, p := range prefixes {
 		if UnderPrefix(path, p) {
@@ -99,7 +59,61 @@ func underAny(path string, prefixes []string) bool {
 	return false
 }
 
-// PassesThrough reports whether source is the link itself or located beneath it
-func (p Problem) PassesThrough(source string) bool {
-	return UnderPrefix(source, p.LinkPath)
+// CheckPath inspects a host path. A dead symlink anywhere along the path is always a problem.
+// A path resolving under a mount prefix on the same device as "/" is a problem (disk not mounted).
+// When strictMissing is false a plain missing path is ignored (a container runtime would create it);
+// when true the nearest existing ancestor is checked instead, because creating the path
+// would land on the OS disk.
+func (c Checker) CheckPath(path string, prefixes []string, strictMissing bool) *Problem {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil
+	}
+
+	cumulative := string(filepath.Separator)
+	lastExisting := cumulative
+	missing := false
+	for _, part := range strings.Split(abs, string(filepath.Separator)) {
+		if part == "" {
+			continue
+		}
+		cumulative = filepath.Join(cumulative, part)
+		fi, err := c.Lstat(cumulative)
+		if err != nil {
+			missing = true
+			break
+		}
+		lastExisting = cumulative
+		if fi.Mode()&os.ModeSymlink != 0 {
+			if _, err := c.EvalSymlinks(cumulative); err != nil {
+				target, _ := c.Readlink(cumulative)
+				return &Problem{Path: cumulative, Target: target, Reason: "link target does not exist"}
+			}
+		}
+	}
+
+	subject := abs
+	if missing {
+		if !strictMissing {
+			return nil
+		}
+		subject = lastExisting
+	}
+
+	resolved, err := c.EvalSymlinks(subject)
+	if err != nil || !c.MountCheck || !underAny(resolved, prefixes) {
+		return nil
+	}
+
+	rootDev, errRoot := c.Device("/")
+	targetDev, errTarget := c.Device(resolved)
+	if errRoot != nil || errTarget != nil || rootDev != targetDev {
+		return nil
+	}
+
+	reason := "path is on the OS disk (persistent disk not mounted)"
+	if missing {
+		reason = "path does not exist and its nearest existing parent is on the OS disk (persistent disk not mounted)"
+	}
+	return &Problem{Path: abs, Target: resolved, Reason: reason}
 }

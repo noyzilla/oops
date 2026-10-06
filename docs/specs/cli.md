@@ -198,6 +198,8 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops backup-db prune` | `[-r 7d]` | Prunes expired DB dump archives |
 | `oops backup-data` | `[targets...] [-r 7d]` | Executes data volume tar archives and retention prune |
 | `oops backup-data prune` | `[-r 7d]` | Prunes expired data volume archives |
+| `oops storage check` | `` | Reports dead links and unmounted paths used by containers and backups; exits non-zero when found |
+| `oops storage link` | `<target> [--name data] [--force]` | Links `<oopsbox>/data` to a persistent disk path after validation |
 | `oops dns` | `[list]` | Inspects active DNS records, static mappings, and discovery routes |
 | `oops dns add` | `<domain> <ip>` | Adds or updates static DNS record in `config/oops/dns` (supports `.wildcard`) |
 | `oops dns del` | `<domain>` | Deletes static DNS record from `config/oops/dns` |

@@ -11,6 +11,15 @@ func tgt(stack, svc string) docker.ResolvedTarget {
 	return docker.ResolvedTarget{StackName: stack, ServiceName: svc, ComposePath: "/box/stacks/" + stack + "/compose.yml"}
 }
 
+func badUnder(prefix string) func(string) *storage.Problem {
+	return func(src string) *storage.Problem {
+		if storage.UnderPrefix(src, prefix) {
+			return &storage.Problem{Path: prefix, Target: "/mnt/x", Reason: "dead"}
+		}
+		return nil
+	}
+}
+
 func names(ts []docker.ResolvedTarget) []string {
 	var r []string
 	for _, t := range ts {
@@ -23,7 +32,7 @@ func TestPlanGuardBlocksAffectedAndLowerPriority(t *testing.T) {
 	targets := []docker.ResolvedTarget{
 		tgt("apps", "web"), tgt("db", "mysql"), tgt("edge", "caddy"), tgt("db", "redis"), tgt("tool", "adminer"),
 	}
-	problems := []storage.Problem{{LinkPath: "/box/data", Target: "/mnt/x", Reason: "dead"}}
+	check := badUnder("/box/data")
 	binds := func(compose string) map[string][]string {
 		return map[string][]string{"mysql": {"/box/data/mysql"}, "redis": {"/box/other"}}
 	}
@@ -35,7 +44,7 @@ func TestPlanGuardBlocksAffectedAndLowerPriority(t *testing.T) {
 		targetKey(tgt("apps", "web")):   2,
 	}
 
-	allowed, blocked := planGuard(targets, problems, binds, ranks, 3)
+	allowed, blocked := planGuard(targets, check, binds, ranks, 3)
 
 	gotAllowed := names(allowed)
 	if len(gotAllowed) != 2 || gotAllowed[0] != "edge/caddy" || gotAllowed[1] != "db/redis" {
@@ -48,11 +57,11 @@ func TestPlanGuardBlocksAffectedAndLowerPriority(t *testing.T) {
 
 func TestPlanGuardEdgeNeverBlocked(t *testing.T) {
 	targets := []docker.ResolvedTarget{tgt("edge", "caddy"), tgt("db", "mysql")}
-	problems := []storage.Problem{{LinkPath: "/box/data", Target: "/mnt/x", Reason: "dead"}}
+	check := badUnder("/box/data")
 	binds := func(string) map[string][]string {
 		return map[string][]string{"caddy": {"/box/data/caddy"}, "mysql": {"/box/data/mysql"}}
 	}
-	allowed, blocked := planGuard(targets, problems, binds, nil, 0)
+	allowed, blocked := planGuard(targets, check, binds, nil, 0)
 	if len(allowed) != 1 || allowed[0].StackName != "edge" || len(blocked) != 1 {
 		t.Fatalf("edge must stay allowed: allowed=%v blocked=%d", names(allowed), len(blocked))
 	}
@@ -60,9 +69,9 @@ func TestPlanGuardEdgeNeverBlocked(t *testing.T) {
 
 func TestPlanGuardNoAffectedAllowsAll(t *testing.T) {
 	targets := []docker.ResolvedTarget{tgt("apps", "web"), tgt("db", "mysql")}
-	problems := []storage.Problem{{LinkPath: "/box/data", Reason: "dead"}}
+	check := badUnder("/box/data")
 	binds := func(string) map[string][]string { return nil }
-	allowed, blocked := planGuard(targets, problems, binds, nil, 0)
+	allowed, blocked := planGuard(targets, check, binds, nil, 0)
 	if len(allowed) != 2 || len(blocked) != 0 {
 		t.Fatalf("unrelated services must run: %v", names(allowed))
 	}

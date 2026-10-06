@@ -24,7 +24,7 @@ func TestUnderPrefix(t *testing.T) {
 	}
 }
 
-func fakeChecker(t *testing.T, devices map[string]uint64) Checker {
+func fakeChecker(devices map[string]uint64) Checker {
 	c := NewChecker()
 	c.MountCheck = true
 	c.Device = func(p string) (uint64, error) {
@@ -39,66 +39,73 @@ func fakeChecker(t *testing.T, devices map[string]uint64) Checker {
 	return c
 }
 
-func TestInspectDeadLink(t *testing.T) {
+func TestCheckPathDeadLinkAnywhereInPath(t *testing.T) {
 	box := t.TempDir()
 	if err := os.Symlink(filepath.Join(box, "missing"), filepath.Join(box, "data")); err != nil {
 		t.Fatal(err)
 	}
 	c := NewChecker()
 	c.MountCheck = false
-	got := c.Inspect(box, nil)
-	if len(got) != 1 || got[0].LinkPath != filepath.Join(box, "data") {
-		t.Fatalf("expected dead link problem, got %+v", got)
+	p := c.CheckPath(filepath.Join(box, "data", "mysql"), nil, false)
+	if p == nil || p.Path != filepath.Join(box, "data") {
+		t.Fatalf("expected dead link problem at data, got %+v", p)
 	}
 }
 
-func TestInspectRealDirectoryPasses(t *testing.T) {
+func TestCheckPathHealthyAndMissing(t *testing.T) {
 	box := t.TempDir()
-	if err := os.Mkdir(filepath.Join(box, "data"), 0o755); err != nil {
-		t.Fatal(err)
+	c := NewChecker()
+	if p := c.CheckPath(box, DefaultMountPrefixes, false); p != nil {
+		t.Fatalf("healthy dir must pass, got %+v", p)
 	}
-	if got := NewChecker().Inspect(box, DefaultMountPrefixes); len(got) != 0 {
-		t.Fatalf("real directory must pass, got %+v", got)
+	if p := c.CheckPath(filepath.Join(box, "nope"), DefaultMountPrefixes, false); p != nil {
+		t.Fatalf("plain missing path ignored when not strict, got %+v", p)
 	}
 }
 
-func TestInspectRootDeviceUnderPrefix(t *testing.T) {
-	box := t.TempDir()
-	target := t.TempDir()
-	if err := os.Symlink(target, filepath.Join(box, "data")); err != nil {
+func TestCheckPathRootDeviceUnderPrefix(t *testing.T) {
+	target, _ := filepath.EvalSymlinks(t.TempDir())
+	link := filepath.Join(t.TempDir(), "data")
+	if err := os.Symlink(target, link); err != nil {
 		t.Fatal(err)
 	}
-	resolved, _ := filepath.EvalSymlinks(target)
 
-	rootOnly := fakeChecker(t, map[string]uint64{"/": 1})
-	if got := rootOnly.Inspect(box, []string{"/"}); len(got) != 1 {
-		t.Fatalf("target on root device under prefix / must be bad, got %+v", got)
+	rootOnly := fakeChecker(map[string]uint64{"/": 1})
+	if p := rootOnly.CheckPath(link, []string{"/"}, false); p == nil {
+		t.Fatal("target on root device under prefix / must be bad")
 	}
-	if got := rootOnly.Inspect(box, []string{"/nowhere"}); len(got) != 0 {
-		t.Fatalf("target outside prefixes must not be checked, got %+v", got)
+	if p := rootOnly.CheckPath(link, []string{"/nowhere"}, false); p != nil {
+		t.Fatalf("outside prefixes must not be checked, got %+v", p)
 	}
-	if got := rootOnly.Inspect(box, nil); len(got) != 0 {
-		t.Fatalf("empty prefixes disable mount check, got %+v", got)
+	if p := rootOnly.CheckPath(link, nil, false); p != nil {
+		t.Fatalf("empty prefixes disable mount check, got %+v", p)
 	}
 
-	mounted := fakeChecker(t, map[string]uint64{"/": 1, resolved: 2})
-	if got := mounted.Inspect(box, []string{"/"}); len(got) != 0 {
-		t.Fatalf("target on separate device must pass, got %+v", got)
+	mounted := fakeChecker(map[string]uint64{"/": 1, target: 2})
+	if p := mounted.CheckPath(link, []string{"/"}, false); p != nil {
+		t.Fatalf("separate device must pass, got %+v", p)
 	}
 
 	noMount := rootOnly
 	noMount.MountCheck = false
-	if got := noMount.Inspect(box, []string{"/"}); len(got) != 0 {
-		t.Fatalf("mount check disabled must only detect dead links, got %+v", got)
+	if p := noMount.CheckPath(link, []string{"/"}, false); p != nil {
+		t.Fatalf("mount check disabled must only detect dead links, got %+v", p)
 	}
 }
 
-func TestPassesThrough(t *testing.T) {
-	p := Problem{LinkPath: "/box/data"}
-	if !p.PassesThrough("/box/data/mysql") || !p.PassesThrough("/box/data") {
-		t.Fatal("expected pass through")
+func TestCheckPathStrictMissingUsesNearestParent(t *testing.T) {
+	dir, _ := filepath.EvalSymlinks(t.TempDir())
+	missing := filepath.Join(dir, "backups", "db")
+
+	rootOnly := fakeChecker(map[string]uint64{"/": 1})
+	if p := rootOnly.CheckPath(missing, []string{"/"}, true); p == nil {
+		t.Fatal("strict missing path whose parent is on root device must be bad")
 	}
-	if p.PassesThrough("/box/database") {
-		t.Fatal("directory boundary violated")
+	if p := rootOnly.CheckPath(missing, []string{"/"}, false); p != nil {
+		t.Fatalf("non-strict must ignore missing path, got %+v", p)
+	}
+	mounted := fakeChecker(map[string]uint64{"/": 1, dir: 2})
+	if p := mounted.CheckPath(missing, []string{"/"}, true); p != nil {
+		t.Fatalf("parent on separate device must pass, got %+v", p)
 	}
 }
