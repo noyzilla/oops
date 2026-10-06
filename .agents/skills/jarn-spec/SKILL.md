@@ -1,7 +1,7 @@
 ---
 name: jarn-spec
 description: >-
-  Guide agents and developers in authoring, debating, and maintaining vertical slice
+  This skill guides agents and developers in authoring, debating, and maintaining vertical slice
   living specifications in docs/specs/ using the Code-Spec Parity Invariant and
   Dependency & Blast-Radius Matrix.
 ---

@@ -1,14 +1,21 @@
 ---
 name: jarn-consult
 description: >-
-  Activate before any spec-altering change to lead structured requirement discovery and brainstorming (GATE 1).
-  Classifies the request, probes intent with focused questions, acts as a Socratic coach for junior developers,
+  This skill leads structured requirement discovery and brainstorming (GATE 1) before any spec-altering change.
+  It classifies the request, probes intent with focused questions, acts as a Socratic coach for junior developers,
   proposes implementation options with trade-offs, and hands off a confirmed agreement to jarn-spec for living spec synthesis.
 ---
 
 # Jarn Consultation Workflow
 
 > **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill).
+
+## Contents
+- Core Philosophy
+- When to Use This Skill
+- Operational Execution Runbook (Classification, Discover Intent, Propose Options, Confirm Agreement, Hand Off)
+- Red Flags
+- Consultation Output Checklist
 
 This skill defines the structured requirement discovery and brainstorming procedure executed during GATE 1 for all spec-altering changes. It ensures the AI leads the inquiry and brainstorming — not the human — coaching junior developers, evaluating viability, and producing well-scoped living specs regardless of AI model.
 

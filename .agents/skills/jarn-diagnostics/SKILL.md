@@ -1,7 +1,7 @@
 ---
 name: jarn-diagnostics
 description: >-
-  Perform isolated, blast-radius-scoped defect diagnostics. Locates the feature spec
+  This skill performs isolated, blast-radius-scoped defect diagnostics. It locates the feature spec
   in docs/specs/, consults the dependency matrix, writes reproducing tests, and
   applies approved surgical fixes without blind full-codebase scans.
 ---
@@ -76,3 +76,16 @@ Inspect the `## Dependency & Blast-Radius Matrix` section inside `docs/specs/<su
     - Document the surgical fix applied.
     - Reference the reproducing test added.
 - Record the fix in `CHANGELOG.md` under `### Fixed`.
+
+---
+
+## Diagnostics Checklist
+
+Copy this checklist into the response and tick each item as it is satisfied.
+
+- [ ] Living spec located and bug classified (Spec-Conforming or Spec-Altering). If Spec-Altering, stop and hand off to `jarn-spec`.
+- [ ] Blast-radius matrix read and all inspection limited to its bounded files. If the root cause lies outside the matrix, return to Phase: Blast-Radius Matrix Extraction and flag the spec as incomplete.
+- [ ] Reproducer fails for the expected reason (Red). If it fails for another reason, return to Phase: Reproduction & Root Cause Evidence.
+- [ ] Explicit directive received before any test or fix is written.
+- [ ] Fix applied and reproducer passes (Green). If the regression suite fails, return to Phase: Root Cause Analysis & Surgical Patching and revise the fix.
+- [ ] `git status` shows only intended bounded files; commit logbook and `CHANGELOG.md` entry written.
