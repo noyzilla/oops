@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
-## [Unreleased]
+## [0.15.0] - 2026-10-06
 
 ### Added
 - Storage Guard: `oops up`, `restart`, `update`, `switch` and `box start` inspect every bind-mount source of the services they touch. Services using a path through a dead link, or a path under a configured mount prefix that is still on the OS disk, are blocked together with lower-priority services; unaffected services (edge first) still run and the command exits non-zero. Configure via `storage.mount_prefixes` and `priority` in `oops.yml`. See `docs/specs/storage-guard.md`.
@@ -16,6 +16,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ### Changed
 - `oops up` now reuses the orchestrator start logic instead of a duplicated inline implementation.
+
+### Fixed
+- Edge stack: oops ingress upstream and healthcheck now use the default port `8080`.
+- `install.sh` configures `PATH` and completion in shell profiles and sets `chmod 755` on the install directory and binary.
 
 ## [0.14.2] - 2026-10-06
 
