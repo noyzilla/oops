@@ -27,6 +27,7 @@ Agents MUST strictly comply with every active Jarn rule:
 - **Coding Style & Hygiene**: [.agents/rules/jarn-coding.md](.agents/rules/jarn-coding.md) (Visual hygiene, bilingual annotations, numbering invariants, stable references).
 - **Git & Commits**: [.agents/rules/jarn-git.md](.agents/rules/jarn-git.md) (Conventional commits, micro-commit strategy).
 - **Quality & Pre-Merge Gates**: [.agents/rules/jarn-quality.md](.agents/rules/jarn-quality.md) (Pre-merge review checklist, universal quality standards, targeted verification).
+- **Technical Communication Standard**: [.agents/rules/jarn-communication.md](.agents/rules/jarn-communication.md) (Diátaxis structure, strict word economy, zero filler, exact codebase vocabulary).
 - **Local Domain Context**: Align all entity names and parameters with ubiquitous language in [CONTEXT.md](CONTEXT.md).
 - **Documentation Taxonomy**: Maintain system documentation under `docs/` according to [docs/README.md](docs/README.md).
 

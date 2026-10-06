@@ -38,8 +38,9 @@ Do NOT use this workflow when:
 - Check `docs/specs/` to determine if a specification for this subsystem already exists.
 - If it exists, identify it as the proposed update target. If new, identify `docs/specs/<feature-slug>.md` as the proposed file path using [.agents/templates/docs/spec.md](../../templates/docs/spec.md).
 
-### Phase: Interactive Design Debate
+### Phase: Interactive Design Debate & Foundational Data Modeling
 Before writing specification details or code, conduct an architectural debate with the human lead:
+- **Data-First Design Invariant**: Settle data structures, core types, ID standards, and access patterns before defining procedural logic. Never defer data structure design to the coding phase.
 - Clarify intent, functional scope, and edge boundaries.
 - Define domain terminology and align with [CONTEXT.md](../../../CONTEXT.md). Prohibit ambiguous or misleading synonyms.
 - Challenge edge cases: null handling, boundary conditions, concurrency, idempotency, and network failures.
@@ -51,12 +52,13 @@ Draft the specification following the structure defined in [.agents/templates/do
 - **Domain Context & Ubiquitous Language**: Canonical definitions and forbidden synonyms.
 - **Business Rules & Logic Invariants**: Explicit calculation methods, validation constraints, and edge handling.
 - **Flow & State Machine**: State transitions, trigger events, and failure recovery.
-- **Interface & Data Contracts**: Endpoints, input/output schemas, error responses, and database impacts.
+- **Interface & Data Contracts**: Data models/types, endpoints, input/output schemas, error responses, and database impacts. Lock all data models before approval.
 - **Dependency & Blast-Radius Matrix**: Bounded callers, dependencies, and files affected.
 - **Verification & Acceptance Criteria**: Specific test commands, covered files, and concrete happy/error path scenarios.
 
 ### Phase: Specification Approval Checkpoint
-- Present the proposed specification in the conversation, including the affected file path and implementation scope.
+- Present the proposed specification in the conversation, including locked data models, affected file path, and implementation scope.
+- **No Spec Drift Invariant**: Once approved, coding MUST strictly implement the approved spec. AI agents are prohibited from re-architecting data models mid-implementation without stopping to request a formal spec revision.
 - Wait for explicit human approval before creating or modifying a specification file.
 
 ### Phase: Dependency & Blast-Radius Calculation

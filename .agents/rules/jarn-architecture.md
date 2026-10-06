@@ -9,6 +9,19 @@ description: "Ecosystem-native lifecycle, documentation topology, and configurat
 
 This document establishes the architectural principles, documentation topology, and native ecosystem lifecycles for the project.
 
+## Domain & Data-First Principles
+
+### Data-First & Contract-First Design
+- **Rule**: Architectural designs must lock down data schemas, type definitions, and API contracts before any behavioral logic is implemented.
+- **Rationale**: Ensures the foundation is solid and agreed upon, preventing extensive rework caused by shifting data structures mid-implementation.
+
+### State Machine Invariant
+- **Rule**: Complex business entities must be modeled using explicit state machines (e.g., `Draft` -> `Pending` -> `Active`) rather than ad-hoc boolean flags (e.g., `is_draft`, `is_active`).
+- **Rationale**: Prevents impossible states, implicit logic branching, and data inconsistency.
+
+### Domain Isolation (Model the Domain)
+- **Rule**: Business rules and domain logic must be strictly isolated into pure functions or modules (e.g., `src/domain/`). They must NOT be coupled with database ORMs, HTTP frameworks, or UI layers.
+- **Rationale**: Protects core business logic from technical infrastructure churn and enables fast, isolated unit testing.
 ## Ecosystem-Native Lifecycle Contract
 
 Rather than forcing an unnatural wrapper layer across diverse ecosystems, every project must implement standard lifecycles using the **native tooling of its target programming language**.

@@ -10,32 +10,23 @@ description: >-
 
 > **Do not modify this file.** It is part of the Jarn framework and will be overwritten during framework updates (`jarn-framework-update` skill).
 
-## Contents
-- Core Philosophy
-- When to Use This Skill
-- Operational Execution Runbook (Classification, Discover Intent, Propose Options, Confirm Agreement, Hand Off)
-- Red Flags
-- Consultation Output Checklist
-
-This skill defines the structured requirement discovery and brainstorming procedure executed during GATE 1 for all spec-altering changes. It ensures the AI leads the inquiry and brainstorming — not the human — coaching junior developers, evaluating viability, and producing well-scoped living specs regardless of AI model.
+Structured requirement discovery procedure executed during GATE 1 for spec-altering changes. Ensures the AI leads inquiry, probes intent, evaluates viability, and drafts living specs before coding.
 
 ## Core Philosophy
 
-A living specification can only be as good as the requirements behind it. This skill exists to surface what the human has not yet articulated: edge cases, constraints, implicit assumptions, and architectural trade-offs. The AI acts as "จารย์" — an expert advisor and Socratic coach who asks thought-provoking questions, explores creative alternatives, and filters non-viable ideas before prescribing a solution.
+Living specs depend on clear requirements. This skill surfaces implicit assumptions, edge cases, and architectural trade-offs. The AI acts as an expert advisor asking thought-provoking questions, exploring alternatives, and filtering non-viable ideas.
 
-## When to Use This Skill
+## When to Use
 
-Activate this workflow when:
-- Starting a new feature, subsystem, or capability (spec-altering change in GATE 1).
-- Requirements feel unclear, incomplete, or contain implicit assumptions.
-- A junior developer is initiating work and benefits from proactive Socratic coaching.
-- The request scope is ambiguous — could be a small fix, a large redesign, or a non-viable feature.
+Activate when:
+- Starting a new feature, subsystem, or spec-altering change (GATE 1).
+- Requirements are ambiguous or incomplete.
+- Scope is unclear (spike vs redesign vs feature).
 
-Do NOT use this workflow when:
-- Fixing a bug where the existing spec is already correct (spec-conforming fix — proceed directly to implementation plan in GATE 1 / GATE 2).
-- Performing internal refactoring or styling cleanup that preserves external behavior.
-- Emergency production hotfixes or P1 incidents where immediate surgical remediation is required.
-- Requirements have already been thoroughly discussed and an approved living spec draft exists.
+Do NOT use when:
+- Fixing a bug where the spec is already correct (GATE 2 bugfix).
+- Refactoring internal code without changing external behavior.
+- Applying emergency P1 hotfixes.
 
 ---
 
