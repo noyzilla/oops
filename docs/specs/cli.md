@@ -90,9 +90,9 @@ The CLI is engineered around two distinct developer working modes:
 
 | Tier | Category | Subcommands | Context Resolution & Safety Invariant |
 | :--- | :--- | :--- | :--- |
-| **Tier 1** | **Workspace-Bound Commands** | `oops remote add`, `oops remote list`, `oops remote remove`, `oops deploy` | **Strict Workspace Check (`RequireOopsboxWorkspace`)**: Must be executed inside a valid Oopsbox Workspace directory (`stacks/` or compose file present) or explicitly specified via `-C <dir>`. If executed outside an Oopsbox directory, execution halts immediately with: `Error: not inside a valid oopsbox workspace directory`. |
-| **Tier 2** | **Active Box / Developer Commands** | `oops up`, `oops stop`, `oops restart`, `oops down`, `oops status`, `oops logs`, `oops ps`, `oops db`, `oops backup`, `oops restore` | **Active Box Auto-Resolution**: When executed from an Application Directory, automatically resolves to the machine's Active Box (`~/.oops/active_box` or `OOPSBOX_DIR`). **Mismatch Guard (`ValidateActiveBox`)**: If executed inside a different Oopsbox directory that does NOT match the active box, halts and displays the active box mismatch warning (`active oopsbox mismatch!`). |
-| **Tier 3** | **Global Machine Commands** | `oops box active`, `oops box switch`, `oops box list`, `oops box create`, `oops version`, `oops selfupdate`, `oops dns`, `oops ip`, `oops server` | **Global Machine Context**: Standalone tools and box context managers runnable from any directory without restriction. |
+| **Tier 1** | **Workspace & Git Deployment** | `oops remote`, `oops deploy`, `oops rx` | **Git Project Boundary**: Requires execution inside a Git Project repository (`.git` at root or parent) and valid Oopsbox Workspace. |
+| **Tier 2** | **Local Container Orchestration** | `oops up`, `oops down`, `oops status`, `oops logs`, `oops db`, `oops backup` | **Zero Git Dependency**: Operates on local containers anywhere without `.git` (standalone `oopsbox` or machine Active Box). |
+| **Tier 3** | **Global Machine Tools** | `oops box`, `oops dns`, `oops ip`, `oops version`, `oops selfupdate` | **Global Context**: Standalone machine tools runnable from any directory without restriction. |
 
 ### Sequential Lifecycle Hooks & Inter-Service Delay Protocol
 When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down`, or `oops up` targeting wildcards such as `app..` or whole stacks):
@@ -227,10 +227,11 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops box switch` | `<path>` | Gracefully tears down current box, updates active box, and starts target box |
 | `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store / Keychain |
 | `oops deploy` | `[-r <remote>] [ref]` | Deploys workspace updates to remote server over SSH |
-| `oops remote add` | `<remote> <ssh-target>` | Registers remote server via SSH (defaults fixed path `~/.oops/oopsbox.git` and `~/oopsbox`), sets up local Git remote |
-| `oops remote list` | *(none)* | Lists registered remote servers |
-| `oops remote remove` | `<remote>` | Removes registered remote server configuration |
-| `oops rx` | `[-r <remote>] <cmd> [args...]` | Remote Execute: Forwards any `oops` command over SSH to remote server `~/oopsbox` using `-r <remote>` |
+| `oops remote add` | `<ssh-target> [-r <name>]` | Registers remote server via SSH (namespaced as `oops-<name>` in Git), sets up local Git remote |
+| `oops remote list` | *(none)* | Lists registered remote servers (displays logical names without `oops-` prefix) |
+| `oops remote remove` | `<name>` | Removes registered remote server configuration (`oops-<name>`) |
+| `oops remote rename` | `<old-name> <new-name>` | Renames registered remote configuration from `oops-<old-name>` to `oops-<new-name>` |
+| `oops rx` | `[-r <remote>] <cmd> [args...]` | Remote Execute: Forwards any `oops` command over SSH to remote server `~/oopsbox` using `-r <remote>` (default: `prod`) |
 | `oops completion` | `[bash|zsh|fish|powershell]` | Generates shell auto-completion script for the specified shell |
 | `oops version` | `[-v, --version]` | Displays the active Oops version, OS architecture, and build information |
 | `oops selfupdate` | `[-c, --check] [-f, --force]` | Self-updates the oops binary to the latest release published on GitHub |

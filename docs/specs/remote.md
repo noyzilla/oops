@@ -33,19 +33,31 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - If executed outside a valid oopsbox workspace directory, the command halts cleanly with:
   `Error: Not inside a valid oopsbox workspace directory`.
 
-### Remote Server Registration (`oops remote add [name] <ssh-target>`)
-- **Argument Resolution**:
-  - **1 Argument (`oops remote add <ssh-target>`)**: If `<ssh-target>` is an SSH Host alias in `~/.ssh/config` (no `@` or `/`), `<name>` defaults to the alias name (e.g., `anthole`). Otherwise, `<name>` defaults to `oopsbox`.
-  - **2 Arguments (`oops remote add <name> <ssh-target>`)**: `<name>` is explicitly set (e.g., `staging`), and `<ssh-target>` is the SSH target.
+### Remote Server Registration (`oops remote add <ssh-target> [-r <remote-name>]`)
+- **Git Remote Prefix Namespacing Invariant**:
+  - Registered Git remotes in the local repository are strictly namespaced with `oops-` prefix (e.g. `oops-prod`, `oops-staging`).
+  - Users interact exclusively with logical names (`prod`, `staging`) in all `oops` commands. The CLI automatically maps logical names to `oops-<name>` in Git.
+- **Argument & Option Parsing**:
+  - **Positional Argument**: `<ssh-target>` is strictly the first positional argument (e.g., `anthole`, `user@1.2.3.4`).
+  - **Flag `-r, --remote <name>`**: Explicitly sets the logical remote name (e.g., `-r staging`).
+- **Auto-Derivation Cascade (when `-r` is omitted)**:
+  1. If logical `prod` (`oops-prod`) is not yet registered in workspace -> Default logical name is `prod`.
+  2. If `prod` exists -> Extract `host` from `<ssh-target>`. If `oops-<host>` is available -> Default logical name is `host`.
+  3. If `host` exists -> Fallback logical name is `<host>_<user>` (e.g., `1.2.3.4_ubuntu`).
+  4. **Interactive Prompt**: If executed in an interactive TTY and `host` exists, prompt the user with a warning, using `<host>_<user>` as default pre-filled editable input.
 - **Fixed Server Locations**:
   - Server Bare Repository is strictly fixed at `~/.oops/oopsbox.git`.
   - Server Workspace Directory is strictly fixed at `~/oopsbox`.
-- **Git Remote Registration**: Registers local Git remote `<name>` using standard SCP-style SSH notation: `<ssh-target>:.oops/oopsbox.git` (e.g., `anthole:.oops/oopsbox.git` or `captain@anthole.local:.oops/oopsbox.git`).
+- **Git Remote Registration**: Registers local Git remote `oops-<name>` using standard SCP-style SSH notation: `<ssh-target>:.oops/oopsbox.git` (e.g., `anthole:.oops/oopsbox.git` or `captain@anthole.local:.oops/oopsbox.git`).
 - **Google COS & Read-Only OS Support**:
   - Detects read-only filesystems (Google Container-Optimized OS / COS).
   - On Google COS, installs `oops` CLI into `/var/lib/google/bin/oops` and `docker-compose` plugin into `/var/lib/google/docker-cli-plugins/docker-compose`.
   - Configures `"cliPluginsExtraDirs": ["/var/lib/google/docker-cli-plugins"]` in `${HOME}/.docker/config.json` and `/root/.docker/config.json`.
 - **Server Initialization**: Initializes `~/.oops/oopsbox.git` and `~/oopsbox` directly on the server via SSH bootstrap script.
+
+### Remote Server Management (`oops remote rename <old-name> <new-name>`)
+- Renames registered remote `<old-name>` to `<new-name>`.
+- Executes `git remote rename oops-<old-name> oops-<new-name>` internally.
 
 ### Server-Side Bare Repository Initialization (`internal/remote/bootstrap.go`)
 - **Directory Setup**: Creates `<bare-path>` as a bare Git repository (`git init --bare <bare-path>`).
@@ -95,22 +107,21 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 ### Remote Deployment (`oops deploy [-r <remote>] [ref]`)
 - **Top-Level Deployment Command**: `oops deploy` is the single, definitive command for deploying workspace updates to a remote server.
 - **Argument Defaults**:
-  - `-r <remote>`: Target remote server name (Default: `oopsbox` or single registered remote if only one exists). Strictly uses `-r <remote>` to specify target remote server.
+  - `-r <remote>`: Target logical remote server name (Default: `prod` mapped to `oops-prod`, or single registered `oops-*` remote if only one exists). Strictly uses `-r <remote>` to specify target remote server.
   - `[ref]`: Target Git reference to deploy (Default: active Git branch, e.g., `main`).
 - **Execution Workflow**:
-  1. Executes `git push <remote> <ref>` to sync Git commits to remote `~/.oops/oopsbox.git`.
+  1. Executes `git push <oops-remote> <ref>` to sync Git commits to remote `~/.oops/oopsbox.git`.
   2. Executes SSH to remote target:
      `git --git-dir=$HOME/.oops/oopsbox.git --work-tree=$HOME/oopsbox checkout -f <ref> && (oops up -C $HOME/oopsbox || /var/lib/google/bin/oops up -C $HOME/oopsbox)`
 
 ### Remote Command Execution (`oops rx [-r <remote>] <command> [args...]`)
 - **Dedicated Subcommand**: `oops rx` (`rx` = Remote Execute) is the dedicated subcommand for executing developer operations directly on a remote server over SSH.
 - **Universal Flag Standard (`-r` / `--remote`)**:
-  - `-r <remote>` or `--remote <remote>` (or `--remote=<remote>`) is standardized project-wide as the single flag for specifying a remote server.
-  - `-s` is deprecated and dropped.
+  - `-r <remote>` or `--remote <remote>` (or `--remote=<remote>`) is standardized project-wide as the single flag for specifying a remote server logical name.
   - Positional remote server name guessing across `oops rx` and `oops deploy` is strictly forbidden to prevent collision between remote names, references, and command names.
 - **Remote Selection Priority**:
   1. Flag `-r <remote>` / `--remote` / `--remote=<remote>` (explicit).
-  2. Fallback: Default remote `oopsbox` (or the single registered remote if exactly one exists).
+  2. Fallback: Default remote `prod` (mapped to `oops-prod`) or single registered `oops-*` remote if exactly one exists.
 - **Execution Workflow**:
   - `oops rx [-r <remote>] <command> [args...]` executes over SSH:
     `ssh -t <ssh-target> "cd ~/oopsbox && (oops <command> [args...] || /var/lib/google/bin/oops <command> [args...])"`
@@ -122,11 +133,12 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 | Subcommand | Arguments | Description |
 | :--- | :--- | :--- |
-| `oops remote add` | `<remote> <ssh-target>` | Registers remote server via SSH (defaults fixed path `~/.oops/oopsbox.git` and `~/oopsbox`), sets up local Git remote |
-| `oops remote list` | *(none)* | Lists registered remote servers |
-| `oops remote remove` | `<remote>` | Removes registered remote server configuration |
-| `oops deploy` | `[-r <remote>] [ref]` | Top-level command for deploying workspace updates to remote server using `-r <remote>` |
-| `oops rx` | `[-r <remote>] <cmd> [args...]` | Remote Execute: Forwards any `oops` command over SSH to remote server `~/oopsbox` using `-r <remote>` |
+| `oops remote add` | `<ssh-target> [-r <name>]` | Registers remote server via SSH (namespaced as `oops-<name>` in Git), sets up local Git remote |
+| `oops remote list` | *(none)* | Lists registered remote servers (displays logical names without `oops-` prefix) |
+| `oops remote remove` | `<name>` | Removes registered remote server configuration (`oops-<name>`) |
+| `oops remote rename` | `<old-name> <new-name>` | Renames registered remote configuration from `oops-<old-name>` to `oops-<new-name>` |
+| `oops deploy` | `[-r <remote>] [ref]` | Top-level command for deploying workspace updates to remote server using `-r <remote>` (default: `prod`) |
+| `oops rx` | `[-r <remote>] <cmd> [args...]` | Remote Execute: Forwards any `oops` command over SSH to remote server `~/oopsbox` using `-r <remote>` (default: `prod`) |
 
 ## Dependency & Blast-Radius Matrix
 

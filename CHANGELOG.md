@@ -7,6 +7,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
+- Remote Server Rename: Added `oops remote rename <old-name> <new-name>` subcommand to rename registered remote server configurations.
+- Git Remote Prefix Namespacing: Namespaced local Git remotes with `oops-` prefix (e.g. `oops-prod`) while exposing clean logical names (`prod`) in CLI commands.
+- Redesigned `oops remote add <ssh-target> [-r <name>]`: Positional `<ssh-target>` parsing with `-r / --remote` option flag, cascading `prod` default, `<host>` / `<host>_<user>` fallback, and interactive conflict prompts.
+- Default Remote Target Alignment: Standardized `oops deploy` and `oops rx` default target resolution to `prod` (mapped to `oops-prod`).
 - Remote Server Management & Git Bare Sync: Added `oops remote` CLI command suite (`add`, `list`, `remove`, `push`, `deploy`, `pull`, `<cmd>`) for 1-command remote server bootstrapping via SSH (`~/.ssh/config` alias/IAP), verifying and installing `oops` CLI and `docker-compose-plugin`.
 - Google Container-Optimized OS (COS) Support: Directs binary installations to `/var/lib/google/bin/oops` and `/var/lib/google/docker-cli-plugins/docker-compose`, updating `~/.docker/config.json` with `"cliPluginsExtraDirs": ["/var/lib/google/docker-cli-plugins"]`.
 - Server-side Git Bare Init: Added `oops box init-bare <bare-path> <oopsbox-path>` command and post-receive hook generator supporting explicit `-o deploy` gate (`git push -o deploy <server> <ref>`), multi-ref/multi-tag push handling, and existing workspace seeding.
