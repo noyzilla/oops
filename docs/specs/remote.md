@@ -45,9 +45,9 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
   - Detects read-only filesystems (Google Container-Optimized OS / COS).
   - On Google COS, installs `oops` CLI into `/var/lib/google/bin/oops` and `docker-compose` plugin into `/var/lib/google/docker-cli-plugins/docker-compose`.
   - Configures `"cliPluginsExtraDirs": ["/var/lib/google/docker-cli-plugins"]` in `${HOME}/.docker/config.json` and `/root/.docker/config.json`.
-- **Server Initialization**: Runs `oops box init-bare ~/.oops/oopsbox.git ~/oopsbox` on the server via SSH.
+- **Server Initialization**: Initializes `~/.oops/oopsbox.git` and `~/oopsbox` directly on the server via SSH bootstrap script.
 
-### Server-Side Bare Repository Initialization (`oops box init-bare <bare-path> <oopsbox-path>`)
+### Server-Side Bare Repository Initialization (`internal/remote/bootstrap.go`)
 - **Directory Setup**: Creates `<bare-path>` as a bare Git repository (`git init --bare <bare-path>`).
 - **Push Option Config**: Enables `git config receive.advertisePushOptions true` on the bare repository.
 - **Post-Receive Hook**: Generates executable `hooks/post-receive` inside `<bare-path>`:
@@ -122,7 +122,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 | Subcommand | Arguments | Description |
 | :--- | :--- | :--- |
-| `oops remote add` | `[remote] <ssh-target>` | Registers remote server via SSH (defaults fixed path `~/.oops/oopsbox.git` and `~/oopsbox`), sets up local Git remote |
+| `oops remote add` | `<remote> <ssh-target>` | Registers remote server via SSH (defaults fixed path `~/.oops/oopsbox.git` and `~/oopsbox`), sets up local Git remote |
 | `oops remote list` | *(none)* | Lists registered remote servers |
 | `oops remote remove` | `<remote>` | Removes registered remote server configuration |
 | `oops deploy` | `[-r <remote>] [ref]` | Top-level command for deploying workspace updates to remote server using `-r <remote>` |
@@ -131,7 +131,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 ## Dependency & Blast-Radius Matrix
 
 - **Upstream Callers**: Developer terminal (`oops rx [-r <remote>] <cmd>`, `oops deploy [-r <remote>] [ref]`).
-- **Downstream Dependencies**: Native SSH client (`ssh`), Git CLI (`git`), Docker Engine & `docker-compose-plugin`, `internal/key` package.
+- **Downstream Dependencies**: Native SSH client (`ssh`), Git CLI (`git`), Docker Engine & `docker-compose-plugin`.
 - **Bounded Blast Radius**:
   - `cmd/remote.go`: Subcommand routing for `oops remote`.
   - `internal/remote/`: Remote server registration, SSH command execution delegator, bare sync runner.

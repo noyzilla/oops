@@ -134,21 +134,16 @@ if ! command -v oops >/dev/null 2>&1 && [ ! -f /var/lib/google/bin/oops ]; then
 fi
 
 # 4. Initialize server bare repo
-if command -v oops >/dev/null 2>&1; then summit_cmd="oops"; elif [ -f /var/lib/google/bin/oops ]; then summit_cmd="/var/lib/google/bin/oops"; else summit_cmd=""; fi
-
-if [ -n "$summit_cmd" ]; then
-    $summit_cmd box init-bare "$BARE_PATH" "$BOX_PATH"
-else
-    mkdir -p "$BARE_PATH/hooks" "$BOX_PATH"
-    git init --bare "$BARE_PATH"
-    git -C "$BARE_PATH" config receive.advertisePushOptions true
-    cat << 'HOOK_EOF' > "$BARE_PATH/hooks/post-receive"
+mkdir -p "$BARE_PATH/hooks" "$BOX_PATH"
+git init --bare "$BARE_PATH"
+git -C "$BARE_PATH" config receive.advertisePushOptions true
+cat << 'HOOK_EOF' > "$BARE_PATH/hooks/post-receive"
 %s
 HOOK_EOF
-    chmod 755 "$BARE_PATH/hooks/post-receive"
-fi
+chmod 755 "$BARE_PATH/hooks/post-receive"
 `, barePath, boxPath, cosScript, hookScript)
 }
+
 
 // ExecuteRemoteSSH executes a bash script string on sshTarget using system SSH.
 func ExecuteRemoteSSH(sshTarget, script string) (string, error) {

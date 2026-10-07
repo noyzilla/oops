@@ -26,7 +26,7 @@ func TestGenerateBootstrapRemoteScript(t *testing.T) {
 	if !strings.Contains(script, "BOX_PATH=\"~/oopsbox\"") {
 		t.Errorf("expected script to contain BOX_PATH, got:\n%s", script)
 	}
-	if !strings.Contains(script, "init-bare") {
-		t.Errorf("expected script to call init-bare, got:\n%s", script)
+	if !strings.Contains(script, "git init --bare") {
+		t.Errorf("expected script to call git init --bare, got:\n%s", script)
 	}
 }
