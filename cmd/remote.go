@@ -68,7 +68,7 @@ func newRemoteAddCmd() *cobra.Command {
 			if idx := strings.Index(cleanTarget, "/"); idx != -1 {
 				cleanTarget = cleanTarget[:idx]
 			}
-			remoteURL := fmt.Sprintf("ssh://%s/%s", cleanTarget, strings.TrimPrefix(remote.CanonicalPath(bareRepoPath), "/"))
+			remoteURL := fmt.Sprintf("%s:.oops/repos/%s.git", cleanTarget, name)
 			gitRemoteCmd := exec.Command("git", "-C", workDirAbs, "remote", "add", name, remoteURL)
 			if err := gitRemoteCmd.Run(); err != nil {
 				// If remote exists, update URL

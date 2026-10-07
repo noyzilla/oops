@@ -29,8 +29,10 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 ## Business Rules & Logic Invariants
 
-### Remote Server Registration & Bootstrap (`oops remote add <name> <ssh-target> [remote-path]`)
-- **SSH Target Resolution**: Resolves host config from `~/.ssh/config` or direct target string (`user@host:port`).
+### Remote Server Registration & Bootstrap (`oops remote add <name> <ssh-target> [oopsbox-path]`)
+- **SSH Target Syntax**: Accepts standard host alias or `user@host` (e.g., `captain@anthole.local` or `my-server`).
+- **Remote Bare Repo Location**: Created at `.oops/repos/<name>.git` inside user home directory on the remote server.
+- **Git Remote Registration**: Registers local Git remote `<name>` using standard SCP-style SSH notation: `<ssh-target>:.oops/repos/<name>.git` (e.g., `captain@anthole.local:.oops/repos/anthole.git`).
 - **Google COS & Read-Only OS Support**:
   - Detects read-only filesystems (Google Container-Optimized OS / COS).
   - On Google COS, installs `oops` CLI into `/var/lib/google/bin/oops` and `docker-compose` plugin into `/var/lib/google/docker-cli-plugins/docker-compose`.
@@ -39,7 +41,6 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
   - Checks if `oops` CLI exists on remote server. If missing, installs to writeable binary path (`/var/lib/google/bin/oops` on COS, `~/.local/bin/oops` or `/usr/local/bin/oops` on standard Linux).
   - Checks if `docker` and `docker compose` plugin are installed. On standard Linux distros, installs `docker-compose-plugin` via package manager or `get.docker.com`. On COS, downloads plugin binary to `/var/lib/google/docker-cli-plugins/docker-compose`.
 - **Server Bare Repository Initialization**: Runs `oops box init-bare <bare-path> <oopsbox-path>` on the server via SSH.
-- **Local Remote Registration**: Adds Git remote `<name>` pointing to `ssh://<ssh-target>/<bare-path>` in the local workspace.
 
 ### Server-Side Bare Repository Initialization (`oops box init-bare <bare-path> <oopsbox-path>`)
 - **Directory Setup**: Creates `<bare-path>` as a bare Git repository (`git init --bare <bare-path>`).
