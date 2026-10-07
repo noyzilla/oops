@@ -22,6 +22,9 @@ func newStopCmd() *cobra.Command {
 			}
 
 			workDir := ResolveWorkDir(targetDir)
+			if err := ValidateActiveBox(workDir); err != nil {
+				return err
+			}
 			targets, err := docker.ResolveTargetsWithExceptions(workDir, args, exceptTargets)
 			if err != nil {
 				return err

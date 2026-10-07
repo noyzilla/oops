@@ -29,8 +29,6 @@ func newBoxCmd() *cobra.Command {
 	cmd.AddCommand(newBoxStopCmd())
 	cmd.AddCommand(newBoxSwitchCmd())
 	cmd.AddCommand(newBoxCertCmd())
-	cmd.AddCommand(newBoxCloneCmd())
-	cmd.AddCommand(newBoxPullCmd())
 	cmd.AddCommand(newBoxInitBareCmd())
 
 	return cmd

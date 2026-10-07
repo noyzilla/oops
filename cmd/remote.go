@@ -3,14 +3,12 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/noyzilla/oops/internal/box"
-	"github.com/noyzilla/oops/internal/key"
 	"github.com/noyzilla/oops/internal/remote"
 	"github.com/spf13/cobra"
 )
@@ -28,7 +26,6 @@ func newRemoteCmd() *cobra.Command {
 	cmd.AddCommand(newRemoteAddCmd())
 	cmd.AddCommand(newRemoteListCmd())
 	cmd.AddCommand(newRemoteRemoveCmd())
-	cmd.AddCommand(newDeployCmd())
 
 	return cmd
 }
@@ -175,91 +172,59 @@ func newRemoteRemoveCmd() *cobra.Command {
 	}
 }
 
-// HandleDynamicRemoteCommands handles dynamic invocations like `oops remote <server> <cmd>`
-func HandleDynamicRemoteCommands(args []string) (bool, error) {
-	if len(args) < 2 || args[0] != "remote" {
-		return false, nil
+func isKnownRemoteOrHost(workDir, candidate string) bool {
+	if candidate == "" {
+		return false
 	}
-
-	subCmd := args[1]
-	// If standard subcommand, let Cobra handle it
-	if subCmd == "add" || subCmd == "list" || subCmd == "remove" || subCmd == "--help" || subCmd == "-h" {
-		return false, nil
+	if strings.Contains(candidate, "@") || strings.Contains(candidate, ":") || strings.HasPrefix(candidate, "ssh://") {
+		return true
 	}
-
-	serverName := subCmd
-	action := "deploy"
-	if len(args) > 2 {
-		action = args[2]
+	remotes := listGitRemotes(workDir)
+	for _, r := range remotes {
+		if r == candidate {
+			return true
+		}
 	}
+	return false
+}
 
-	workDir := ResolveGitWorkDir(targetDir)
-	keyPath, _ := key.DefaultKeyPath()
-	sshCmdStr := fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=accept-new", keyPath)
-
-	switch action {
-	case "push":
-		branch := "main"
-		for i, a := range args {
-			if (a == "-b" || a == "--branch") && i+1 < len(args) {
-				branch = args[i+1]
-			}
+func resolveDefaultServer(workDir string) string {
+	remotes := listGitRemotes(workDir)
+	for _, r := range remotes {
+		if r == "oopsbox" {
+			return "oopsbox"
 		}
-		log.Printf("==> [Remote Sync] Pushing workspace to remote '%s' (%s)...", serverName, branch)
-		gitCmd := exec.Command("git", "-C", workDir, "push", serverName, branch)
-		gitCmd.Env = append(os.Environ(), "GIT_SSH_COMMAND="+sshCmdStr)
-		gitCmd.Stdout = os.Stdout
-		gitCmd.Stderr = os.Stderr
-		return true, gitCmd.Run()
-
-	case "deploy":
-		targetRef := "main"
-		for i, a := range args {
-			if (a == "-b" || a == "--branch") && i+1 < len(args) {
-				targetRef = args[i+1]
-			}
-			if (a == "-t" || a == "--tag") && i+1 < len(args) {
-				targetRef = "refs/tags/" + args[i+1]
-			}
-		}
-		log.Printf("==> [Remote Deploy] Deploying workspace to remote '%s' (%s)...", serverName, targetRef)
-		gitCmd := exec.Command("git", "-C", workDir, "push", "-o", "deploy", serverName, targetRef)
-		gitCmd.Env = append(os.Environ(), "GIT_SSH_COMMAND="+sshCmdStr)
-		gitCmd.Stdout = os.Stdout
-		gitCmd.Stderr = os.Stderr
-		return true, gitCmd.Run()
-
-	case "pull":
-		log.Printf("==> [Remote Pull] Pulling updates from remote '%s'...", serverName)
-		gitCmd := exec.Command("git", "-C", workDir, "pull", serverName, "main")
-		gitCmd.Env = append(os.Environ(), "GIT_SSH_COMMAND="+sshCmdStr)
-		gitCmd.Stdout = os.Stdout
-		gitCmd.Stderr = os.Stderr
-		return true, gitCmd.Run()
-
-	case "up", "down", "ps", "logs":
-		// Remote SSH delegation
-		remoteURLCmd := exec.Command("git", "-C", workDir, "remote", "get-url", serverName)
-		out, err := remoteURLCmd.Output()
-		if err != nil {
-			return true, fmt.Errorf("remote '%s' not found: %w", serverName, err)
-		}
-		sshTarget := extractSSHTarget(string(out))
-
-		remoteCmd := fmt.Sprintf("oops %s", strings.Join(args[2:], " "))
-		sshArgs := []string{
-			"-i", keyPath,
-			"-o", "StrictHostKeyChecking=accept-new",
-			sshTarget,
-			remoteCmd,
-		}
-		cmd := exec.Command("ssh", sshArgs...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		return true, cmd.Run()
 	}
+	if len(remotes) == 1 {
+		return remotes[0]
+	}
+	return "oopsbox"
+}
 
-	return false, nil
+func listGitRemotes(workDir string) []string {
+	cmd := exec.Command("git", "-C", workDir, "remote")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	var result []string
+	for _, l := range lines {
+		trimmed := strings.TrimSpace(l)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
+func resolveSSHTarget(workDir, serverName string) string {
+	remoteURLCmd := exec.Command("git", "-C", workDir, "remote", "get-url", serverName)
+	out, err := remoteURLCmd.Output()
+	if err == nil && len(out) > 0 {
+		return extractSSHTarget(string(out))
+	}
+	return extractSSHTarget(serverName)
 }
 
 func extractSSHTarget(remoteURL string) string {
@@ -273,14 +238,6 @@ func extractSSHTarget(remoteURL string) string {
 		return remoteURL[:idx]
 	}
 	return remoteURL
-}
-
-func resolveRemoteBoxPath(args []string) string {
-	remoteBoxPath := "~/oopsbox"
-	if len(args) > 2 && strings.TrimSpace(args[2]) != "" && args[2] != "." && args[2] != "./" {
-		remoteBoxPath = args[2]
-	}
-	return remoteBoxPath
 }
 
 func init() {

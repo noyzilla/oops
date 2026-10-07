@@ -12,8 +12,8 @@ import (
 func newDBCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "db <engine>[:<target>] <action> [args...]",
-		Short: "Database provisioning and credentials management for mysql or pg (postgres)",
-		Long:  "Manages database and user provisioning for supported engines: mysql, pg (postgres). Actions: create, passwd, list, drop.",
+		Short: "Database provisioning and credentials management for mysql or postgres",
+		Long:  "Manages database and user provisioning for supported engines: mysql, postgres. Actions: create, passwd, list, drop.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 2 {
 				return cmd.Help()
@@ -57,7 +57,7 @@ func newDBCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
-				} else if engine == "pg" || engine == "postgres" {
+				} else if engine == "postgres" {
 					if containerTarget == "" {
 						containerTarget = "postgres"
 					}
@@ -98,7 +98,7 @@ func newDBCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
-				} else if engine == "pg" || engine == "postgres" {
+				} else if engine == "postgres" {
 					if containerTarget == "" {
 						containerTarget = "postgres"
 					}
@@ -124,7 +124,7 @@ func newDBCmd() *cobra.Command {
 						return err
 					}
 					fmt.Print(out)
-				} else if engine == "pg" || engine == "postgres" {
+				} else if engine == "postgres" {
 					if containerTarget == "" {
 						containerTarget = "postgres"
 					}
@@ -152,7 +152,7 @@ func newDBCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
-				} else if engine == "pg" || engine == "postgres" {
+				} else if engine == "postgres" {
 					if containerTarget == "" {
 						containerTarget = "postgres"
 					}

@@ -90,9 +90,9 @@ The CLI is engineered around two distinct developer working modes:
 
 | Tier | Category | Subcommands | Context Resolution & Safety Invariant |
 | :--- | :--- | :--- | :--- |
-| **Tier 1** | **Workspace-Bound Commands** | `oops remote add`, `oops remote list`, `oops remote remove`, `oops remote deploy`, `oops deploy` | **Strict Workspace Check (`RequireOopsboxWorkspace`)**: Must be executed inside a valid Oopsbox Workspace directory (`stacks/` or compose file present) or explicitly specified via `-C <dir>`. If executed outside an Oopsbox directory, execution halts immediately with: `Error: not inside a valid oopsbox workspace directory`. |
+| **Tier 1** | **Workspace-Bound Commands** | `oops remote add`, `oops remote list`, `oops remote remove`, `oops deploy` | **Strict Workspace Check (`RequireOopsboxWorkspace`)**: Must be executed inside a valid Oopsbox Workspace directory (`stacks/` or compose file present) or explicitly specified via `-C <dir>`. If executed outside an Oopsbox directory, execution halts immediately with: `Error: not inside a valid oopsbox workspace directory`. |
 | **Tier 2** | **Active Box / Developer Commands** | `oops up`, `oops stop`, `oops restart`, `oops down`, `oops status`, `oops logs`, `oops ps`, `oops db`, `oops backup`, `oops restore` | **Active Box Auto-Resolution**: When executed from an Application Directory, automatically resolves to the machine's Active Box (`~/.oops/active_box` or `OOPSBOX_DIR`). **Mismatch Guard (`ValidateActiveBox`)**: If executed inside a different Oopsbox directory that does NOT match the active box, halts and displays the active box mismatch warning (`active oopsbox mismatch!`). |
-| **Tier 3** | **Global Machine Commands** | `oops box active`, `oops box switch`, `oops box list`, `oops box create`, `oops box clone`, `oops version`, `oops selfupdate`, `oops key`, `oops dns`, `oops ip`, `oops server` | **Global Machine Context**: Standalone tools and box context managers runnable from any directory without restriction. |
+| **Tier 3** | **Global Machine Commands** | `oops box active`, `oops box switch`, `oops box list`, `oops box create`, `oops version`, `oops selfupdate`, `oops dns`, `oops ip`, `oops server` | **Global Machine Context**: Standalone tools and box context managers runnable from any directory without restriction. |
 
 ### Sequential Lifecycle Hooks & Inter-Service Delay Protocol
 When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down`, or `oops up` targeting wildcards such as `app..` or whole stacks):
@@ -117,14 +117,14 @@ For each matched service in target order:
   - If container has no native healthcheck but has `oops.health.url`: Send HTTP GET requests until 200 OK is received.
   - If status is `"unhealthy"` or polling exceeds `OOPS_HEALTHCHECK_TIMEOUT` (default 10m / 600s): Abort the update sequence immediately, print container logs, and exit with Code 1.
 
-### Database Management (`oops db <mysql|pg>[:<target>] <action>`)
-- **Supported Engines**: `mysql`, `pg` (synonym: `postgres`)
+### Database Management (`oops db <mysql|postgres>[:<target>] <action>`)
+- **Supported Engines**: `mysql`, `postgres`
 - **Syntax**: `oops db mysql[:<target>] <create|passwd|list|drop> [args...]`
 - **Target Resolution**:
   - `mysql` -> Default container `mysql`
   - `mysql:<target>` (e.g. `mysql:mysql-analytics`) -> Target container `mysql-analytics`
-  - `pg` / `postgres` -> Default container `postgres`
-  - `pg:<target>` (e.g. `pg:pg-replica`) -> Target container `pg-replica`
+  - `postgres` -> Default container `postgres`
+  - `postgres:<target>` (e.g. `postgres:pg-replica`) -> Target container `pg-replica`
 - **Password Generation & Enforcement**: If password argument is omitted or empty (in `create` or `passwd`), generate a 20-character secure alphanumeric string (`[A-Za-z0-9]`). Never permit creating or updating users with blank passwords.
 - **MySQL Queries**:
   - **Create**:
@@ -205,7 +205,7 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops logs` | `[targets...] [--tail 50] [-f]` | Tail service logs across target services or stacks |
 | `oops pull` | `[targets...] [--all]` | Pulls images for targets, default group, all stacks, or registry aliases |
 | `oops update` | `[targets...] [--all] [-i, --image <img/alias>] [-d 0s]` | Executes sequential rolling update with health check and delay gap |
-| `oops db` | `<mysql|pg>[:<target>] <action>` | DB provisioning for `mysql` or `pg` (`postgres`): `create`, `passwd`, `list`, `drop` |
+| `oops db` | `<mysql|postgres>[:<target>] <action>` | DB provisioning for `mysql` or `postgres`: `create`, `passwd`, `list`, `drop` |
 | `oops backup` | `[-r 7d]` | Executes unified full backup (DB dumps + data volumes) and retention prune |
 | `oops backup prune` | `[-r 7d]` | Prunes all expired backup archives (DB and data) |
 | `oops backup-db` | `[targets...] [-r 7d]` | Executes DB dump and retention prune |
@@ -214,11 +214,6 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops backup-data prune` | `[-r 7d]` | Prunes expired data volume archives |
 | `oops storage check` | `` | Reports dead links and unmounted paths used by containers and backups; exits non-zero when found |
 | `oops storage link` | `<target> [--name data] [--force]` | Links `<oopsbox>/data` to a persistent disk path after validation |
-| `oops key` | `` | Displays public deploy key (auto-generates ed25519 key if missing) |
-| `oops key reset` | `` | Regenerates a new ed25519 deploy key |
-| `oops key set` | `` | Sets custom deploy key from input |
-| `oops box clone` | `<repo> [path]` | Clones oopsbox workspace using deploy key (default path: `.`) |
-| `oops box pull` | `[path]` | Pulls latest Git updates for oopsbox workspace using deploy key |
 | `oops dns` | `[list]` | Inspects active DNS records, static mappings, and discovery routes |
 | `oops dns add` | `<domain> <ip>` | Adds or updates static DNS record in `config/oops/dns` (supports `.wildcard`) |
 | `oops dns del` | `<domain>` | Deletes static DNS record from `config/oops/dns` |
@@ -231,6 +226,11 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops box stop` | *(none)* | Stops all running stacks via `oops down` on the active box |
 | `oops box switch` | `<path>` | Gracefully tears down current box, updates active box, and starts target box |
 | `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store / Keychain |
+| `oops deploy` | `[-r <remote>] [ref]` | Deploys workspace updates to remote server over SSH |
+| `oops remote add` | `<remote> <ssh-target>` | Registers remote server via SSH (defaults fixed path `~/.oops/oopsbox.git` and `~/oopsbox`), sets up local Git remote |
+| `oops remote list` | *(none)* | Lists registered remote servers |
+| `oops remote remove` | `<remote>` | Removes registered remote server configuration |
+| `oops rx` | `[-r <remote>] <cmd> [args...]` | Remote Execute: Forwards any `oops` command over SSH to remote server `~/oopsbox` using `-r <remote>` |
 | `oops completion` | `[bash|zsh|fish|powershell]` | Generates shell auto-completion script for the specified shell |
 | `oops version` | `[-v, --version]` | Displays the active Oops version, OS architecture, and build information |
 | `oops selfupdate` | `[-c, --check] [-f, --force]` | Self-updates the oops binary to the latest release published on GitHub |
@@ -277,4 +277,4 @@ Release Mode is `host-release` (declared in `AGENTS.md`):
   - `oops stop app..` executes `oops.stop.cmd` on all matching running containers sequentially with `--delay` (`-d`) gap.
   - `oops update app..` executes rolling update sequentially, waiting for health checks and observing delay gaps.
   - `oops db mysql create my_db my_user` generates 20-char password when omitted and creates isolated user.
-  - `oops db pg:pg-custom create my_db my_user my_pass` targets `pg-custom` container.
+  - `oops db postgres:pg-custom create my_db my_user my_pass` targets `pg-custom` container.

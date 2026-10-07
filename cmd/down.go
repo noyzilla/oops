@@ -61,6 +61,9 @@ func newDownCmd() *cobra.Command {
 			}
 
 			workDir := ResolveWorkDir(targetDir)
+			if err := ValidateActiveBox(workDir); err != nil {
+				return err
+			}
 			orderedStacks, composeMap, err := docker.DiscoverStacks(workDir)
 			if err != nil {
 				return err

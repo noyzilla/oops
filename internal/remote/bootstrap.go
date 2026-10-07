@@ -3,11 +3,8 @@ package remote
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
-
-	"github.com/noyzilla/oops/internal/key"
 )
 
 // GenerateCOSPluginScript returns the bash script string for installing Docker Compose CLI plugin on COS.
@@ -153,13 +150,8 @@ fi
 `, barePath, boxPath, cosScript, hookScript)
 }
 
-// ExecuteRemoteSSH executes a bash script string on sshTarget using the default SSH Deploy Key.
+// ExecuteRemoteSSH executes a bash script string on sshTarget using system SSH.
 func ExecuteRemoteSSH(sshTarget, script string) (string, error) {
-	keyPath, err := key.DefaultKeyPath()
-	if err != nil {
-		return "", fmt.Errorf("failed locating SSH key: %w", err)
-	}
-
 	cleanTarget := strings.TrimPrefix(sshTarget, "ssh://")
 	if idx := strings.Index(cleanTarget, "/"); idx != -1 {
 		cleanTarget = cleanTarget[:idx]
@@ -167,13 +159,12 @@ func ExecuteRemoteSSH(sshTarget, script string) (string, error) {
 
 	sshArgs := []string{
 		"-o", "StrictHostKeyChecking=accept-new",
+		cleanTarget,
+		"bash -s",
 	}
-	if _, err := os.Stat(keyPath); err == nil {
-		sshArgs = append(sshArgs, "-i", keyPath)
-	}
-	sshArgs = append(sshArgs, cleanTarget, "bash -s")
 
 	cmd := exec.Command("ssh", sshArgs...)
+
 	cmd.Stdin = bytes.NewBufferString(script)
 
 	var stdout, stderr bytes.Buffer

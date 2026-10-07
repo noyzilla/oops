@@ -45,7 +45,7 @@ var rootCmd = &cobra.Command{
 
 // Execute runs the root command.
 func Execute() {
-	if handled, err := HandleDynamicRemoteCommands(os.Args[1:]); handled {
+	if handled, err := HandleDynamicRxCommands(os.Args[1:]); handled {
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -237,10 +237,10 @@ func init() {
 	rootCmd.AddCommand(newRestoreCmd())
 	rootCmd.AddCommand(newRestoreDBCmd())
 	rootCmd.AddCommand(newRestoreDataCmd())
-	rootCmd.AddCommand(newKeyCmd())
 	rootCmd.AddCommand(newStorageCmd())
 	rootCmd.AddCommand(newDNSCmd())
 	rootCmd.AddCommand(newIPCmd())
 	rootCmd.AddCommand(newRemoteCmd())
+	rootCmd.AddCommand(newRxCmd())
 	rootCmd.AddCommand(newDeployCmd())
 }

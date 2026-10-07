@@ -25,9 +25,10 @@ type containerStatusItem struct {
 
 func newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "status [targets...]",
-		Short: "Displays formatted status of containers, health, IPs, and ports",
-		Long:  "Inspects and displays formatted status for active Docker containers across Oopsbox compose stacks or targeted services.",
+		Use:     "status [targets...]",
+		Aliases: []string{"ps"},
+		Short:   "Displays formatted status of containers, health, IPs, and ports",
+		Long:    "Inspects and displays formatted status for active Docker containers across Oopsbox compose stacks or targeted services.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runStatus(cmd, args)
 		},
@@ -38,6 +39,9 @@ func newStatusCmd() *cobra.Command {
 
 func runStatus(cmd *cobra.Command, args []string) error {
 	workDir := ResolveWorkDir(targetDir)
+	if err := ValidateActiveBox(workDir); err != nil {
+		return err
+	}
 
 	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {

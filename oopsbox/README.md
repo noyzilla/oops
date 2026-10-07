@@ -229,11 +229,11 @@ oops db mysql list
 oops db mysql drop myapp_db myapp_user
 
 # PostgreSQL
-oops db pg create myapp_db myapp_user               # Auto-generates password
-oops db pg:pg-custom create analytics_db user       # Target specific container
-oops db pg passwd myapp_user                        # Rotate password (auto-generates new)
-oops db pg list
-oops db pg drop myapp_db myapp_user
+oops db postgres create myapp_db myapp_user               # Auto-generates password
+oops db postgres:pg-custom create analytics_db user       # Target specific container
+oops db postgres passwd myapp_user                        # Rotate password (auto-generates new)
+oops db postgres list
+oops db postgres drop myapp_db myapp_user
 ```
 
 ### Automated Backup Suite (Database & Data Volumes)

@@ -15,7 +15,7 @@ synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/oopsbox.md", "docs/specs
 
 ## Overview & Scope
 
-This specification defines the `oops remote` command suite for remote server bootstrapping, Git Bare synchronization, and SSH-delegated remote orchestration. It strictly separates local workstation management (`oops box`) from remote server operations (`oops remote <server> <command>`), allowing developers to sync, deploy, and inspect remote environments (e.g. production, staging) via Native SSH without third-party Git hosts.
+This specification defines the `oops remote` command suite for remote server bootstrapping, Git Bare synchronization, and SSH-delegated remote orchestration. It strictly separates local workstation management (`oops box`) from remote server operations (`oops rx [-r <remote>] <command>` and `oops deploy [-r <remote>]`), allowing developers to sync, deploy, and inspect remote environments (e.g. production, staging) via Native SSH without third-party Git hosts.
 
 ## Domain Context & Ubiquitous Language
 
@@ -24,12 +24,12 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Remote Host (`oops remote`)**: Remote server target registered via SSH alias in `~/.ssh/config` or `user@host`.
 - **Git Bare Repository (`<bare-path>`)**: Fixed server-side bare Git repository at `~/.oops/oopsbox.git` serving as central sync point.
 - **Remote Workspace Path (`<oopsbox-path>`)**: Fixed working tree directory at `~/oopsbox` on the server.
-- **Explicit Deploy Execution**: Deployments are driven explicitly via `oops remote deploy` or shorthand `oops deploy`, pushing commit history and running SSH-delegated checkout and container up.
+- **Explicit Deploy Execution**: Deployments are driven explicitly via `oops deploy [-r <remote>] [ref]`, pushing commit history and running SSH-delegated checkout and container up.
 
 ## Business Rules & Logic Invariants
 
 ### Workspace Requirement Invariant
-- `oops remote add`, `oops remote deploy`, and shorthand `oops deploy` MUST be executed within a valid local oopsbox workspace directory (`.git` or `stacks/` or `compose.yaml` present).
+- `oops remote add` and `oops deploy` MUST be executed within a valid local oopsbox workspace directory (`.git` or `stacks/` or `compose.yaml` present).
 - If executed outside a valid oopsbox workspace directory, the command halts cleanly with:
   `Error: Not inside a valid oopsbox workspace directory`.
 
@@ -92,29 +92,45 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
   fi
   ```
 
-### Explicit Remote Deployment (`oops remote deploy [name] [ref]` & `oops deploy [name] [ref]`)
+### Remote Deployment (`oops deploy [-r <remote>] [ref]`)
+- **Top-Level Deployment Command**: `oops deploy` is the single, definitive command for deploying workspace updates to a remote server.
 - **Argument Defaults**:
-  - `[name]`: Target remote name (Default: `oopsbox` or single registered remote if only one exists).
+  - `-r <remote>`: Target remote server name (Default: `oopsbox` or single registered remote if only one exists). Strictly uses `-r <remote>` to specify target remote server.
   - `[ref]`: Target Git reference to deploy (Default: active Git branch, e.g., `main`).
 - **Execution Workflow**:
-  1. Executes `git push <name> <ref>` to sync Git commits to remote `~/.oops/oopsbox.git`.
+  1. Executes `git push <remote> <ref>` to sync Git commits to remote `~/.oops/oopsbox.git`.
   2. Executes SSH to remote target:
      `git --git-dir=$HOME/.oops/oopsbox.git --work-tree=$HOME/oopsbox checkout -f <ref> && (oops up -C $HOME/oopsbox || /var/lib/google/bin/oops up -C $HOME/oopsbox)`
+
+### Remote Command Execution (`oops rx [-r <remote>] <command> [args...]`)
+- **Dedicated Subcommand**: `oops rx` (`rx` = Remote Execute) is the dedicated subcommand for executing developer operations directly on a remote server over SSH.
+- **Universal Flag Standard (`-r` / `--remote`)**:
+  - `-r <remote>` or `--remote <remote>` (or `--remote=<remote>`) is standardized project-wide as the single flag for specifying a remote server.
+  - `-s` is deprecated and dropped.
+  - Positional remote server name guessing across `oops rx` and `oops deploy` is strictly forbidden to prevent collision between remote names, references, and command names.
+- **Remote Selection Priority**:
+  1. Flag `-r <remote>` / `--remote` / `--remote=<remote>` (explicit).
+  2. Fallback: Default remote `oopsbox` (or the single registered remote if exactly one exists).
+- **Execution Workflow**:
+  - `oops rx [-r <remote>] <command> [args...]` executes over SSH:
+    `ssh -t <ssh-target> "cd ~/oopsbox && (oops <command> [args...] || /var/lib/google/bin/oops <command> [args...])"`
+  - Allocates pseudo-TTY (`-t`) when running interactively to preserve ANSI colors, tailing output, and signal handling.
+- **Excluded Commands**:
+  - `remote`, `deploy`: Forbidden inside `oops rx` to prevent recursive SSH loops.
 
 ## Interface & Subcommands Specification
 
 | Subcommand | Arguments | Description |
 | :--- | :--- | :--- |
-| `oops remote add` | `[name] <ssh-target>` | Registers remote server via SSH (defaults fixed path `~/.oops/oopsbox.git` and `~/oopsbox`), sets up local Git remote |
+| `oops remote add` | `[remote] <ssh-target>` | Registers remote server via SSH (defaults fixed path `~/.oops/oopsbox.git` and `~/oopsbox`), sets up local Git remote |
 | `oops remote list` | *(none)* | Lists registered remote servers |
-| `oops remote remove` | `<name>` | Removes registered remote server configuration |
-| `oops remote deploy` | `[name] [ref]` | Pushes commits and executes SSH-delegated checkout + `oops up` on remote server |
-| `oops deploy` | `[name] [ref]` | Top-level shorthand alias for `oops remote deploy` |
-| `oops remote <server> <cmd>` | `<up|down|ps|logs>` | Delegates `oops` command execution directly to the remote server over SSH |
+| `oops remote remove` | `<remote>` | Removes registered remote server configuration |
+| `oops deploy` | `[-r <remote>] [ref]` | Top-level command for deploying workspace updates to remote server using `-r <remote>` |
+| `oops rx` | `[-r <remote>] <cmd> [args...]` | Remote Execute: Forwards any `oops` command over SSH to remote server `~/oopsbox` using `-r <remote>` |
 
 ## Dependency & Blast-Radius Matrix
 
-- **Upstream Callers**: Developer terminal (`oops remote <server> <cmd>`).
+- **Upstream Callers**: Developer terminal (`oops rx [-r <remote>] <cmd>`, `oops deploy [-r <remote>] [ref]`).
 - **Downstream Dependencies**: Native SSH client (`ssh`), Git CLI (`git`), Docker Engine & `docker-compose-plugin`, `internal/key` package.
 - **Bounded Blast Radius**:
   - `cmd/remote.go`: Subcommand routing for `oops remote`.

@@ -98,7 +98,7 @@ oops update gar/my-app:v2.0
 ```bash
 # Generate 20-char secure passwords and provision DB + User + Grants
 oops db mysql create my_database my_user
-oops db pg:pg-replica create analytics_db analyst_user
+oops db postgres:pg-replica create analytics_db analyst_user
 oops db mysql passwd my_user new_password
 ```
 

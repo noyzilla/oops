@@ -25,6 +25,9 @@ func newBackupCmd() *cobra.Command {
 			}
 
 			workDir := ResolveWorkDir(targetDir)
+			if err := ValidateActiveBox(workDir); err != nil {
+				return err
+			}
 			return backup.ExecuteFullBackup(context.Background(), workDir, backupDir, ret)
 		},
 	}

@@ -35,6 +35,9 @@ func newLogsCmd() *cobra.Command {
 
 func runLogs(cmd *cobra.Command, args []string, tail int, follow bool) error {
 	workDir := ResolveWorkDir(targetDir)
+	if err := ValidateActiveBox(workDir); err != nil {
+		return err
+	}
 
 	// 1. Direct single-container lookup (fastest & most reliable without compose .env interpolation issues)
 	if len(args) == 1 {

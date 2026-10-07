@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/noyzilla/oops/internal/key"
 	"github.com/spf13/cobra"
 )
 
@@ -16,19 +15,19 @@ var (
 
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "deploy [name] [ref]",
+		Use:   "deploy [-r <remote>] [ref]",
 		Short: "Deploys workspace updates to a remote server over SSH",
-		Long:  "Pushes Git history to remote bare repo and executes remote checkout and container orchestration (oops up).",
-		Args:  cobra.MaximumNArgs(2),
+		Long:  "Pushes Git history to remote bare repo and executes remote checkout and container orchestration (oops up). Use -r <remote> to specify target remote.",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
 			if err != nil {
 				return err
 			}
 
-			remoteName := "oopsbox"
-			if deployRemoteFlag != "" {
-				remoteName = deployRemoteFlag
+			remoteName := deployRemoteFlag
+			if remoteName == "" {
+				remoteName = resolveDefaultServer(workDirAbs)
 			}
 
 			ref := getCurrentGitBranch(workDirAbs)
@@ -37,21 +36,14 @@ func newDeployCmd() *cobra.Command {
 			}
 
 			if len(args) == 1 {
-				if isRegisteredRemote(workDirAbs, args[0]) {
-					remoteName = args[0]
-				} else {
-					ref = args[0]
-				}
-			} else if len(args) == 2 {
-				remoteName = args[0]
-				ref = args[1]
+				ref = args[0]
 			}
 
 			return executeDeploy(workDirAbs, remoteName, ref)
 		},
 	}
 
-	cmd.Flags().StringVarP(&deployRemoteFlag, "remote", "r", "", "Target remote name (default: oopsbox or first registered remote)")
+	cmd.Flags().StringVarP(&deployRemoteFlag, "remote", "r", "", "Target remote server name (default: oopsbox or first registered remote)")
 	return cmd
 }
 
@@ -78,11 +70,7 @@ func executeDeploy(workDirAbs, remoteName, ref string) error {
 
 	fmt.Printf("==> Deploying workspace to remote '%s' (%s, ref: %s)...\n", remoteName, sshTarget, ref)
 
-	keyPath, _ := key.DefaultKeyPath()
-	sshCmdStr := fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=accept-new", keyPath)
-
 	gitPushCmd := exec.Command("git", "-C", workDirAbs, "push", remoteName, ref)
-	gitPushCmd.Env = append(os.Environ(), "GIT_SSH_COMMAND="+sshCmdStr)
 	gitPushCmd.Stdout = os.Stdout
 	gitPushCmd.Stderr = os.Stderr
 	if err := gitPushCmd.Run(); err != nil {
@@ -96,7 +84,6 @@ func executeDeploy(workDirAbs, remoteName, ref string) error {
 	)
 
 	sshArgs := []string{
-		"-i", keyPath,
 		"-o", "StrictHostKeyChecking=accept-new",
 		sshTarget,
 		remoteDeployScript,
