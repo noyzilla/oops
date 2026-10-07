@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v0.18.0] - 2026-10-08
+
 ### Added
 - Remote Workspace Cloning: Added `oops box clone <ssh-target> [-r <remote>] [path]` command to clone an Oopsbox workspace from a remote server over SSH without GitHub/GitLab, automatically registering the local Git remote for `oops deploy`.
 
