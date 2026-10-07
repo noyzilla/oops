@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v0.17.1] - 2026-10-08
+
 ### Changed
 - Renamed `oops box create <path>` to `oops box init [path]`, making `<path>` optional (defaulting to current directory `.`).
 
