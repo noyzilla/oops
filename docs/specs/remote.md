@@ -21,33 +21,44 @@ This specification defines the `oops remote` command suite for remote server boo
 
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Local Workstation (`oops box`)**: Local developer workstation environment (OrbStack / Colima / Docker Desktop).
-- **Remote Host (`oops remote <server>`)**: Remote server target registered via SSH alias in `~/.ssh/config` (or IP/target string).
-- **Git Bare Repository (`<bare-path>`)**: Server-side bare Git repository (e.g., `~/.oops/repos/<box-slug>.git`) serving as central sync point.
-- **Remote Workspace Path (`<oopsbox-path>`)**: Working tree directory on the server (e.g., `~/oopsbox` or `/opt/oopsbox`).
-- **Post-Receive Hook (`hooks/post-receive`)**: Git server hook checking native `-o deploy` push option to execute `git checkout -f <target_ref>` and `oops up -C <oopsbox-path>`.
-- **Remote Command Delegation**: Forwarding `oops` CLI commands (`up`, `down`, `ps`, `logs`) to the remote server over SSH.
+- **Remote Host (`oops remote`)**: Remote server target registered via SSH alias in `~/.ssh/config` or `user@host`.
+- **Git Bare Repository (`<bare-path>`)**: Fixed server-side bare Git repository at `~/.oops/oopsbox.git` serving as central sync point.
+- **Remote Workspace Path (`<oopsbox-path>`)**: Fixed working tree directory at `~/oopsbox` on the server.
+- **Explicit Deploy Execution**: Deployments are driven explicitly via `oops remote deploy` or shorthand `oops deploy`, pushing commit history and running SSH-delegated checkout and container up.
 
 ## Business Rules & Logic Invariants
 
-### Remote Server Registration & Bootstrap (`oops remote add <name> <ssh-target> [oopsbox-path]`)
-- **SSH Target Syntax**: Accepts standard host alias or `user@host` (e.g., `captain@anthole.local` or `my-server`).
-- **Remote Bare Repo Location**: Created at `.oops/repos/<name>.git` inside user home directory on the remote server.
-- **Git Remote Registration**: Registers local Git remote `<name>` using standard SCP-style SSH notation: `<ssh-target>:.oops/repos/<name>.git` (e.g., `captain@anthole.local:.oops/repos/anthole.git`).
+### Workspace Requirement Invariant
+- `oops remote add`, `oops remote deploy`, and shorthand `oops deploy` MUST be executed within a valid local oopsbox workspace directory (`.git` or `stacks/` or `compose.yaml` present).
+- If executed outside a valid oopsbox workspace directory, the command halts cleanly with:
+  `Error: Not inside a valid oopsbox workspace directory`.
+
+### Remote Server Registration (`oops remote add [name] <ssh-target>`)
+- **Argument Resolution**:
+  - **1 Argument (`oops remote add <ssh-target>`)**: If `<ssh-target>` is an SSH Host alias in `~/.ssh/config` (no `@` or `/`), `<name>` defaults to the alias name (e.g., `anthole`). Otherwise, `<name>` defaults to `oopsbox`.
+  - **2 Arguments (`oops remote add <name> <ssh-target>`)**: `<name>` is explicitly set (e.g., `staging`), and `<ssh-target>` is the SSH target.
+- **Fixed Server Locations**:
+  - Server Bare Repository is strictly fixed at `~/.oops/oopsbox.git`.
+  - Server Workspace Directory is strictly fixed at `~/oopsbox`.
+- **Git Remote Registration**: Registers local Git remote `<name>` using standard SCP-style SSH notation: `<ssh-target>:.oops/oopsbox.git` (e.g., `anthole:.oops/oopsbox.git` or `captain@anthole.local:.oops/oopsbox.git`).
 - **Google COS & Read-Only OS Support**:
   - Detects read-only filesystems (Google Container-Optimized OS / COS).
   - On Google COS, installs `oops` CLI into `/var/lib/google/bin/oops` and `docker-compose` plugin into `/var/lib/google/docker-cli-plugins/docker-compose`.
   - Configures `"cliPluginsExtraDirs": ["/var/lib/google/docker-cli-plugins"]` in `${HOME}/.docker/config.json` and `/root/.docker/config.json`.
-- **Remote Tooling Verification & Install**:
-  - Checks if `oops` CLI exists on remote server. If missing, installs to writeable binary path (`/var/lib/google/bin/oops` on COS, `~/.local/bin/oops` or `/usr/local/bin/oops` on standard Linux).
-  - Checks if `docker` and `docker compose` plugin are installed. On standard Linux distros, installs `docker-compose-plugin` via package manager or `get.docker.com`. On COS, downloads plugin binary to `/var/lib/google/docker-cli-plugins/docker-compose`.
-- **Server Bare Repository Initialization**: Runs `oops box init-bare <bare-path> <oopsbox-path>` on the server via SSH.
+- **Server Initialization**: Runs `oops box init-bare ~/.oops/oopsbox.git ~/oopsbox` on the server via SSH.
 
 ### Server-Side Bare Repository Initialization (`oops box init-bare <bare-path> <oopsbox-path>`)
 - **Directory Setup**: Creates `<bare-path>` as a bare Git repository (`git init --bare <bare-path>`).
-- **Post-Receive Hook (Explicit `-o deploy` Gate)**: Generates executable `hooks/post-receive` inside `<bare-path>`:
-  ```bash
+- **Push Option Config**: Enables `git config receive.advertisePushOptions true` on the bare repository.
+- **Post-Receive Hook**: Generates executable `hooks/post-receive` inside `<bare-path>`:
+  ```sh
   #!/bin/sh
-  export GIT_WORK_TREE="<oopsbox-path>"
+  OOPSBOX_DIR="~/oopsbox"
+  case "$OOPSBOX_DIR" in
+    \~/*) OOPSBOX_DIR="$HOME/${OOPSBOX_DIR#\~/}" ;;
+    \~)   OOPSBOX_DIR="$HOME" ;;
+  esac
+  export GIT_WORK_TREE="$OOPSBOX_DIR"
   TARGET_REF=""
   DO_DEPLOY=0
 
@@ -60,7 +71,6 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
     i=$((i + 1))
   done
 
-  # Exit without checking out if no deploy option is present
   if [ "$DO_DEPLOY" -ne 1 ]; then
     exit 0
   fi
@@ -74,31 +84,32 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
   if [ -n "$TARGET_REF" ]; then
     git checkout -f "$TARGET_REF"
-    oops up -C "<oopsbox-path>"
+    if command -v oops >/dev/null 2>&1; then
+      oops up -C "$OOPSBOX_DIR" || true
+    elif [ -f /var/lib/google/bin/oops ]; then
+      /var/lib/google/bin/oops up -C "$OOPSBOX_DIR" || true
+    fi
   fi
   ```
-- **Existing Workspace Seeding**: If `<oopsbox-path>` already exists with files/stacks, `init-bare` commits existing workspace state and pushes to `<bare-path>` as origin main.
 
-### Remote Synchronization & Deployment (`oops remote <server> push` / `oops remote <server> deploy`)
-- **`oops remote <server> push [-b branch]`**: Pushes Git commits to `<server>` bare repo for backup/history sync without `-o deploy`. The working tree `<oopsbox-path>` and running containers remain untouched.
-- **`oops remote <server> deploy [-b branch] [-t tag]`**: Pushes specified branch or Git tag with `-o deploy` (`git push -o deploy <server> <ref>`), triggering file checkout into `<oopsbox-path>` and running `oops up -C <oopsbox-path>` live.
-
-### Remote Command Delegation (`oops remote <server> <command>`)
-- Forwards execution of `up`, `down`, `ps`, `logs` to the remote server via SSH:
-  ```bash
-  ssh <ssh-target> "oops <command> -C <oopsbox-path>"
-  ```
+### Explicit Remote Deployment (`oops remote deploy [name] [ref]` & `oops deploy [name] [ref]`)
+- **Argument Defaults**:
+  - `[name]`: Target remote name (Default: `oopsbox` or single registered remote if only one exists).
+  - `[ref]`: Target Git reference to deploy (Default: active Git branch, e.g., `main`).
+- **Execution Workflow**:
+  1. Executes `git push <name> <ref>` to sync Git commits to remote `~/.oops/oopsbox.git`.
+  2. Executes SSH to remote target:
+     `git --git-dir=$HOME/.oops/oopsbox.git --work-tree=$HOME/oopsbox checkout -f <ref> && (oops up -C $HOME/oopsbox || /var/lib/google/bin/oops up -C $HOME/oopsbox)`
 
 ## Interface & Subcommands Specification
 
 | Subcommand | Arguments | Description |
 | :--- | :--- | :--- |
-| `oops remote add` | `<name> <ssh-target> [remote-path]` | Registers remote server via SSH, verifies/installs `oops` & `docker compose`, initializes server bare repo, and sets up local remote |
+| `oops remote add` | `[name] <ssh-target>` | Registers remote server via SSH (defaults fixed path `~/.oops/oopsbox.git` and `~/oopsbox`), sets up local Git remote |
 | `oops remote list` | *(none)* | Lists registered remote servers |
 | `oops remote remove` | `<name>` | Removes registered remote server configuration |
-| `oops remote <server> push` | `[-b <branch>]` | Syncs commits to remote bare repo without touching live working tree or containers (Sync Only) |
-| `oops remote <server> deploy` | `[-b <branch>] [-t <tag>]` | Deploys specified branch or Git tag to remote server and triggers `oops up` container restarts |
-| `oops remote <server> pull` | *(none)* | Pulls latest remote workspace configuration to local machine |
+| `oops remote deploy` | `[name] [ref]` | Pushes commits and executes SSH-delegated checkout + `oops up` on remote server |
+| `oops deploy` | `[name] [ref]` | Top-level shorthand alias for `oops remote deploy` |
 | `oops remote <server> <cmd>` | `<up|down|ps|logs>` | Delegates `oops` command execution directly to the remote server over SSH |
 
 ## Dependency & Blast-Radius Matrix
