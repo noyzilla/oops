@@ -20,7 +20,7 @@ func newDeployCmd() *cobra.Command {
 		Long:  "Pushes Git history to remote bare repo and executes remote checkout and container orchestration (oops up). Use -r <remote> to specify target remote.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
+			workDirAbs, err := RequireGitOopsboxWorkspace(targetDir)
 			if err != nil {
 				return err
 			}

@@ -91,8 +91,8 @@ The CLI is engineered around two distinct developer working modes:
 | Tier | Category | Subcommands | Context Resolution & Safety Invariant |
 | :--- | :--- | :--- | :--- |
 | **Tier 1** | **Workspace & Git Deployment** | `oops remote`, `oops deploy`, `oops rx` | **Git Project Boundary**: Requires execution inside a Git Project repository (`.git` at root or parent) and valid Oopsbox Workspace. |
-| **Tier 2** | **Local Container Orchestration** | `oops up`, `oops down`, `oops status`, `oops logs`, `oops db`, `oops backup` | **Zero Git Dependency**: Operates on local containers anywhere without `.git` (standalone `oopsbox` or machine Active Box). |
-| **Tier 3** | **Global Machine Tools** | `oops box`, `oops dns`, `oops ip`, `oops version`, `oops selfupdate` | **Global Context**: Standalone machine tools runnable from any directory without restriction. |
+| **Tier 2** | **Local Container Orchestration** | `oops up`, `oops down`, `oops status`, `oops logs`, `oops db`, `oops backup`, `oops dns` | **Zero Git Dependency**: Operates on local containers and active box DNS/environment configuration without `.git` (standalone `oopsbox` or machine Active Box). |
+| **Tier 3** | **Global Machine Tools** | `oops box`, `oops ip`, `oops version`, `oops selfupdate` | **Global Context**: Standalone machine tools runnable from any directory without restriction. |
 
 ### Sequential Lifecycle Hooks & Inter-Service Delay Protocol
 When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down`, or `oops up` targeting wildcards such as `app..` or whole stacks):

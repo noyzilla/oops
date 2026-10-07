@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -63,5 +64,30 @@ func TestRequireOopsboxWorkspace_ValidWorkspace(t *testing.T) {
 	}
 	if got == "" {
 		t.Errorf("RequireOopsboxWorkspace(%q) returned empty string", tmpDir)
+	}
+}
+
+func TestRequireGitOopsboxWorkspace(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, "stacks"), 0755); err != nil {
+		t.Fatalf("failed creating stacks dir: %v", err)
+	}
+
+	// 1. Valid compose stacks BUT no .git -> Expect error
+	_, err := RequireGitOopsboxWorkspace(tmpDir)
+	if err == nil {
+		t.Errorf("RequireGitOopsboxWorkspace(%q) expected error when missing .git, got nil", tmpDir)
+	}
+
+	// 2. Add valid git repo via git init -> Expect success
+	if out, err := exec.Command("git", "-C", tmpDir, "init").CombinedOutput(); err != nil {
+		t.Fatalf("failed git init: %s (%v)", string(out), err)
+	}
+	got, err := RequireGitOopsboxWorkspace(tmpDir)
+	if err != nil {
+		t.Errorf("RequireGitOopsboxWorkspace(%q) unexpected error with .git: %v", tmpDir, err)
+	}
+	if got == "" {
+		t.Errorf("RequireGitOopsboxWorkspace(%q) returned empty string", tmpDir)
 	}
 }

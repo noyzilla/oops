@@ -50,6 +50,18 @@ func RequireOopsboxWorkspace(customDir string) (string, error) {
 	return abs, nil
 }
 
+func RequireGitOopsboxWorkspace(customDir string) (string, error) {
+	workDirAbs, err := RequireOopsboxWorkspace(customDir)
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("git", "-C", workDirAbs, "rev-parse", "--show-toplevel")
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("not inside a valid git project workspace (must be inside a git project repository with .git)")
+	}
+	return workDirAbs, nil
+}
+
 func toGitRemoteName(logicalName string) string {
 	if strings.HasPrefix(logicalName, "oops-") {
 		return logicalName
@@ -150,7 +162,7 @@ func newRemoteAddCmd() *cobra.Command {
 		Long:  "Connects to remote server via SSH, verifies/installs oops & docker compose, initializes bare repo at ~/.oops/oopsbox.git, and sets up local Git remote.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
+			workDirAbs, err := RequireGitOopsboxWorkspace(targetDir)
 			if err != nil {
 				return err
 			}
@@ -219,7 +231,7 @@ func newRemoteListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "Lists registered remote servers for current workspace",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
+			workDirAbs, err := RequireGitOopsboxWorkspace(targetDir)
 			if err != nil {
 				return err
 			}
@@ -286,7 +298,7 @@ func newRemoteRemoveCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
+			workDirAbs, err := RequireGitOopsboxWorkspace(targetDir)
 			if err != nil {
 				return err
 			}
@@ -311,7 +323,7 @@ func newRemoteRenameCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			oldName := args[0]
 			newName := args[1]
-			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
+			workDirAbs, err := RequireGitOopsboxWorkspace(targetDir)
 			if err != nil {
 				return err
 			}

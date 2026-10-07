@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v0.17.0] - 2026-10-08
+
 ### Added
 - Remote Server Rename: Added `oops remote rename <old-name> <new-name>` subcommand to rename registered remote server configurations.
 - Git Remote Prefix Namespacing: Namespaced local Git remotes with `oops-` prefix (e.g. `oops-prod`) while exposing clean logical names (`prod`) in CLI commands.
