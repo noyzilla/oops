@@ -28,30 +28,62 @@ func newRemoteCmd() *cobra.Command {
 	cmd.AddCommand(newRemoteAddCmd())
 	cmd.AddCommand(newRemoteListCmd())
 	cmd.AddCommand(newRemoteRemoveCmd())
+	cmd.AddCommand(newDeployCmd())
 
 	return cmd
 }
 
+func RequireOopsboxWorkspace(customDir string) (string, error) {
+	workDir := ResolveGitWorkDir(customDir)
+	if !hasComposeContent(workDir) && !hasGitRepo(workDir) {
+		return "", fmt.Errorf("not inside a valid oopsbox workspace directory")
+	}
+	abs, err := filepath.Abs(workDir)
+	if err != nil {
+		return workDir, nil
+	}
+	return abs, nil
+}
+
+func hasGitRepo(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, ".git"))
+	return err == nil
+}
+
+func parseRemoteAddArgs(args []string) (name, sshTarget string) {
+	if len(args) == 1 {
+		sshTarget = args[0]
+		clean := strings.TrimPrefix(sshTarget, "ssh://")
+		if idx := strings.Index(clean, "/"); idx != -1 {
+			clean = clean[:idx]
+		}
+		if !strings.Contains(clean, "@") && !strings.Contains(clean, ":") {
+			name = clean
+		} else {
+			name = "oopsbox"
+		}
+	} else if len(args) >= 2 {
+		name = args[0]
+		sshTarget = args[1]
+	}
+	return name, sshTarget
+}
+
 func newRemoteAddCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "add <name> <ssh-target> [remote-path]",
+		Use:   "add [name] <ssh-target>",
 		Short: "Registers and bootstraps a remote server via SSH",
-		Long:  "Connects to remote server via SSH, verifies/installs oops & docker compose, initializes bare repo, and sets up local Git remote.",
-		Args:  cobra.RangeArgs(2, 3),
+		Long:  "Connects to remote server via SSH, verifies/installs oops & docker compose, initializes bare repo at ~/.oops/oopsbox.git, and sets up local Git remote.",
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			name := args[0]
-			sshTarget := args[1]
-			remoteBoxPath := "~/oopsbox"
-			if len(args) > 2 {
-				remoteBoxPath = args[2]
+			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
+			if err != nil {
+				return err
 			}
 
-			bareRepoPath := fmt.Sprintf("~/.oops/repos/%s.git", name)
-			workDir := ResolveGitWorkDir(targetDir)
-			workDirAbs, err := filepath.Abs(workDir)
-			if err != nil {
-				workDirAbs = workDir
-			}
+			name, sshTarget := parseRemoteAddArgs(args)
+			bareRepoPath := "~/.oops/oopsbox.git"
+			remoteBoxPath := "~/oopsbox"
 
 			cmd.Printf("==> Bootstrapping remote server '%s' (%s)...\n", name, sshTarget)
 
@@ -62,13 +94,16 @@ func newRemoteAddCmd() *cobra.Command {
 				cmd.Printf("Output: %s\n", out)
 				return fmt.Errorf("remote bootstrapping failed: %w", err)
 			}
+			if strings.TrimSpace(out) != "" {
+				cmd.Println(out)
+			}
 
 			// 2. Configure local Git remote
 			cleanTarget := strings.TrimPrefix(sshTarget, "ssh://")
 			if idx := strings.Index(cleanTarget, "/"); idx != -1 {
 				cleanTarget = cleanTarget[:idx]
 			}
-			remoteURL := fmt.Sprintf("%s:.oops/repos/%s.git", cleanTarget, name)
+			remoteURL := fmt.Sprintf("%s:.oops/oopsbox.git", cleanTarget)
 			gitRemoteCmd := exec.Command("git", "-C", workDirAbs, "remote", "add", name, remoteURL)
 			if err := gitRemoteCmd.Run(); err != nil {
 				// If remote exists, update URL
@@ -80,7 +115,7 @@ func newRemoteAddCmd() *cobra.Command {
 			cmd.Printf("  Workspace Directory: %s\n", remoteBoxPath)
 			cmd.Println()
 			cmd.Printf("To deploy your workspace to '%s', run:\n", name)
-			cmd.Printf("  oops remote %s deploy\n", name)
+			cmd.Printf("  oops deploy %s\n", name)
 			return nil
 		},
 	}
@@ -101,12 +136,15 @@ func newRemoteListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "Lists registered remote servers for current workspace",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			workDir := ResolveGitWorkDir(targetDir)
-			gitCmd := exec.Command("git", "-C", workDir, "remote", "-v")
+			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
+			if err != nil {
+				return err
+			}
+			gitCmd := exec.Command("git", "-C", workDirAbs, "remote", "-v")
 			out, err := gitCmd.Output()
 			if err != nil || len(out) == 0 {
 				fmt.Println("No remote servers registered for this workspace.")
-				fmt.Println("Add a remote server using: oops remote add <name> <ssh-target> [remote-path]")
+				fmt.Println("Add a remote server using: oops remote add [name] <ssh-target>")
 				return nil
 			}
 
@@ -124,8 +162,11 @@ func newRemoteRemoveCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			workDir := ResolveGitWorkDir(targetDir)
-			gitCmd := exec.Command("git", "-C", workDir, "remote", "remove", name)
+			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
+			if err != nil {
+				return err
+			}
+			gitCmd := exec.Command("git", "-C", workDirAbs, "remote", "remove", name)
 			if err := gitCmd.Run(); err != nil {
 				return fmt.Errorf("failed removing remote '%s': %w", name, err)
 			}
@@ -230,6 +271,14 @@ func extractSSHTarget(remoteURL string) string {
 		return parts[0]
 	}
 	return remoteURL
+}
+
+func resolveRemoteBoxPath(args []string) string {
+	remoteBoxPath := "~/oopsbox"
+	if len(args) > 2 && strings.TrimSpace(args[2]) != "" && args[2] != "." && args[2] != "./" {
+		remoteBoxPath = args[2]
+	}
+	return remoteBoxPath
 }
 
 func init() {

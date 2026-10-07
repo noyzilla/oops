@@ -11,7 +11,12 @@ import (
 // GeneratePostReceiveHook generates the shell script content for server-side hooks/post-receive.
 func GeneratePostReceiveHook(oopsboxPath string) string {
 	return fmt.Sprintf(`#!/bin/sh
-export GIT_WORK_TREE="%s"
+OOPSBOX_DIR="%s"
+case "$OOPSBOX_DIR" in
+  \~/*) OOPSBOX_DIR="$HOME/${OOPSBOX_DIR#\~/}" ;;
+  \~)   OOPSBOX_DIR="$HOME" ;;
+esac
+export GIT_WORK_TREE="$OOPSBOX_DIR"
 TARGET_REF=""
 DO_DEPLOY=0
 
@@ -41,9 +46,13 @@ done
 
 if [ -n "$TARGET_REF" ]; then
   git checkout -f "$TARGET_REF"
-  oops up -C "%s"
+  if command -v oops >/dev/null 2>&1; then
+    oops up -C "$OOPSBOX_DIR" || true
+  elif [ -f /var/lib/google/bin/oops ]; then
+    /var/lib/google/bin/oops up -C "$OOPSBOX_DIR" || true
+  fi
 fi
-`, oopsboxPath, oopsboxPath)
+`, oopsboxPath)
 }
 
 // CanonicalPath returns absolute clean path, handling tilde.
@@ -52,6 +61,11 @@ func CanonicalPath(p string) string {
 		home, err := os.UserHomeDir()
 		if err == nil {
 			p = filepath.Join(home, p[2:])
+		}
+	} else if p == "~" {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			p = home
 		}
 	}
 	abs, err := filepath.Abs(p)
@@ -77,6 +91,7 @@ func InitBareRepo(barePath, oopsboxPath string) error {
 			return fmt.Errorf("git init --bare failed: %s (%w)", string(out), err)
 		}
 	}
+	_ = exec.Command("git", "-C", canonBare, "config", "receive.advertisePushOptions", "true").Run()
 
 	hooksDir := filepath.Join(canonBare, "hooks")
 	if err := os.MkdirAll(hooksDir, 0755); err != nil {

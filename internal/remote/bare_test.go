@@ -11,13 +11,13 @@ func TestGeneratePostReceiveHook(t *testing.T) {
 	boxPath := "/var/oopsbox"
 	hook := GeneratePostReceiveHook(boxPath)
 
-	if !strings.Contains(hook, "GIT_WORK_TREE=\"/var/oopsbox\"") {
-		t.Errorf("expected GIT_WORK_TREE to be set to /var/oopsbox, got:\n%s", hook)
+	if !strings.Contains(hook, "OOPSBOX_DIR=\"/var/oopsbox\"") {
+		t.Errorf("expected OOPSBOX_DIR to be set to /var/oopsbox, got:\n%s", hook)
 	}
 	if !strings.Contains(hook, "DO_DEPLOY=1") {
 		t.Errorf("expected deploy option check in hook, got:\n%s", hook)
 	}
-	if !strings.Contains(hook, "oops up -C \"/var/oopsbox\"") {
+	if !strings.Contains(hook, "oops up -C \"$OOPSBOX_DIR\"") {
 		t.Errorf("expected oops up execution in hook, got:\n%s", hook)
 	}
 }

@@ -3,6 +3,7 @@ package remote
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -72,6 +73,7 @@ docker compose version || true
 // GenerateBootstrapRemoteScript generates the bash script to execute on the remote server via SSH.
 func GenerateBootstrapRemoteScript(barePath, boxPath string) string {
 	cosScript := GenerateCOSPluginScript()
+	hookScript := GeneratePostReceiveHook(boxPath)
 
 	return fmt.Sprintf(`#!/bin/bash
 set -euo pipefail
@@ -79,10 +81,27 @@ set -euo pipefail
 BARE_PATH="%s"
 BOX_PATH="%s"
 
-# 1. Detect COS vs standard Linux
+case "$BARE_PATH" in
+  \~/*) BARE_PATH="$HOME/${BARE_PATH#\~/}" ;;
+  \~)   BARE_PATH="$HOME" ;;
+esac
+
+case "$BOX_PATH" in
+  \~/*) BOX_PATH="$HOME/${BOX_PATH#\~/}" ;;
+  \~)   BOX_PATH="$HOME" ;;
+esac
+
+# 1. Detect COS vs standard Linux & setup SUDO helper
 IS_COS=0
 if [ -f /etc/os-release ] && grep -qi "cloud-developed\|container-optimized" /etc/os-release; then
     IS_COS=1
+fi
+
+SUDO=""
+if [ "$(id -u)" -ne 0 ]; then
+    if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+        SUDO="sudo -n"
+    fi
 fi
 
 # 2. Ensure docker compose is installed
@@ -91,24 +110,29 @@ if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>
         %s
     else
         if command -v apt-get >/dev/null 2>&1; then
-            sudo apt-get update -qq && sudo apt-get install -y -qq docker-compose-plugin || true
+            $SUDO apt-get update -qq && $SUDO apt-get install -y -qq docker-compose-plugin || true
         elif command -v yum >/dev/null 2>&1; then
-            sudo yum install -y docker-compose-plugin || true
+            $SUDO yum install -y docker-compose-plugin || true
         fi
     fi
 fi
 
 # 3. Ensure oops CLI is installed
-if ! command -v oops >/dev/null 2>&1; then
+if ! command -v oops >/dev/null 2>&1 && [ ! -f /var/lib/google/bin/oops ]; then
+    ARCH="$(uname -m)"
+    case "${ARCH}" in
+        x86_64)        OOPS_ARCH="amd64" ;;
+        aarch64|arm64) OOPS_ARCH="arm64" ;;
+        *)             OOPS_ARCH="amd64" ;;
+    esac
+    TARGET_BIN="/usr/local/bin/oops"
     if [ "$IS_COS" -eq 1 ]; then
-        sudo mkdir -p /var/lib/google/bin
-        curl -fsSL https://raw.githubusercontent.com/noyzilla/jarn/main/install.sh | sh || true
-        if [ -f /tmp/oops ]; then
-            sudo mv /tmp/oops /var/lib/google/bin/oops
-            sudo chmod 755 /var/lib/google/bin/oops
-        fi
-    else
-        curl -fsSL https://raw.githubusercontent.com/noyzilla/jarn/main/install.sh | sh || true
+        TARGET_BIN="/var/lib/google/bin/oops"
+    fi
+    if [ -n "$SUDO" ] || [ "$(id -u)" -eq 0 ]; then
+        $SUDO mkdir -p "$(dirname "$TARGET_BIN")" 2>/dev/null || true
+        $SUDO curl -fsSL "https://github.com/noyzilla/oops/releases/latest/download/oops-linux-${OOPS_ARCH}" -o "$TARGET_BIN" 2>/dev/null || true
+        $SUDO chmod 755 "$TARGET_BIN" 2>/dev/null || true
     fi
 fi
 
@@ -118,10 +142,15 @@ if command -v oops >/dev/null 2>&1; then summit_cmd="oops"; elif [ -f /var/lib/g
 if [ -n "$summit_cmd" ]; then
     $summit_cmd box init-bare "$BARE_PATH" "$BOX_PATH"
 else
-    mkdir -p "$BARE_PATH" "$BOX_PATH"
+    mkdir -p "$BARE_PATH/hooks" "$BOX_PATH"
     git init --bare "$BARE_PATH"
+    git -C "$BARE_PATH" config receive.advertisePushOptions true
+    cat << 'HOOK_EOF' > "$BARE_PATH/hooks/post-receive"
+%s
+HOOK_EOF
+    chmod 755 "$BARE_PATH/hooks/post-receive"
 fi
-`, barePath, boxPath, cosScript)
+`, barePath, boxPath, cosScript, hookScript)
 }
 
 // ExecuteRemoteSSH executes a bash script string on sshTarget using the default SSH Deploy Key.
@@ -137,11 +166,12 @@ func ExecuteRemoteSSH(sshTarget, script string) (string, error) {
 	}
 
 	sshArgs := []string{
-		"-i", keyPath,
 		"-o", "StrictHostKeyChecking=accept-new",
-		cleanTarget,
-		"bash -s",
 	}
+	if _, err := os.Stat(keyPath); err == nil {
+		sshArgs = append(sshArgs, "-i", keyPath)
+	}
+	sshArgs = append(sshArgs, cleanTarget, "bash -s")
 
 	cmd := exec.Command("ssh", sshArgs...)
 	cmd.Stdin = bytes.NewBufferString(script)
