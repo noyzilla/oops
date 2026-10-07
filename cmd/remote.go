@@ -270,6 +270,9 @@ func extractSSHTarget(remoteURL string) string {
 		parts := strings.Split(remoteURL, "/")
 		return parts[0]
 	}
+	if idx := strings.Index(remoteURL, ":"); idx != -1 {
+		return remoteURL[:idx]
+	}
 	return remoteURL
 }
 
