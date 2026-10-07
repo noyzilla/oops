@@ -80,6 +80,20 @@ To prevent accidental cross-box collisions when multiple Oopsbox repositories ex
 When running the Oops CLI via Docker wrapper container (`ghcr.io/noyzilla/oops:latest`), the host directory MUST be bound to the **identical absolute path** inside the container (`-v "${OOPSBOX_DIR}":"${OOPSBOX_DIR}" -w "${OOPSBOX_DIR}"`):
 - **Why `/workspace` binding is forbidden**: Docker Compose passes working directory labels (`com.docker.compose.project.working_dir`) and relative volume bind mounts (`./caddy/Caddyfile`) to the host Docker daemon. If bound to `/workspace`, the host daemon attempts to locate `/workspace` on the host, causing path mismatches and volume failures. Same-host-path binding ensures 100% path parity with direct host execution.
 
+### Dual Working Modes & 3-Tier Command Context Architecture
+
+The CLI is engineered around two distinct developer working modes:
+1. **Oopsbox Infrastructure Mode**: The developer is sitting inside an **Oopsbox Workspace** (`stacks/` directory or `compose.yaml` present). Full access to remote server registration, stack editing, and server deployment (`oops deploy`).
+2. **Application Developer Mode**: The developer is sitting inside an **Application Project Directory** (e.g. `~/Workspaces/my-web-app`). Full access to developer stack control & status (`oops up db`, `oops status`, `oops logs`) using the machine's **Active Box** (`~/.oops/active_box`). Attempting to deploy or register remotes from an app directory is strictly blocked to prevent code corruption on remote servers.
+
+#### 3-Tier Command Context Matrix
+
+| Tier | Category | Subcommands | Context Resolution & Safety Invariant |
+| :--- | :--- | :--- | :--- |
+| **Tier 1** | **Workspace-Bound Commands** | `oops remote add`, `oops remote list`, `oops remote remove`, `oops remote deploy`, `oops deploy` | **Strict Workspace Check (`RequireOopsboxWorkspace`)**: Must be executed inside a valid Oopsbox Workspace directory (`stacks/` or compose file present) or explicitly specified via `-C <dir>`. If executed outside an Oopsbox directory, execution halts immediately with: `Error: not inside a valid oopsbox workspace directory`. |
+| **Tier 2** | **Active Box / Developer Commands** | `oops up`, `oops stop`, `oops restart`, `oops down`, `oops status`, `oops logs`, `oops ps`, `oops db`, `oops backup`, `oops restore` | **Active Box Auto-Resolution**: When executed from an Application Directory, automatically resolves to the machine's Active Box (`~/.oops/active_box` or `OOPSBOX_DIR`). **Mismatch Guard (`ValidateActiveBox`)**: If executed inside a different Oopsbox directory that does NOT match the active box, halts and displays the active box mismatch warning (`active oopsbox mismatch!`). |
+| **Tier 3** | **Global Machine Commands** | `oops box active`, `oops box switch`, `oops box list`, `oops box create`, `oops box clone`, `oops version`, `oops selfupdate`, `oops key`, `oops dns`, `oops ip`, `oops server` | **Global Machine Context**: Standalone tools and box context managers runnable from any directory without restriction. |
+
 ### Sequential Lifecycle Hooks & Inter-Service Delay Protocol
 When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down`, or `oops up` targeting wildcards such as `app..` or whole stacks):
 - **Sequential Service Execution**: Matched services are processed sequentially one by one in resolved dependency or lexicographical order.
