@@ -47,7 +47,7 @@ func newRemoteAddCmd() *cobra.Command {
 			}
 
 			bareRepoPath := fmt.Sprintf("~/.oops/repos/%s.git", name)
-			workDir := ResolveWorkDir(targetDir)
+			workDir := ResolveGitWorkDir(targetDir)
 			workDirAbs, err := filepath.Abs(workDir)
 			if err != nil {
 				workDirAbs = workDir
@@ -64,7 +64,11 @@ func newRemoteAddCmd() *cobra.Command {
 			}
 
 			// 2. Configure local Git remote
-			remoteURL := fmt.Sprintf("ssh://%s/%s", sshTarget, strings.TrimPrefix(remote.CanonicalPath(bareRepoPath), "/"))
+			cleanTarget := strings.TrimPrefix(sshTarget, "ssh://")
+			if idx := strings.Index(cleanTarget, "/"); idx != -1 {
+				cleanTarget = cleanTarget[:idx]
+			}
+			remoteURL := fmt.Sprintf("ssh://%s/%s", cleanTarget, strings.TrimPrefix(remote.CanonicalPath(bareRepoPath), "/"))
 			gitRemoteCmd := exec.Command("git", "-C", workDirAbs, "remote", "add", name, remoteURL)
 			if err := gitRemoteCmd.Run(); err != nil {
 				// If remote exists, update URL
@@ -82,12 +86,22 @@ func newRemoteAddCmd() *cobra.Command {
 	}
 }
 
+func ResolveGitWorkDir(customDir string) string {
+	if customDir != "" {
+		return box.CanonicalPath(customDir)
+	}
+	if _, err := os.Stat(".git"); err == nil {
+		return "."
+	}
+	return ResolveWorkDir("")
+}
+
 func newRemoteListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "Lists registered remote servers for current workspace",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			workDir := ResolveWorkDir(targetDir)
+			workDir := ResolveGitWorkDir(targetDir)
 			gitCmd := exec.Command("git", "-C", workDir, "remote", "-v")
 			out, err := gitCmd.Output()
 			if err != nil || len(out) == 0 {
@@ -110,7 +124,7 @@ func newRemoteRemoveCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			workDir := ResolveWorkDir(targetDir)
+			workDir := ResolveGitWorkDir(targetDir)
 			gitCmd := exec.Command("git", "-C", workDir, "remote", "remove", name)
 			if err := gitCmd.Run(); err != nil {
 				return fmt.Errorf("failed removing remote '%s': %w", name, err)
@@ -139,7 +153,7 @@ func HandleDynamicRemoteCommands(args []string) (bool, error) {
 		action = args[2]
 	}
 
-	workDir := box.CanonicalPath(targetDir)
+	workDir := ResolveGitWorkDir(targetDir)
 	keyPath, _ := key.DefaultKeyPath()
 	sshCmdStr := fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=accept-new", keyPath)
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/noyzilla/oops/internal/key"
 )
@@ -112,7 +113,7 @@ if ! command -v oops >/dev/null 2>&1; then
 fi
 
 # 4. Initialize server bare repo
-if command -v oops >/dev/null 2>&1; summit_cmd="oops"; elif [ -f /var/lib/google/bin/oops ]; then summit_cmd="/var/lib/google/bin/oops"; else summit_cmd=""; fi
+if command -v oops >/dev/null 2>&1; then summit_cmd="oops"; elif [ -f /var/lib/google/bin/oops ]; then summit_cmd="/var/lib/google/bin/oops"; else summit_cmd=""; fi
 
 if [ -n "$summit_cmd" ]; then
     $summit_cmd box init-bare "$BARE_PATH" "$BOX_PATH"
@@ -130,10 +131,15 @@ func ExecuteRemoteSSH(sshTarget, script string) (string, error) {
 		return "", fmt.Errorf("failed locating SSH key: %w", err)
 	}
 
+	cleanTarget := strings.TrimPrefix(sshTarget, "ssh://")
+	if idx := strings.Index(cleanTarget, "/"); idx != -1 {
+		cleanTarget = cleanTarget[:idx]
+	}
+
 	sshArgs := []string{
 		"-i", keyPath,
 		"-o", "StrictHostKeyChecking=accept-new",
-		sshTarget,
+		cleanTarget,
 		"bash -s",
 	}
 
