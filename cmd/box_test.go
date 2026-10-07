@@ -16,7 +16,7 @@ func TestBoxSubcommandsHelp(t *testing.T) {
 	}
 
 	helpText := out.String()
-	expectedSubcommands := []string{"create", "active", "list", "start", "stop", "switch", "cert"}
+	expectedSubcommands := []string{"init", "active", "list", "start", "stop", "switch", "cert"}
 	for _, sub := range expectedSubcommands {
 		if !bytes.Contains(out.Bytes(), []byte(sub)) {
 			t.Errorf("expected subcommand %q in help text, got:\n%s", sub, helpText)

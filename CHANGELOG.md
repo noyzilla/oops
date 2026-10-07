@@ -6,6 +6,13 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Changed
+- Renamed `oops box create <path>` to `oops box init [path]`, making `<path>` optional (defaulting to current directory `.`).
+
+### Fixed
+- Atomic Self-Update on Linux: Replaced file overwrite (`cp`) with atomic move (`mv -f`) in `oops selfupdate` when escalating to `sudo`, avoiding `Text file busy` (`ETXTBSY`) errors on Linux.
+- Remote Execution & COS Shell PATH: Updated `oops rx` SSH wrapper to check `command -v oops` silently before falling back to `/var/lib/google/bin/oops`, preventing `bash: line 1: oops: command not found` noise on non-interactive SSH connections. Automatically append `/var/lib/google/bin` to user shell profiles (`.bashrc`, `.bash_profile`, `.profile`) during COS bootstrap.
+
 ## [v0.17.0] - 2026-10-08
 
 ### Added

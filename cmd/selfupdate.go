@@ -163,18 +163,18 @@ func runSelfUpdate(checkOnly, force bool) error {
 		return fmt.Errorf("failed setting executable permissions: %w", err)
 	}
 
-	// Attempt replace
+	// Attempt replace via atomic rename
 	if err := os.Rename(tmpFilePath, execPath); err != nil {
-		// If permission denied, attempt sudo copy
+		// If permission denied, attempt sudo atomic move
 		fmt.Println("==> Permission required to replace binary. Requesting sudo...")
-		cmd := exec.Command("sudo", "cp", tmpFilePath, execPath)
+		cmd := exec.Command("sudo", "mv", "-f", tmpFilePath, execPath)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed replacing binary at %s: %w", execPath, err)
+			return fmt.Errorf("failed replacing binary at %s: %w\nPermission required. Please run: sudo oops selfupdate", execPath, err)
 		}
-		_ = exec.Command("sudo", "chmod", "+x", execPath).Run()
+		_ = exec.Command("sudo", "chmod", "755", execPath).Run()
 	}
 
 	fmt.Printf("\n✓ Successfully updated oops to %s at %s\n", rel.TagName, execPath)

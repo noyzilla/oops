@@ -22,7 +22,7 @@ func newBoxCmd() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(newBoxCreateCmd())
+	cmd.AddCommand(newBoxInitCmd())
 	cmd.AddCommand(newBoxActiveCmd())
 	cmd.AddCommand(newBoxListCmd())
 	cmd.AddCommand(newBoxStartCmd())
@@ -33,14 +33,17 @@ func newBoxCmd() *cobra.Command {
 	return cmd
 }
 
-func newBoxCreateCmd() *cobra.Command {
+func newBoxInitCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "create <path>",
-		Short: "Creates a new Oopsbox workspace from the latest release blueprint",
+		Use:   "init [path]",
+		Short: "Initializes a new Oopsbox workspace from the latest release blueprint",
 		Long:  "Downloads the latest official oopsbox release template, generates secure credentials (.env), initializes config, and sets active box.",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			targetPath := args[0]
+			targetPath := "."
+			if len(args) > 0 {
+				targetPath = args[0]
+			}
 			createdDir, err := box.CreateWorkspace(targetPath)
 			if err != nil {
 				return err
@@ -107,7 +110,7 @@ func newBoxListCmd() *cobra.Command {
 
 			if len(workspaces) == 0 {
 				fmt.Println("No Oopsbox workspaces discovered.")
-				fmt.Println("Create a new workspace using: oops box create <path>")
+				fmt.Println("Create a new workspace using: oops box init [path]")
 				return nil
 			}
 

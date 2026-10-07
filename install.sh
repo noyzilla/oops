@@ -139,7 +139,7 @@ echo -e "Version: ${BOLD}$("$TARGET_BIN_DIR/oops" --help 2>&1 | head -n 1)${NC}\
 
 echo -e "Quickstart:"
 echo -e "  1. Create a new Oopsbox workspace:"
-echo -e "     ${BOLD}oops box create ~/oopsbox${NC}"
+echo -e "     ${BOLD}oops box init ~/oopsbox${NC}"
 echo -e "  2. Boot the environment:"
 echo -e "     ${BOLD}cd ~/oopsbox && oops box start${NC}"
 echo -e "  3. Verify status:"

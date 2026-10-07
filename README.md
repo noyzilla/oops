@@ -51,7 +51,7 @@ oopsbox/
 
 ### Why Oopsbox?
 
-- **1-Command Workstation Setup**: Run `oops box create ~/oopsbox` and `oops box start` to boot the VM, set up host networking, register the macOS/Linux DNS resolver, and trust root SSL certificates.
+- **1-Command Workstation Setup**: Run `oops box init ~/oopsbox` and `oops box start` to boot the VM, set up host networking, register the macOS/Linux DNS resolver, and trust root SSL certificates.
 - **Automated Local HTTPS**: Caddy Edge Proxy automatically issues and serves valid TLS certificates with green locks for `https://*.web.oops`.
 - **Embedded Zero-Config DNS**: Containers are instantly resolvable by hostname (e.g. `mysql.oops`, `redis.oops`, `host.oops`, `vm.oops`) through the embedded Oops DNS engine.
 - **Strict Network Isolation**: Enforces least privilege across `net-edge` (public ingress) and `net-db` (isolated backend).
@@ -196,7 +196,7 @@ curl -fsSL https://raw.githubusercontent.com/noyzilla/oops/main/install.sh | bas
 Create a brand new workstation workspace from the latest release blueprint and boot it:
 ```bash
 # 1. Create a new workspace (downloads blueprint, generates .env credentials, sets active box)
-oops box create ~/oopsbox
+oops box init ~/oopsbox
 
 # 2. Boot engine, configure DNS resolver, and start default services
 cd ~/oopsbox

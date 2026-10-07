@@ -33,8 +33,8 @@ func HandleDynamicRxCommands(args []string) (bool, error) {
 
 	sshTarget := resolveSSHTarget(workDir, serverName)
 
-	remoteCmd := fmt.Sprintf("cd ~/oopsbox && (oops %s || /var/lib/google/bin/oops %s)",
-		strings.Join(commandArgs, " "), strings.Join(commandArgs, " "))
+	remoteCmd := fmt.Sprintf("cd ~/oopsbox && if command -v oops >/dev/null 2>&1; then oops %s; elif [ -f /var/lib/google/bin/oops ]; then /var/lib/google/bin/oops %s; else oops %s; fi",
+		strings.Join(commandArgs, " "), strings.Join(commandArgs, " "), strings.Join(commandArgs, " "))
 
 	sshArgs := []string{"-o", "StrictHostKeyChecking=accept-new", "-t", sshTarget, remoteCmd}
 

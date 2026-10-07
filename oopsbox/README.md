@@ -66,10 +66,10 @@ graph TD
 
 ## Quickstart (Local Development)
 
-### Create or Initialize Workspace (`oops box create <path>`)
+### Create or Initialize Workspace (`oops box init [path]`)
 Provision a new Oopsbox workspace from the latest official blueprint with generated cryptographic credentials and active box registration:
 ```bash
-oops box create ~/oopsbox
+oops box init ~/oopsbox
 ```
 
 ### Start Dev Environment (`oops box start`)

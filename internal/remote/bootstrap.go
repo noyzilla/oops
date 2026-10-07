@@ -133,6 +133,16 @@ if ! command -v oops >/dev/null 2>&1 && [ ! -f /var/lib/google/bin/oops ]; then
     fi
 fi
 
+if [ "$IS_COS" -eq 1 ]; then
+    for profile in "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile"; do
+        if [ -f "$profile" ] || [ "$profile" = "$HOME/.bashrc" ]; then
+            if ! grep -q "/var/lib/google/bin" "$profile" 2>/dev/null; then
+                echo 'export PATH="/var/lib/google/bin:$PATH"' >> "$profile"
+            fi
+        fi
+    done
+fi
+
 # 4. Initialize server bare repo
 mkdir -p "$BARE_PATH/hooks" "$BOX_PATH"
 git init --bare "$BARE_PATH"

@@ -29,8 +29,8 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 ## Business Rules & Logic Invariants
 
-### Workspace Creation & Blueprint Download (`oops box create <path>`)
-When provisioning a new workspace via `oops box create <path>`:
+### Workspace Creation & Blueprint Download (`oops box init [path]`)
+When provisioning a new workspace via `oops box init [path]`:
 - **Target Directory Setup**: Expands `~` and relative paths to absolute canonical path, creating target directory if it does not exist.
 - **Dynamic Blueprint Fetch**: Downloads the latest official release blueprint `oopsbox.tar.gz` from GitHub Releases (`https://github.com/noyzilla/oops/releases/latest/download/oopsbox.tar.gz`), extracting it cleanly into the target directory. If the release asset is unreachable, falls back to `https://github.com/noyzilla/oops/archive/refs/heads/main.tar.gz` (extracting `oopsbox/`).
 - **Cryptographic Credential Generation**:
@@ -69,7 +69,7 @@ When switching between isolated organization workspaces:
 
 | Subcommand | Arguments | Description |
 | :--- | :--- | :--- |
-| `oops box create` | `<path>` | Downloads latest release blueprint, generates secure credentials in `.env`, initializes `oopsbox.yml`, and sets active box |
+| `oops box init` | `[path]` | Downloads latest release blueprint, generates secure credentials in `.env`, initializes `oopsbox.yml`, and sets active box |
 | `oops box active` | `[path]` | Displays or sets the currently active Oopsbox workspace in `~/.oops/active_box` |
 | `oops box list` | *(none)* | Lists known and active Oopsbox workspaces |
 | `oops box start` | *(none)* | Boots container engine (OrbStack/Colima/Docker), configures resolver, syncs DNS records, and starts default profile (`oops up`) |

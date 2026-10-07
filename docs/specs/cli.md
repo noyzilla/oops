@@ -219,7 +219,7 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops dns del` | `<domain>` | Deletes static DNS record from `config/oops/dns` |
 | `oops dns reload` | *(none)* | Validates `config/oops/dns` and triggers atomic reload across running daemon |
 | `oops ip` | `[service]` | Displays the IP address of a target container or lists all IPs if omitted |
-| `oops box create` | `<path>` | Creates new Oopsbox workspace from release blueprint, generates credentials, and sets active box |
+| `oops box init` | `[path]` | Initializes new Oopsbox workspace from release blueprint, generates credentials, and sets active box |
 | `oops box active` | `[path]` | Displays or sets the active Oopsbox workspace in `~/.oops/active_box` |
 | `oops box list` | *(none)* | Lists known and active Oopsbox workspaces |
 | `oops box start` | *(none)* | Boots VM engine (OrbStack/Colima/Docker), configures resolver, and starts default stack |
