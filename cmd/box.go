@@ -5,12 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/noyzilla/oops/internal/box"
 	"github.com/noyzilla/oops/internal/docker"
 	"github.com/noyzilla/oops/internal/orchestrator"
 	"github.com/spf13/cobra"
 )
+
+var boxCloneRemoteFlag string
 
 func newBoxCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -23,6 +29,7 @@ func newBoxCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newBoxInitCmd())
+	cmd.AddCommand(newBoxCloneCmd())
 	cmd.AddCommand(newBoxActiveCmd())
 	cmd.AddCommand(newBoxListCmd())
 	cmd.AddCommand(newBoxStartCmd())
@@ -307,4 +314,112 @@ func newBoxCertCmd() *cobra.Command {
 			return box.InstallCACertificate(workDir)
 		},
 	}
+}
+
+func newBoxCloneCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "clone <ssh-target> [-r <remote-name>] [path]",
+		Short: "Clones an Oopsbox workspace from a remote server over SSH",
+		Long:  "Clones workspace from a remote server via SSH, registers remote target in local Git config, and prepares environment.",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			sshTarget := args[0]
+			targetPath := ""
+			if len(args) > 1 {
+				targetPath = args[1]
+			}
+			return executeBoxClone(sshTarget, boxCloneRemoteFlag, targetPath)
+		},
+	}
+	cmd.Flags().StringVarP(&boxCloneRemoteFlag, "remote", "r", "", "Target remote server logical name (default: prod)")
+	return cmd
+}
+
+func deriveCloneTargetPath(sshTarget, targetPathArg string) string {
+	if targetPathArg != "" {
+		return targetPathArg
+	}
+
+	cleanTarget := strings.TrimPrefix(sshTarget, "ssh://")
+	if idx := strings.Index(cleanTarget, "/"); idx != -1 {
+		cleanTarget = cleanTarget[:idx]
+	}
+	if idx := strings.Index(cleanTarget, ":"); idx != -1 {
+		cleanTarget = cleanTarget[:idx]
+	}
+	if idx := strings.Index(cleanTarget, "@"); idx != -1 {
+		cleanTarget = cleanTarget[idx+1:]
+	}
+
+	if cleanTarget == "" {
+		return "oopsbox"
+	}
+	return cleanTarget
+}
+
+func executeBoxClone(sshTarget, remoteFlag, targetPathArg string) error {
+	targetPath := deriveCloneTargetPath(sshTarget, targetPathArg)
+	targetPathAbs, err := filepath.Abs(targetPath)
+	if err != nil {
+		targetPathAbs = targetPath
+	}
+
+	if fi, err := os.Stat(targetPathAbs); err == nil {
+		if fi.IsDir() {
+			entries, err := os.ReadDir(targetPathAbs)
+			if err == nil && len(entries) > 0 {
+				return fmt.Errorf("destination path '%s' already exists and is not an empty directory", targetPath)
+			}
+		} else {
+			return fmt.Errorf("destination path '%s' already exists and is not a directory", targetPath)
+		}
+	}
+
+	remoteName := remoteFlag
+	if remoteName == "" {
+		remoteName = "prod"
+	}
+
+	gitRemoteName := toGitRemoteName(remoteName)
+	cleanTarget := strings.TrimPrefix(sshTarget, "ssh://")
+	if idx := strings.Index(cleanTarget, "/"); idx != -1 {
+		cleanTarget = cleanTarget[:idx]
+	}
+
+	fmt.Printf("==> Cloning Oopsbox workspace from '%s' into '%s'...\n", sshTarget, targetPath)
+
+	bareURL := fmt.Sprintf("%s:.oops/oopsbox.git", cleanTarget)
+	cloneCmd := exec.Command("git", "clone", bareURL, targetPathAbs)
+	cloneCmd.Stdout = os.Stdout
+	cloneCmd.Stderr = os.Stderr
+
+	if err := cloneCmd.Run(); err != nil {
+		fmt.Println("Notice: Bare repository not found at ~/.oops/oopsbox.git, attempting fallback to ~/oopsbox...")
+		workingURL := fmt.Sprintf("%s:~/oopsbox", cleanTarget)
+		fallbackCmd := exec.Command("git", "clone", workingURL, targetPathAbs)
+		fallbackCmd.Stdout = os.Stdout
+		fallbackCmd.Stderr = os.Stderr
+
+		if err := fallbackCmd.Run(); err != nil {
+			return fmt.Errorf("failed cloning workspace from '%s' (%s or %s): %w", sshTarget, bareURL, workingURL, err)
+		}
+	}
+
+	_ = exec.Command("git", "-C", targetPathAbs, "remote", "remove", gitRemoteName).Run()
+	_ = exec.Command("git", "-C", targetPathAbs, "remote", "remove", remoteName).Run()
+
+	addRemoteCmd := exec.Command("git", "-C", targetPathAbs, "remote", "add", gitRemoteName, bareURL)
+	if out, err := addRemoteCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("cloned successfully but failed setting remote '%s': %s (%w)", gitRemoteName, string(out), err)
+	}
+
+	fmt.Println()
+	fmt.Printf("✓ Successfully cloned Oopsbox workspace from '%s' to '%s'\n", sshTarget, targetPath)
+	fmt.Printf("✓ Registered remote target '%s' (%s -> %s)\n", remoteName, gitRemoteName, bareURL)
+	fmt.Println()
+	fmt.Println("To edit and deploy updates:")
+	fmt.Printf("  cd %s\n", targetPath)
+	fmt.Printf("  oops deploy -r %s\n", remoteName)
+
+	return nil
 }

@@ -129,10 +129,18 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Excluded Commands**:
   - `remote`, `deploy`: Forbidden inside `oops rx` to prevent recursive SSH loops.
 
+### Workspace Cloning (`oops box clone <ssh-target> [-r <remote>] [path]`)
+- **Top-Level Workspace Creation**: Clones an existing Oopsbox workspace from a remote server over SSH without requiring external Git hosts.
+- **Execution Workflow**:
+  1. Clones `~/.oops/oopsbox.git` (or `~/oopsbox` fallback) from `<ssh-target>` into local `[path]`.
+  2. Automatically registers local Git remote `oops-<remote>` (default: `prod`) pointing to `<ssh-target>:.oops/oopsbox.git`.
+  3. Outputs clear post-clone guidance for local editing and `oops deploy`.
+
 ## Interface & Subcommands Specification
 
 | Subcommand | Arguments | Description |
 | :--- | :--- | :--- |
+| `oops box clone` | `<ssh-target> [-r <remote>] [path]` | Clones workspace from remote server over SSH and auto-pairs local Git remote |
 | `oops remote add` | `<ssh-target> [-r <name>]` | Registers remote server via SSH (namespaced as `oops-<name>` in Git), sets up local Git remote |
 | `oops remote list` | *(none)* | Lists registered remote servers (displays logical names without `oops-` prefix) |
 | `oops remote remove` | `<name>` | Removes registered remote server configuration (`oops-<name>`) |
