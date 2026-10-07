@@ -34,20 +34,19 @@ func newRemoteCmd() *cobra.Command {
 }
 
 func RequireOopsboxWorkspace(customDir string) (string, error) {
-	workDir := ResolveGitWorkDir(customDir)
-	if !hasComposeContent(workDir) && !hasGitRepo(workDir) {
-		return "", fmt.Errorf("not inside a valid oopsbox workspace directory")
+	dir := customDir
+	if dir == "" {
+		dir = "."
 	}
-	abs, err := filepath.Abs(workDir)
+	expanded := expandHome(dir)
+	if !hasComposeContent(expanded) {
+		return "", fmt.Errorf("not inside a valid oopsbox workspace directory (must contain 'stacks/' or compose file)")
+	}
+	abs, err := filepath.Abs(expanded)
 	if err != nil {
-		return workDir, nil
+		return expanded, nil
 	}
 	return abs, nil
-}
-
-func hasGitRepo(dir string) bool {
-	_, err := os.Stat(filepath.Join(dir, ".git"))
-	return err == nil
 }
 
 func parseRemoteAddArgs(args []string) (name, sshTarget string) {
