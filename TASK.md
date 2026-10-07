@@ -3,7 +3,8 @@
 This file tracks the active focus, immediate next actions, and backlog deliverables for the repository.
 
 ## Active Focus
-- Completed `oops remote` server management and Git Bare synchronization suite on `feat/remote`. Living spec: [docs/specs/remote.md](docs/specs/remote.md).
+- Completed `oops remote` argument parsing redesign, `oops-` Git remote prefix namespacing, `oops remote rename` subcommand, and `prod` default remote resolution across `cmd/remote.go`, `cmd/deploy.go`, and `cmd/rx.go`.
+- Synchronized Living Specifications in [docs/specs/remote.md](docs/specs/remote.md), [docs/specs/cli.md](docs/specs/cli.md), and [docs/specs/README.md](docs/specs/README.md).
 
 ## Immediate Next Actions
-- Complete GATE 3 pre-merge audit and merge `feat/remote` into `main`.
+- Complete GATE 3 pre-merge audit and merge `feat/remote-arg-parsing` into `main`.

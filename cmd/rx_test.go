@@ -15,7 +15,7 @@ func TestParseRxInvocation(t *testing.T) {
 		{
 			name:       "Implicit default server status command",
 			args:       []string{"rx", "status"},
-			wantServer: "oopsbox",
+			wantServer: "prod",
 			wantCmds:   []string{"status"},
 		},
 		{

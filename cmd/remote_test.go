@@ -6,47 +6,40 @@ import (
 	"testing"
 )
 
-func TestParseRemoteAddArgs(t *testing.T) {
-	tests := []struct {
-		name           string
-		args           []string
-		expectedName   string
-		expectedTarget string
-	}{
-		{
-			name:           "1 argument - SSH alias host name",
-			args:           []string{"anthole"},
-			expectedName:   "anthole",
-			expectedTarget: "anthole",
-		},
-		{
-			name:           "1 argument - user@host target defaults name to oopsbox",
-			args:           []string{"captain@anthole.local"},
-			expectedName:   "oopsbox",
-			expectedTarget: "captain@anthole.local",
-		},
-		{
-			name:           "2 arguments - explicit name and target",
-			args:           []string{"staging", "captain@anthole.local"},
-			expectedName:   "staging",
-			expectedTarget: "captain@anthole.local",
-		},
-		{
-			name:           "2 arguments - explicit name and SSH alias",
-			args:           []string{"prod", "anthole"},
-			expectedName:   "prod",
-			expectedTarget: "anthole",
-		},
+func TestToGitRemoteNameAndLogical(t *testing.T) {
+	if got := toGitRemoteName("prod"); got != "oops-prod" {
+		t.Errorf("toGitRemoteName('prod') = %q, want 'oops-prod'", got)
+	}
+	if got := toGitRemoteName("oops-prod"); got != "oops-prod" {
+		t.Errorf("toGitRemoteName('oops-prod') = %q, want 'oops-prod'", got)
+	}
+	if got := toLogicalRemoteName("oops-prod"); got != "prod" {
+		t.Errorf("toLogicalRemoteName('oops-prod') = %q, want 'prod'", got)
+	}
+	if got := toLogicalRemoteName("prod"); got != "prod" {
+		t.Errorf("toLogicalRemoteName('prod') = %q, want 'prod'", got)
+	}
+}
+
+func TestDeriveRemoteName(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// 1. First remote defaults to prod
+	name, err := deriveRemoteName(tmpDir, "user@1.2.3.4", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if name != "prod" {
+		t.Errorf("deriveRemoteName first time = %q, want 'prod'", name)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotName, gotTarget := parseRemoteAddArgs(tt.args)
-			if gotName != tt.expectedName || gotTarget != tt.expectedTarget {
-				t.Errorf("parseRemoteAddArgs(%v) = (%q, %q), want (%q, %q)",
-					tt.args, gotName, gotTarget, tt.expectedName, tt.expectedTarget)
-			}
-		})
+	// 2. Explicit flag -r staging
+	name, err = deriveRemoteName(tmpDir, "user@1.2.3.4", "staging")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if name != "staging" {
+		t.Errorf("deriveRemoteName with explicit flag = %q, want 'staging'", name)
 	}
 }
 

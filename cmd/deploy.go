@@ -48,21 +48,17 @@ func newDeployCmd() *cobra.Command {
 }
 
 func executeDeploy(workDirAbs, remoteName, ref string) error {
-	remoteURLCmd := exec.Command("git", "-C", workDirAbs, "remote", "get-url", remoteName)
+	gitRemoteName := toGitRemoteName(remoteName)
+	remoteURLCmd := exec.Command("git", "-C", workDirAbs, "remote", "get-url", gitRemoteName)
 	out, err := remoteURLCmd.Output()
 	if err != nil {
-		remotesOut, rErr := exec.Command("git", "-C", workDirAbs, "remote").Output()
-		if rErr == nil {
-			lines := strings.Split(strings.TrimSpace(string(remotesOut)), "\n")
-			if len(lines) == 1 && lines[0] != "" {
-				remoteName = lines[0]
-				remoteURLCmd = exec.Command("git", "-C", workDirAbs, "remote", "get-url", remoteName)
-				out, err = remoteURLCmd.Output()
-			}
-		}
+		// Fallback to un-prefixed name
+		gitRemoteName = remoteName
+		remoteURLCmd = exec.Command("git", "-C", workDirAbs, "remote", "get-url", gitRemoteName)
+		out, err = remoteURLCmd.Output()
 	}
 	if err != nil {
-		return fmt.Errorf("remote '%s' not registered. Run 'oops remote add %s <ssh-target>' first", remoteName, remoteName)
+		return fmt.Errorf("remote '%s' not registered. Run 'oops remote add <ssh-target> -r %s' first", remoteName, remoteName)
 	}
 
 	rawURL := strings.TrimSpace(string(out))
@@ -70,7 +66,7 @@ func executeDeploy(workDirAbs, remoteName, ref string) error {
 
 	fmt.Printf("==> Deploying workspace to remote '%s' (%s, ref: %s)...\n", remoteName, sshTarget, ref)
 
-	gitPushCmd := exec.Command("git", "-C", workDirAbs, "push", remoteName, ref)
+	gitPushCmd := exec.Command("git", "-C", workDirAbs, "push", gitRemoteName, ref)
 	gitPushCmd.Stdout = os.Stdout
 	gitPushCmd.Stderr = os.Stderr
 	if err := gitPushCmd.Run(); err != nil {
