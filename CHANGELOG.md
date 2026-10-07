@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Fixed
+- Prepend PATH in COS Shell Profiles: Prepend `export PATH="/var/lib/google/bin:$PATH"` to line 1 of shell profiles (`.bashrc`, `.bash_profile`, `.profile`) during COS bootstrap so non-interactive SSH shells evaluate PATH before early `return` blocks.
+
 ## [v0.17.1] - 2026-10-08
 
 ### Changed

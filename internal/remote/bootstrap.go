@@ -137,7 +137,11 @@ if [ "$IS_COS" -eq 1 ]; then
     for profile in "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile"; do
         if [ -f "$profile" ] || [ "$profile" = "$HOME/.bashrc" ]; then
             if ! grep -q "/var/lib/google/bin" "$profile" 2>/dev/null; then
-                echo 'export PATH="/var/lib/google/bin:$PATH"' >> "$profile"
+                if [ -s "$profile" ]; then
+                    sed -i '1s|^|export PATH="/var/lib/google/bin:$PATH"\n|' "$profile" 2>/dev/null || echo 'export PATH="/var/lib/google/bin:$PATH"' >> "$profile"
+                else
+                    echo 'export PATH="/var/lib/google/bin:$PATH"' > "$profile"
+                fi
             fi
         fi
     done
