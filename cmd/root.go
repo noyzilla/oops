@@ -45,6 +45,14 @@ var rootCmd = &cobra.Command{
 
 // Execute runs the root command.
 func Execute() {
+	if handled, err := HandleDynamicRemoteCommands(os.Args[1:]); handled {
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -233,4 +241,5 @@ func init() {
 	rootCmd.AddCommand(newStorageCmd())
 	rootCmd.AddCommand(newDNSCmd())
 	rootCmd.AddCommand(newIPCmd())
+	rootCmd.AddCommand(newRemoteCmd())
 }
