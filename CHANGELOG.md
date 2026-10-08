@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [v0.18.3] - 2026-10-08
+
+### Changed
+- Simplified stack discovery by replacing the directory-based topology (`stacks/<name>/compose.yml`) with a flat-file topology (`compose.<name>.yml` at the project root).
+
 ## [v0.18.2] - 2026-10-08
 
 ### Changed
