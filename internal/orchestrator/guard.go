@@ -77,22 +77,6 @@ func parseBindSources(raw []byte) map[string][]string {
 	return res
 }
 
-// priorityRanks maps each target key to the index of the first matching priority entry
-func priorityRanks(workDir string, entries []string) map[string]int {
-	ranks := make(map[string]int)
-	for i, entry := range entries {
-		resolved, err := docker.ResolveTargets(workDir, []string{entry})
-		if err != nil {
-			continue
-		}
-		for _, t := range resolved {
-			if _, seen := ranks[targetKey(t)]; !seen {
-				ranks[targetKey(t)] = i
-			}
-		}
-	}
-	return ranks
-}
 
 // planGuard decides which targets are allowed and blocked given the detected Bad Links
 func planGuard(targets []docker.ResolvedTarget, check func(source string) *storage.Problem,
@@ -223,7 +207,7 @@ func (o *Orchestrator) applyGuard(targets []docker.ResolvedTarget) ([]docker.Res
 		return targets, nil
 	}
 
-	cfg, err := docker.LoadOopsConfig(o.WorkDir)
+	_, err := docker.LoadOopsConfig(o.WorkDir)
 	if err != nil {
 		log.Printf("Warning: storage guard skipped, cannot load oops.yml: %v", err)
 		return targets, nil
@@ -241,8 +225,11 @@ func (o *Orchestrator) applyGuard(targets []docker.ResolvedTarget) ([]docker.Res
 		return p
 	}
 
-	ranks := priorityRanks(o.WorkDir, cfg.Priority)
-	allowed, blocked := planGuard(targets, check, BindSources, ranks, len(cfg.Priority))
+	ranks := make(map[string]int)
+	for i, t := range targets {
+		ranks[targetKey(t)] = i
+	}
+	allowed, blocked := planGuard(targets, check, BindSources, ranks, len(targets))
 	if len(blocked) == 0 {
 		return allowed, nil
 	}
