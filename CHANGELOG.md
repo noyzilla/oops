@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
-## [Unreleased]
+## [v0.18.1] - 2026-10-08
 
 ### Fixed
 - Atomic Self-Update on Linux: Resolved persistent `Text file busy` (`ETXTBSY`) errors during `oops selfupdate` when `mv` falls back to `cp` across filesystems, by explicitly executing `sudo rm -f` before moving the replacement binary. Also fixed the sudo fallback error hint to display the binary's absolute path (e.g., `sudo /var/lib/google/bin/oops selfupdate`) to avoid `command not found` when `sudo` lacks the binary in `secure_path`.
