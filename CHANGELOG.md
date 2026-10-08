@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+### Added
+- Introduced `x-oops-depends_on` inside compose manifests for automated topological dependency resolution, replacing the central `profiles:` block in `oops.yml`.
+
+### Changed
+- `oops up` now targets the default `/.` stack (`compose.yml`) instead of `@default`, enabling fully decentralized project-level architecture.
+
+### Removed
+- Abolished `@profile` syntax and legacy `@all` dynamic resolver support.
+
 ## [v0.18.3] - 2026-10-08
 
 ### Changed
