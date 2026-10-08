@@ -64,6 +64,7 @@ backups:
 #   oops dns get <domain>   # Query resolved IP for domain
 # ------------------------------------------------------------------------------
 dns:
+  tld: oops                 # Top-level domain for local resolution (e.g. oops, anthole, anthill)
   upstreams:
     - 1.1.1.1:53
     - 8.8.8.8:53

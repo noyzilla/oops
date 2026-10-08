@@ -145,15 +145,13 @@ func TestLoadOopsboxConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Engine.Type != "auto" || cfg.DNS.TLD != "oops" {
-		t.Errorf("expected default auto/oops, got %s/%s", cfg.Engine.Type, cfg.DNS.TLD)
+	if cfg.Engine.Type != "auto" {
+		t.Errorf("expected default auto, got %s", cfg.Engine.Type)
 	}
 
 	// Custom config
 	yamlContent := `engine:
   type: orbstack
-dns:
-  tld: dev
 `
 	if err := os.WriteFile(filepath.Join(tmpDir, "oopsbox.yml"), []byte(yamlContent), 0644); err != nil {
 		t.Fatalf("failed to write oopsbox.yml: %v", err)
@@ -163,7 +161,7 @@ dns:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Engine.Type != "orbstack" || cfg.DNS.TLD != "dev" {
-		t.Errorf("expected orbstack/dev, got %s/%s", cfg.Engine.Type, cfg.DNS.TLD)
+	if cfg.Engine.Type != "orbstack" {
+		t.Errorf("expected orbstack, got %s", cfg.Engine.Type)
 	}
 }

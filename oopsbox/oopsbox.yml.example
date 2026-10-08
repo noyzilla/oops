@@ -17,8 +17,3 @@ engine:
   disk: 60                  # Disk size in GB allocated to VM (Colima)
   vm_type: vz               # VM hypervisor engine: vz (recommended) or qemu (Colima)
 
-# ------------------------------------------------------------------------------
-# Local DNS Configuration
-# ------------------------------------------------------------------------------
-dns:
-  tld: oops                 # Top-level domain for local resolution (e.g. oops, anthole, anthill)

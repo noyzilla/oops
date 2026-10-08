@@ -34,6 +34,7 @@ type BackupConfig struct {
 
 // DNSConfig defines upstream DNS relays and shared static DNS records in oops.yml
 type DNSConfig struct {
+	TLD       string   `yaml:"tld,omitempty"`
 	Upstreams []string `yaml:"upstreams,omitempty"`
 	Upstream  string   `yaml:"upstream,omitempty"`
 	Records   []string `yaml:"records,omitempty"`
@@ -118,6 +119,9 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 			}
 
 			// Merge DNS
+			if fileCfg.DNS.TLD != "" && cfg.DNS.TLD == "" {
+				cfg.DNS.TLD = fileCfg.DNS.TLD
+			}
 			if len(fileCfg.DNS.Upstreams) > 0 && len(cfg.DNS.Upstreams) == 0 {
 				cfg.DNS.Upstreams = fileCfg.DNS.Upstreams
 			}
@@ -151,6 +155,14 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 				}
 			}
 		}
+	}
+
+	// Environment variable overrides for DNS TLD
+	if envTLD := os.Getenv("OOPS_DNS_TLD"); envTLD != "" {
+		cfg.DNS.TLD = envTLD
+	}
+	if cfg.DNS.TLD == "" {
+		cfg.DNS.TLD = "oops"
 	}
 
 	return cfg, nil

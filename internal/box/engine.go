@@ -19,16 +19,12 @@ type OopsboxConfig struct {
 		Memory string `yaml:"memory"`
 		Disk   string `yaml:"disk"`
 	} `yaml:"engine"`
-	DNS struct {
-		TLD string `yaml:"tld"`
-	} `yaml:"dns"`
 }
 
 // LoadOopsboxConfig reads oopsbox.yml from the workspace directory if present.
 func LoadOopsboxConfig(workDir string) (*OopsboxConfig, error) {
 	cfg := &OopsboxConfig{}
 	cfg.Engine.Type = "auto"
-	cfg.DNS.TLD = "oops"
 
 	cfgPath := filepath.Join(workDir, "oopsbox.yml")
 	data, err := os.ReadFile(cfgPath)
@@ -46,16 +42,10 @@ func LoadOopsboxConfig(workDir string) (*OopsboxConfig, error) {
 	if cfg.Engine.Type == "" {
 		cfg.Engine.Type = "auto"
 	}
-	if cfg.DNS.TLD == "" {
-		cfg.DNS.TLD = "oops"
-	}
 
 	// Environment variable overrides
 	if envEngine := os.Getenv("OOPS_ENGINE_TYPE"); envEngine != "" {
 		cfg.Engine.Type = envEngine
-	}
-	if envTLD := os.Getenv("OOPS_DNS_TLD"); envTLD != "" {
-		cfg.DNS.TLD = envTLD
 	}
 
 	return cfg, nil
