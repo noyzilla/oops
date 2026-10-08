@@ -56,66 +56,43 @@ func DiscoverStacks(workDir string) ([]string, map[string]string, error) {
 	composeMap := make(map[string]string)
 	discovered := make(map[string]bool)
 
-	rootCandidates := []string{"compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"}
-
-	// 1. Primary Discovery: Check stacks/ subdirectory
-	stacksDir := filepath.Join(workDir, "stacks")
-	if fi, err := os.Stat(stacksDir); err == nil && fi.IsDir() {
-		entries, err := os.ReadDir(stacksDir)
-		if err == nil {
-			for _, entry := range entries {
-				if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-					continue
-				}
-				name := entry.Name()
-				stackSubDir := filepath.Join(stacksDir, name)
-				for _, c := range rootCandidates {
-					composePath := filepath.Join(stackSubDir, c)
-					if _, err := os.Stat(composePath); err == nil {
-						composeMap[name] = composePath
-						discovered[name] = true
-						break
-					}
-				}
-			}
-		}
+	entries, err := os.ReadDir(workDir)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read directory %s: %w", workDir, err)
 	}
 
-	// 2. Secondary Discovery: If no stacks found in stacks/, check top-level directories
-	if len(discovered) == 0 {
-		entries, err := os.ReadDir(workDir)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to read directory %s: %w", workDir, err)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
 		}
+		name := entry.Name()
 
-		for _, entry := range entries {
-			if !entry.IsDir() {
-				continue
-			}
-			name := entry.Name()
-			if strings.HasPrefix(name, ".") || name == "data" || name == "backups" || name == "docs" || name == "scripts" {
-				continue
-			}
-
-			stackDir := filepath.Join(workDir, name)
-			for _, c := range rootCandidates {
-				composePath := filepath.Join(stackDir, c)
-				if _, err := os.Stat(composePath); err == nil {
-					composeMap[name] = composePath
-					discovered[name] = true
-					break
-				}
-			}
-		}
-	}
-
-	// 3. Fallback: Check root-level compose
-	for _, c := range rootCandidates {
-		p := filepath.Join(workDir, c)
-		if _, err := os.Stat(p); err == nil {
-			composeMap["."] = p
+		// Match compose.yml or docker-compose.yml for root "." stack
+		if name == "compose.yml" || name == "compose.yaml" || name == "docker-compose.yml" || name == "docker-compose.yaml" {
+			composeMap["."] = filepath.Join(workDir, name)
 			discovered["."] = true
-			break
+			continue
+		}
+
+		// Match compose.<stack>.yml pattern
+		var stack string
+		if strings.HasPrefix(name, "compose.") {
+			if strings.HasSuffix(name, ".yml") {
+				stack = strings.TrimSuffix(strings.TrimPrefix(name, "compose."), ".yml")
+			} else if strings.HasSuffix(name, ".yaml") {
+				stack = strings.TrimSuffix(strings.TrimPrefix(name, "compose."), ".yaml")
+			}
+		} else if strings.HasPrefix(name, "docker-compose.") {
+			if strings.HasSuffix(name, ".yml") {
+				stack = strings.TrimSuffix(strings.TrimPrefix(name, "docker-compose."), ".yml")
+			} else if strings.HasSuffix(name, ".yaml") {
+				stack = strings.TrimSuffix(strings.TrimPrefix(name, "docker-compose."), ".yaml")
+			}
+		}
+
+		if stack != "" {
+			composeMap[stack] = filepath.Join(workDir, name)
+			discovered[stack] = true
 		}
 	}
 

@@ -49,23 +49,14 @@ func TestResolveTargetsMultiStack(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Create stacks: edge, db, apps under stacks/
-	stacksDir := filepath.Join(tmpDir, "stacks")
-	edgeDir := filepath.Join(stacksDir, "edge")
-	dbDir := filepath.Join(stacksDir, "db")
-	appsDir := filepath.Join(stacksDir, "apps")
-
-	os.MkdirAll(edgeDir, 0755)
-	os.MkdirAll(dbDir, 0755)
-	os.MkdirAll(appsDir, 0755)
-
-	os.WriteFile(filepath.Join(edgeDir, "docker-compose.yml"), []byte(`
+	// Create flat stacks at root
+	os.WriteFile(filepath.Join(tmpDir, "docker-compose.edge.yml"), []byte(`
 services:
   caddy:
     image: caddy:latest
 `), 0644)
 
-	os.WriteFile(filepath.Join(dbDir, "docker-compose.yml"), []byte(`
+	os.WriteFile(filepath.Join(tmpDir, "docker-compose.db.yml"), []byte(`
 services:
   mysql:
     image: mysql:8.0
@@ -73,7 +64,7 @@ services:
     image: redis:alpine
 `), 0644)
 
-	os.WriteFile(filepath.Join(appsDir, "docker-compose.yml"), []byte(`
+	os.WriteFile(filepath.Join(tmpDir, "docker-compose.apps.yml"), []byte(`
 services:
   app-web:
     image: myapp:web
@@ -139,24 +130,13 @@ func TestResolveProfilesAndDefaultProfile(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	stacksDir := filepath.Join(tmpDir, "stacks")
-	edgeDir := filepath.Join(stacksDir, "edge")
-	dbDir := filepath.Join(stacksDir, "db")
-	utilsDir := filepath.Join(stacksDir, "utils")
-	appsDir := filepath.Join(stacksDir, "apps")
-
-	os.MkdirAll(edgeDir, 0755)
-	os.MkdirAll(dbDir, 0755)
-	os.MkdirAll(utilsDir, 0755)
-	os.MkdirAll(appsDir, 0755)
-
-	os.WriteFile(filepath.Join(edgeDir, "compose.yml"), []byte(`
+	os.WriteFile(filepath.Join(tmpDir, "compose.edge.yml"), []byte(`
 services:
   caddy:
     image: caddy:latest
 `), 0644)
 
-	os.WriteFile(filepath.Join(dbDir, "compose.yml"), []byte(`
+	os.WriteFile(filepath.Join(tmpDir, "compose.db.yml"), []byte(`
 services:
   mysql:
     image: mysql:8.0
@@ -166,13 +146,13 @@ services:
     image: redis:alpine
 `), 0644)
 
-	os.WriteFile(filepath.Join(utilsDir, "compose.yml"), []byte(`
+	os.WriteFile(filepath.Join(tmpDir, "compose.utils.yml"), []byte(`
 services:
   oops:
     image: oops:latest
 `), 0644)
 
-	os.WriteFile(filepath.Join(appsDir, "compose.yml"), []byte(`
+	os.WriteFile(filepath.Join(tmpDir, "compose.apps.yml"), []byte(`
 services:
   web:
     image: web:latest
@@ -264,14 +244,7 @@ func TestResolveImageAliasesAndRegistryShortcuts(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	stacksDir := filepath.Join(tmpDir, "stacks")
-	appsDir := filepath.Join(stacksDir, "apps")
-	dbDir := filepath.Join(stacksDir, "db")
-
-	os.MkdirAll(appsDir, 0755)
-	os.MkdirAll(dbDir, 0755)
-
-	os.WriteFile(filepath.Join(appsDir, "compose.yml"), []byte(`
+	os.WriteFile(filepath.Join(tmpDir, "compose.apps.yml"), []byte(`
 services:
   web-api:
     image: asia-southeast1-docker.pkg.dev/my-project/my-repo/api-service:v2.1.0
@@ -281,7 +254,7 @@ services:
     image: ghcr.io/myorg/frontend:latest
 `), 0644)
 
-	os.WriteFile(filepath.Join(dbDir, "compose.yml"), []byte(`
+	os.WriteFile(filepath.Join(tmpDir, "compose.db.yml"), []byte(`
 services:
   redis:
     image: redis:7-alpine
@@ -336,18 +309,13 @@ groups:
 
 func TestResolveTargetsWithExceptions(t *testing.T) {
 	tmpDir := t.TempDir()
-	stacksDir := filepath.Join(tmpDir, "stacks")
-	_ = os.MkdirAll(filepath.Join(stacksDir, "edge"), 0755)
-	_ = os.MkdirAll(filepath.Join(stacksDir, "db"), 0755)
-	_ = os.MkdirAll(filepath.Join(stacksDir, "apps"), 0755)
-
-	_ = os.WriteFile(filepath.Join(stacksDir, "edge", "compose.yml"), []byte(`
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.edge.yml"), []byte(`
 services:
   caddy:
     image: caddy:alpine
 `), 0644)
 
-	_ = os.WriteFile(filepath.Join(stacksDir, "db", "compose.yml"), []byte(`
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.db.yml"), []byte(`
 services:
   mysql:
     image: mysql:8.0
@@ -355,7 +323,7 @@ services:
     image: redis:7-alpine
 `), 0644)
 
-	_ = os.WriteFile(filepath.Join(stacksDir, "apps", "compose.yml"), []byte(`
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.apps.yml"), []byte(`
 services:
   api:
     image: my-api:latest
