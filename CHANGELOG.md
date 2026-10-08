@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [v0.18.2] - 2026-10-08
+
+### Changed
+- Moved `dns.tld` configuration from the workstation-specific `oopsbox.yml` to the shared project manifest `oops.yml` to enforce a unified top-level domain across the team.
+
 ## [v0.18.1] - 2026-10-08
 
 ### Fixed
