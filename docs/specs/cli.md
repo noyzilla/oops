@@ -22,7 +22,6 @@ Oops provides an operator CLI binary (`oops <command>`) designed to manage multi
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Group**: A distinct functional category and compose setup residing in `stacks/<group>/` containing a dedicated `compose.yml` (e.g. `/edge`, `/db`, `/tool`, `/apps`, or custom sub-directories).
 - **Service Configuration**: Version-controlled service configuration files residing modularly inside each group (`stacks/<group>/<service>/`, e.g. `stacks/edge/caddy/Caddyfile`, `stacks/db/mysql/my.cnf`).
-- **Profile**: A named workstation or project group defined in `oops.yml` (`profiles:`), selectable via `@<profile>` (e.g. `@default`, `@lab`).
 - **Target**: Explicit group (`/db`, `/apps`), scoped service (`/db/mysql`, `/apps/api`), exact service name (`caddy`, `mysql`), or Double Dot wildcard (`app..`, `..worker`, `..api..`).
 - **Rolling Update**: Sequential pull -> stop hook -> recreate -> health poll workflow.
 
@@ -30,9 +29,6 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 ### Smart Target Resolution & Double Dot (`..`) Wildcard Protocol
 Target strings are resolved using an explicit, shell-safe notation that eliminates quoting overhead on physical and virtual keyboards:
-- **Profile Stacks (`@<profile>`)**:
-  - Any target starting with `@` (e.g., `@default`, `@lab`) resolves against `profiles:` in `oops.yml`. It expands recursively into the constituent stacks and services defined in the named profile.
-  - **Dynamic `@all` Selector**: `@all` is a native dynamic selector that automatically discovers and expands all stacks and services across the entire workspace in dependency order without requiring manual maintenance in `oops.yml`.
 - **Registry Aliases & Image Matching (`<alias>/<image>:<tag>` or `<image>:<tag>`)**:
   - Any target matching a configured registry alias (e.g. `gar/web-app:v1.0` -> `asia-southeast1-docker.pkg.dev/.../web-app:v1.0`), `img:<image>`, or exact image name resolves to all services across all stacks using that container image.
 - **Stack Target (`/<stack>`)**:
@@ -45,11 +41,8 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
   - **Prefix Match (`<prefix>..`)**: e.g., `app..` matches all services starting with `app` (e.g. `app-web`, `app-worker`).
   - **Suffix Match (`..<suffix>`)**: e.g., `..worker` matches all services ending with `worker` (e.g. `mail-worker`, `job-worker`).
   - **Contains Match (`..<keyword>..`)**: e.g., `..api..` matches any service name containing `api`.
-- **Default Profile & Global Stack (Omitted Target)**:
-  - If no target is specified, the CLI defaults to `@default` if defined in `oops.yml` (`profiles.default`).
-  - If `@default` is not defined, operations execute across all stacks in deterministic dependency order:
-    - **Startup (`oops up`)**: `/edge` -> `/db` -> `/tool` -> `/apps` -> `[custom stacks...]`
-    - **Teardown (`oops down`)**: `[custom stacks...]` -> `/apps` -> `/tool` -> `/db` -> `/edge`
+- **Default Stack (Omitted Target)**:
+  - If no target is specified, the CLI defaults to targeting the `/.` stack (`compose.yml`). Any services or dependencies required for the default environment should be declared in `compose.yml` via `x-oops-depends_on: [\"/edge\", \"/db\"]`.
 
 ### Workspace Directory Resolution (`ResolveWorkDir`)
 
@@ -200,7 +193,7 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops stop` | `[targets...] [-x, --except, --exclude <tgt>] [-d 0s]` | Gracefully stops target services, or stops all other services except specified exclusion targets |
 | `oops restart`| `[targets...] [-d 0s] [-i, --image <img/alias>]` | Restarts target services with stop hooks, delay gap, or image matching |
 | `oops down` | `[-d 0s] [--wipe-all] [-y]` | Tears down all stacks with stop hooks and inter-service delay, or wipes all containers on Docker daemon (`--wipe-all`) |
-| `oops switch` | `<target> [-d 0s]` | Switches active profile: starts target group/stack and stops all other running services |
+| `oops switch` | `<target> [-d 0s]` | Starts target stack and stops all other running services |
 | `oops status` | `[targets...]` | Formatted table of containers, health, and ports |
 | `oops logs` | `[targets...] [--tail 50] [-f]` | Tail service logs across target services or stacks |
 | `oops pull` | `[targets...] [--all]` | Pulls images for targets, default group, all stacks, or registry aliases |

@@ -57,6 +57,8 @@ services:
 `), 0644)
 
 	os.WriteFile(filepath.Join(tmpDir, "docker-compose.db.yml"), []byte(`
+x-oops-depends_on:
+  - /edge
 services:
   mysql:
     image: mysql:8.0
@@ -65,6 +67,8 @@ services:
 `), 0644)
 
 	os.WriteFile(filepath.Join(tmpDir, "docker-compose.yml"), []byte(`
+x-oops-depends_on:
+  - /db
 services:
   app-web:
     image: myapp:web
@@ -75,13 +79,13 @@ services:
     image: myapp:worker
 `), 0644)
 
-	// 1. Resolve all (empty targets) -> dependency order edge -> db -> apps
+	// 1. Resolve all (empty targets) -> dependency order edge -> db -> apps (.)
 	all, err := docker.ResolveTargets(tmpDir, nil)
 	if err != nil {
 		t.Fatalf("unexpected error resolving all: %v", err)
 	}
 	if len(all) != 5 {
-		t.Fatalf("expected 5 targets, got %d", len(all))
+		t.Fatalf("expected 5 targets, got %d: %+v", len(all), all)
 	}
 	if all[0].ServiceName != "caddy" || all[1].ServiceName != "mysql" || all[2].ServiceName != "redis" {
 		t.Errorf("unexpected ordering for all targets: %+v", all)
@@ -90,13 +94,17 @@ services:
 		t.Errorf("unexpected stack names for targets: %+v", all)
 	}
 
-	// 2. Resolve stack target /.
-	apps, err := docker.ResolveTargets(tmpDir, []string{"/."})
+	// 2. Resolve stack target /db
+	dbTargets, err := docker.ResolveTargets(tmpDir, []string{"/db"})
 	if err != nil {
-		t.Fatalf("unexpected error resolving /apps: %v", err)
+		t.Fatalf("unexpected error resolving /db: %v", err)
 	}
-	if len(apps) != 2 || apps[0].ServiceName != "app-web" || apps[1].ServiceName != "app-worker" {
-		t.Errorf("unexpected results for /apps: %+v", apps)
+	// /db depends on /edge, so edge should be booted first
+	if len(dbTargets) != 3 {
+		t.Fatalf("expected 3 targets for /db, got %d", len(dbTargets))
+	}
+	if dbTargets[0].ServiceName != "caddy" || dbTargets[1].ServiceName != "mysql" || dbTargets[2].ServiceName != "redis" {
+		t.Errorf("unexpected results for /db: %+v", dbTargets)
 	}
 
 	// 3. Resolve scoped service /db/mysql
@@ -104,8 +112,8 @@ services:
 	if err != nil {
 		t.Fatalf("unexpected error resolving /db/mysql: %v", err)
 	}
-	if len(mysqlTarget) != 1 || mysqlTarget[0].ServiceName != "mysql" {
-		t.Errorf("unexpected results for /db/mysql: %+v", mysqlTarget)
+	if len(mysqlTarget) != 2 || mysqlTarget[0].ServiceName != "caddy" || mysqlTarget[1].ServiceName != "mysql" {
+		t.Errorf("unexpected results for /db/mysql (should include edge dep): %+v", mysqlTarget)
 	}
 
 	// 4. Resolve Double Dot wildcard app..
@@ -113,127 +121,15 @@ services:
 	if err != nil {
 		t.Fatalf("unexpected error resolving app..: %v", err)
 	}
-	if len(wildcardTargets) != 2 {
-		t.Fatalf("expected 2 targets for app.., got %d", len(wildcardTargets))
+	// app.. resolves to app-web and app-worker, which are in stack `.`.
+	// `.` depends on /db which depends on /edge. So we should get 1 (edge) + 2 (db) + 2 (apps) = 5 targets.
+	if len(wildcardTargets) != 5 {
+		t.Fatalf("expected 5 targets for app.., got %d", len(wildcardTargets))
 	}
 
-	// Check labels parsing
-	if wildcardTargets[0].Labels["oops.stop.cmd"] != "sleep 2" {
-		t.Errorf("expected label oops.stop.cmd to be 'sleep 2', got %q", wildcardTargets[0].Labels["oops.stop.cmd"])
-	}
-}
-
-func TestResolveProfilesAndDefaultProfile(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "oops-profiles-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	os.WriteFile(filepath.Join(tmpDir, "compose.edge.yml"), []byte(`
-services:
-  caddy:
-    image: caddy:latest
-`), 0644)
-
-	os.WriteFile(filepath.Join(tmpDir, "compose.db.yml"), []byte(`
-services:
-  mysql:
-    image: mysql:8.0
-  postgres:
-    image: postgres:16
-  redis:
-    image: redis:alpine
-`), 0644)
-
-	os.WriteFile(filepath.Join(tmpDir, "compose.utils.yml"), []byte(`
-services:
-  oops:
-    image: oops:latest
-`), 0644)
-
-	os.WriteFile(filepath.Join(tmpDir, "compose.apps.yml"), []byte(`
-services:
-  web:
-    image: web:latest
-`), 0644)
-
-	// Create oops.yml with profiles
-	os.WriteFile(filepath.Join(tmpDir, "oops.yml"), []byte(`
-profiles:
-  lab:
-    - /edge
-    - mysql
-    - redis
-    - /utils
-  pg:
-    - /edge
-    - postgres
-    - redis
-    - /utils
-  default:
-    - /edge
-`), 0644)
-
-	// 1. Resolve explicit @lab profile
-	labTargets, err := docker.ResolveTargets(tmpDir, []string{"@lab"})
-	if err != nil {
-		t.Fatalf("failed to resolve @lab: %v", err)
-	}
-	if len(labTargets) != 4 {
-		t.Fatalf("expected 4 targets for @lab, got %d", len(labTargets))
-	}
-	// Verify postgres & web are NOT in lab
-	for _, tgt := range labTargets {
-		if tgt.ServiceName == "postgres" || tgt.ServiceName == "web" {
-			t.Errorf("unexpected service %s in lab profile", tgt.ServiceName)
-		}
-	}
-
-	// 2. Resolve explicit @pg profile
-	pgTargets, err := docker.ResolveTargets(tmpDir, []string{"@pg"})
-	if err != nil {
-		t.Fatalf("failed to resolve @pg: %v", err)
-	}
-	if len(pgTargets) != 4 {
-		t.Fatalf("expected 4 targets for @pg, got %d", len(pgTargets))
-	}
-	hasPostgres := false
-	hasMysql := false
-	for _, tgt := range pgTargets {
-		if tgt.ServiceName == "postgres" {
-			hasPostgres = true
-		}
-		if tgt.ServiceName == "mysql" {
-			hasMysql = true
-		}
-	}
-	if !hasPostgres || hasMysql {
-		t.Errorf("expected pg profile to contain postgres and not mysql, got pgTargets: %+v", pgTargets)
-	}
-
-	// 3. Test default profile when no targets passed (reads default from oops.yml)
-	defTargets, err := docker.ResolveTargets(tmpDir, nil)
-	if err != nil {
-		t.Fatalf("failed to resolve targets with default profile in oops.yml: %v", err)
-	}
-	if len(defTargets) != 1 || defTargets[0].ServiceName != "caddy" {
-		t.Errorf("expected 1 caddy target for default profile, got: %+v", defTargets)
-	}
-
-	// 4. Test Dynamic @all (not explicitly declared in profiles)
-	allTargets, err := docker.ResolveTargets(tmpDir, []string{"@all"})
-	if err != nil {
-		t.Fatalf("failed to resolve dynamic @all: %v", err)
-	}
-	if len(allTargets) != 6 { // caddy, mysql, postgres, redis, oops, web
-		t.Fatalf("expected 6 targets for dynamic @all, got %d", len(allTargets))
-	}
-
-	// 5. Test unknown profile error
-	_, err = docker.ResolveTargets(tmpDir, []string{"@unknown"})
-	if err == nil {
-		t.Errorf("expected error for non-existent profile @unknown, got nil")
+	// Check labels parsing for app-web
+	if wildcardTargets[3].Labels["oops.stop.cmd"] != "sleep 2" {
+		t.Errorf("expected label oops.stop.cmd to be 'sleep 2', got %q", wildcardTargets[3].Labels["oops.stop.cmd"])
 	}
 }
 
@@ -265,9 +161,6 @@ services:
 registries:
   gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
   gh: ghcr.io/myorg
-groups:
-  apps:
-    - /apps
 `), 0644)
 
 	// 1. Resolve by registry alias shortcut: gar/api-service:v2.1.0
@@ -324,6 +217,9 @@ services:
 `), 0644)
 
 	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yml"), []byte(`
+x-oops-depends_on:
+  - /db
+  - /edge
 services:
   api:
     image: my-api:latest
@@ -331,27 +227,17 @@ services:
     image: my-worker:latest
 `), 0644)
 
-	_ = os.WriteFile(filepath.Join(tmpDir, "oops.yml"), []byte(`
-profiles:
-  core:
-    - /edge
-    - mysql
-    - redis
-  apps:
-    - /.
-`), 0644)
-
-	// 1. Resolve all with except @core -> should return only apps (api, worker)
-	allExceptCore, err := docker.ResolveTargetsWithExceptions(tmpDir, nil, []string{"@core"})
+	// 1. Resolve all (which goes to .) with except /edge -> should return only db and apps
+	allExceptEdge, err := docker.ResolveTargetsWithExceptions(tmpDir, nil, []string{"/edge"})
 	if err != nil {
 		t.Fatalf("ResolveTargetsWithExceptions failed: %v", err)
 	}
-	if len(allExceptCore) != 2 {
-		t.Fatalf("expected 2 targets (api, worker), got %d: %+v", len(allExceptCore), allExceptCore)
+	if len(allExceptEdge) != 4 {
+		t.Fatalf("expected 4 targets (mysql, redis, api, worker), got %d: %+v", len(allExceptEdge), allExceptEdge)
 	}
-	for _, target := range allExceptCore {
-		if target.StackName != "." {
-			t.Errorf("expected target to be in stack ., got %s/%s", target.StackName, target.ServiceName)
+	for _, target := range allExceptEdge {
+		if target.StackName == "edge" {
+			t.Errorf("expected target not to be in stack edge, got %s/%s", target.StackName, target.ServiceName)
 		}
 	}
 
@@ -364,4 +250,3 @@ profiles:
 		t.Fatalf("expected only redis, got %+v", dbExceptMysql)
 	}
 }
-

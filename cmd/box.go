@@ -159,7 +159,7 @@ func newBoxStartCmd() *cobra.Command {
 			// 2. Set active box
 			_ = box.SetActiveBox(workDir)
 
-			// 3. Start default stack (or @default)
+			// 3. Start default stack
 			targets, err := docker.ResolveTargets(workDir, nil)
 			if err != nil {
 				return fmt.Errorf("failed resolving startup targets: %w", err)

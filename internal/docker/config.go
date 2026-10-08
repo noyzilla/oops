@@ -62,21 +62,17 @@ type StorageConfig struct {
 	MountPrefixes []string `yaml:"mount_prefixes,omitempty"`
 }
 
-// OopsConfig represents the unified configuration in oops.yml
 type OopsConfig struct {
 	Registries map[string]string   `yaml:"registries,omitempty"`
-	Profiles   map[string][]string `yaml:"profiles,omitempty"`
 	Backups    BackupConfig        `yaml:"backups,omitempty"`
 	DNS        DNSConfig           `yaml:"dns,omitempty"`
 	Storage    StorageConfig       `yaml:"storage,omitempty"`
-	Priority   []string            `yaml:"priority,omitempty"`
 }
 
 // LoadOopsConfig finds and parses oops.yml / oops.yaml
 func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 	cfg := &OopsConfig{
 		Registries: make(map[string]string),
-		Profiles:   make(map[string][]string),
 	}
 
 	candidates := []string{
@@ -103,12 +99,6 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 				}
 			}
 
-			// Merge profiles
-			for k, v := range fileCfg.Profiles {
-				if _, exists := cfg.Profiles[k]; !exists {
-					cfg.Profiles[k] = v
-				}
-			}
 
 			// Merge backups
 			if fileCfg.Backups.Retention != "" && cfg.Backups.Retention == "" {
@@ -132,12 +122,9 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 				cfg.DNS.Records = fileCfg.DNS.Records
 			}
 
-			// Merge storage guard settings; a present list (even empty) replaces the defaults
 			if fileCfg.Storage.MountPrefixes != nil {
 				cfg.Storage.MountPrefixes = fileCfg.Storage.MountPrefixes
 			}
-			cfg.Priority = fileCfg.Priority
-
 			break
 		}
 	}
@@ -168,14 +155,6 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 	return cfg, nil
 }
 
-// LoadProfiles is a helper to load only the profiles map
-func LoadProfiles(workDir string) (map[string][]string, error) {
-	cfg, err := LoadOopsConfig(workDir)
-	if err != nil {
-		return nil, err
-	}
-	return cfg.Profiles, nil
-}
 
 // ExpandImageAlias expands a prefix alias (e.g. gar/my-app:v1.0 -> asia-southeast1-docker.pkg.dev/.../my-app:v1.0)
 func ExpandImageAlias(rawImage string, registries map[string]string) string {

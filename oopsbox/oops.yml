@@ -1,7 +1,7 @@
 # ==============================================================================
 # Oops Unified Stack Configuration (oops.yml)
 # ==============================================================================
-# Master configuration for registry shortcuts and stack service profiles.
+# Master configuration for registry aliases and shortcuts.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -15,27 +15,6 @@ registries:
   noyzilla: ghcr.io/noyzilla
   # gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
   # ecr: 123456789.dkr.ecr.ap-southeast-1.amazonaws.com
-
-# ------------------------------------------------------------------------------
-# Workstation & Project Profiles
-# Usage:
-#   oops up                 # Starts default profile (@default)
-#   oops up @lab            # Starts custom project profile
-#   oops up @all            # Starts all stacks dynamically (built-in engine selector)
-#   oops switch @lab        # Switches active profile and stops other services
-#   oopsbox start           # Starts default profile on workstation
-# ------------------------------------------------------------------------------
-profiles:
-  # Default Development Profile (Caddy Edge Router + Oops DNS Daemon)
-  default:
-    - /edge
-
-  # Example Custom Project Profile (uncomment and customize as needed):
-  # lab:
-  #   - /edge
-  #   - mysql
-  #   - redis
-  #   - web-app
 
 # ------------------------------------------------------------------------------
 # Automated Backup Configuration (Database Dumps + Filesystem Data Volumes)
@@ -78,13 +57,6 @@ dns:
 # prefix while still on the OS disk (persistent disk not mounted). Backups use
 # OOPS_BACKUP_DIR and are checked only by backup commands. Tools: oops storage check|link.
 #   mount_prefixes: replaces the default [/mnt, /media, /Volumes]; [] keeps only dead-link checks
-#   priority:       earlier = higher; unlisted = lowest; entries are /stack, service or @group.
-#                   Services using a bad link and every lower-priority service are blocked.
-#                   The edge stack is never blocked and always starts first.
 # ------------------------------------------------------------------------------
 #storage:
 #  mount_prefixes: [/mnt, /media, /Volumes]
-#priority:
-#  - /edge
-#  - /db
-#  - /apps

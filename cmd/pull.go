@@ -14,7 +14,7 @@ func newPullCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pull [targets...]",
 		Short: "Pulls the latest images for stacks or targeted services",
-		Long:  "Pulls latest container images across all stacks, a specific stack (/edge, /db), a group (@core, @all), or targeted services.",
+		Long:  "Pulls latest container images across a specific stack (/edge, /db) or targeted services.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workDir := ResolveWorkDir(targetDir)
 			if err := ValidateActiveBox(workDir); err != nil {

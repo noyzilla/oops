@@ -72,7 +72,7 @@ When switching between isolated organization workspaces:
 | `oops box init` | `[path]` | Downloads latest release blueprint, generates secure credentials in `.env`, initializes `oopsbox.yml`, and sets active box |
 | `oops box active` | `[path]` | Displays or sets the currently active Oopsbox workspace in `~/.oops/active_box` |
 | `oops box list` | *(none)* | Lists known and active Oopsbox workspaces |
-| `oops box start` | *(none)* | Boots container engine (OrbStack/Colima/Docker), configures resolver, syncs DNS records, and starts default profile (`oops up`) |
+| `oops box start` | *(none)* | Boots container engine (OrbStack/Colima/Docker), configures resolver, syncs DNS records, and starts default stack \(`oops up`\) |
 | `oops box stop` | *(none)* | Stops all running stacks via `oops down` on the active box |
 | `oops box switch` | `<path>` | Gracefully tears down current box, updates active box, and starts target box |
 | `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store / Keychain |

@@ -18,8 +18,7 @@ type ResolvedTarget struct {
 	Labels        map[string]string `json:"labels"`
 }
 
-// Standard stack startup dependency order
-var defaultStackOrder = []string{"edge", "db", "tool", "config", "apps", "utils"}
+
 
 // MatchWildcard tests if a candidate string matches a target pattern
 func MatchWildcard(pattern, candidate string) bool {
@@ -96,33 +95,11 @@ func DiscoverStacks(workDir string) ([]string, map[string]string, error) {
 		}
 	}
 
-	// Order stacks according to canonical dependency order, then custom stacks alphabetically
 	var orderedStacks []string
-	for _, s := range defaultStackOrder {
-		if discovered[s] {
-			orderedStacks = append(orderedStacks, s)
-		}
-	}
-
-	var customStacks []string
 	for s := range discovered {
-		isDefault := false
-		for _, ds := range defaultStackOrder {
-			if s == ds {
-				isDefault = true
-				break
-			}
-		}
-		if !isDefault && s != "." {
-			customStacks = append(customStacks, s)
-		}
+		orderedStacks = append(orderedStacks, s)
 	}
-	sort.Strings(customStacks)
-	orderedStacks = append(orderedStacks, customStacks...)
-
-	if discovered["."] {
-		orderedStacks = append(orderedStacks, ".")
-	}
+	sort.Strings(orderedStacks)
 
 	return orderedStacks, composeMap, nil
 }
@@ -140,121 +117,154 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 	}
 
 	// Load all services across stacks
-	type stackServices struct {
+	type stackData struct {
 		stackName   string
 		composePath string
 		services    map[string]ComposeService
+		dependsOn   []string
 	}
 
-	var allStacks []stackServices
+	stacks := make(map[string]*stackData)
+	var allStacks []string
+
 	for _, s := range orderedStacks {
 		cPath := composeMap[s]
 		cfg, err := ParseComposeFile(cPath)
 		if err != nil {
 			return nil, err
 		}
-		allStacks = append(allStacks, stackServices{
+		stacks[s] = &stackData{
 			stackName:   s,
 			composePath: cPath,
 			services:    cfg.Services,
-		})
+			dependsOn:   cfg.OopsDependsOn,
+		}
+		allStacks = append(allStacks, s)
 	}
 
-	// Load oops.yml configuration if available
 	oopsCfg, _ := LoadOopsConfig(workDir)
 	if oopsCfg == nil {
-		oopsCfg = &OopsConfig{
-			Registries: make(map[string]string),
-			Profiles:   make(map[string][]string),
-		}
+		oopsCfg = &OopsConfig{Registries: make(map[string]string)}
 	}
 
-	// If no targets supplied: check if "default" profile is defined in oops.yml
+	// If no targets supplied: target . stack (compose.yml)
 	if len(targets) == 0 {
-		if _, ok := oopsCfg.Profiles["default"]; ok {
-			targets = []string{"@default"}
-		}
+		targets = []string{"/."}
 	}
 
-	// If still no targets: return all services across all stacks in dependency order
-	if len(targets) == 0 {
-		var results []ResolvedTarget
-		for _, ss := range allStacks {
-			// Sort service names within stack for deterministic order
-			var sNames []string
-			for sName := range ss.services {
-				sNames = append(sNames, sName)
+
+	expandedTargets := targets
+
+	// Identify explicitly targeted stacks and services
+	targetStacksMap := make(map[string]bool)
+	targetServicesMap := make(map[string]bool)
+
+	for _, target := range expandedTargets {
+		if strings.HasPrefix(target, "/") {
+			trimmed := strings.TrimPrefix(target, "/")
+			parts := strings.SplitN(trimmed, "/", 2)
+			targetStack := parts[0]
+			targetStacksMap[targetStack] = true
+			if len(parts) == 2 {
+				targetServicesMap[target] = true
 			}
-			sort.Strings(sNames)
-
-			for _, sName := range sNames {
-				s := ss.services[sName]
-				results = append(results, ResolvedTarget{
-					StackName:     ss.stackName,
-					ComposePath:   ss.composePath,
-					ServiceName:   sName,
-					ContainerName: s.ContainerName,
-					Image:         s.Image,
-					Labels:        s.ParsedLabels,
-				})
-			}
-		}
-		return results, nil
-	}
-
-	// Expand any @profile targets into concrete selectors
-	var expandedTargets []string
-
-	var expandTarget func(tgt string, callStack []string) error
-	expandTarget = func(tgt string, callStack []string) error {
-		if strings.HasPrefix(tgt, "@") {
-			profileName := strings.TrimPrefix(tgt, "@")
-
-			// Dynamic @all resolution: expand to all discovered stacks if not explicitly defined in oops.yml
-			if profileName == "all" {
-				if profileItems, exists := oopsCfg.Profiles["all"]; exists && len(profileItems) > 0 {
-					for _, item := range profileItems {
-						if err := expandTarget(item, append(callStack, profileName)); err != nil {
-							return err
+		} else {
+			found := false
+			isImageQuery := strings.HasPrefix(target, "img:") || strings.HasPrefix(target, "image:")
+			if !isImageQuery {
+				// Bare target (e.g. "mysql"). We must search all stacks to find this service.
+				for sName, sd := range stacks {
+					if _, ok := sd.services[target]; ok {
+						targetStacksMap[sName] = true
+						targetServicesMap["/"+sName+"/"+target] = true
+						found = true
+					}
+					// Also handle wildcard matching
+					if MatchWildcard(target, "dummy") || strings.Contains(target, "..") { // rough check for wildcard
+						for srvName := range sd.services {
+							if MatchWildcard(target, srvName) {
+								targetStacksMap[sName] = true
+								targetServicesMap["/"+sName+"/"+srvName] = true
+								found = true
+							}
 						}
 					}
-					return nil
-				}
-				// Built-in dynamic discovery across all stacks
-				for _, ss := range allStacks {
-					expandedTargets = append(expandedTargets, "/"+ss.stackName)
-				}
-				return nil
-			}
-
-			for _, s := range callStack {
-				if s == profileName {
-					return fmt.Errorf("circular profile dependency detected: %s", strings.Join(append(callStack, profileName), " -> "))
 				}
 			}
 
-			profileItems, exists := oopsCfg.Profiles[profileName]
-			if !exists {
-				return fmt.Errorf("profile '%s' not found in oops.yml", profileName)
-			}
-			if len(profileItems) == 0 {
-				return fmt.Errorf("profile '%s' is empty in oops.yml", profileName)
-			}
+			if !found {
+				// Try as image query (or if it was explicitly prefixed)
+				expandedImage := ExpandImageAlias(target, oopsCfg.Registries)
+				cleanImageQuery := strings.TrimPrefix(strings.TrimPrefix(target, "image:"), "img:")
 
-			for _, item := range profileItems {
-				if err := expandTarget(item, append(callStack, profileName)); err != nil {
-					return err
+				for sName, sd := range stacks {
+					for srvName, s := range sd.services {
+						isImageMatch := s.Image == expandedImage ||
+							s.Image == cleanImageQuery ||
+							strings.HasSuffix(s.Image, "/"+cleanImageQuery) ||
+							strings.HasSuffix(s.Image, ":"+cleanImageQuery) ||
+							MatchWildcard(target, s.Image)
+
+						if isImageMatch {
+							targetStacksMap[sName] = true
+							targetServicesMap["/"+sName+"/"+srvName] = true
+							found = true
+						}
+					}
 				}
 			}
+            
+			if !found {
+				return nil, fmt.Errorf("target service not found: %s", target)
+			}
+		}
+	}
+
+	// DFS for topological sort of stacks
+	var topoOrdered []string
+	visited := make(map[string]bool)
+	visiting := make(map[string]bool)
+
+	var visit func(stackName string, callStack []string) error
+	visit = func(stackName string, callStack []string) error {
+		if visiting[stackName] {
+			return fmt.Errorf("circular stack dependency detected: %s -> %s", strings.Join(callStack, " -> "), stackName)
+		}
+		if visited[stackName] {
 			return nil
 		}
+		
+		sd, exists := stacks[stackName]
+		if !exists {
+			return fmt.Errorf("stack not found: %s", stackName)
+		}
 
-		expandedTargets = append(expandedTargets, tgt)
+		visiting[stackName] = true
+		callStack = append(callStack, stackName)
+
+		// Visit dependencies first
+		for _, dep := range sd.dependsOn {
+			depStack := strings.TrimPrefix(dep, "/")
+			if err := visit(depStack, callStack); err != nil {
+				return err
+			}
+		}
+
+		visiting[stackName] = false
+		visited[stackName] = true
+		topoOrdered = append(topoOrdered, stackName)
 		return nil
 	}
 
-	for _, t := range targets {
-		if err := expandTarget(t, nil); err != nil {
+	// Build topological order for all target stacks
+	var tStacks []string
+	for s := range targetStacksMap {
+		tStacks = append(tStacks, s)
+	}
+	sort.Strings(tStacks)
+
+	for _, s := range tStacks {
+		if err := visit(s, nil); err != nil {
 			return nil, err
 		}
 	}
@@ -262,130 +272,51 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 	var results []ResolvedTarget
 	seen := make(map[string]bool)
 
-	for _, target := range expandedTargets {
-		matchedTarget := false
-
-		// 1. Stack Target or Scoped Service (/stack or /stack/service)
-		if strings.HasPrefix(target, "/") {
-			trimmed := strings.TrimPrefix(target, "/")
-			parts := strings.SplitN(trimmed, "/", 2)
-			targetStack := parts[0]
-			var targetService string
-			if len(parts) == 2 {
-				targetService = parts[1]
-			}
-
-			for _, ss := range allStacks {
-				if ss.stackName == targetStack {
-					var sNames []string
-					for sName := range ss.services {
-						sNames = append(sNames, sName)
-					}
-					sort.Strings(sNames)
-
-					for _, sName := range sNames {
-						if targetService != "" && sName != targetService {
-							continue
-						}
-						s := ss.services[sName]
-						key := ss.stackName + "/" + sName
-						if !seen[key] {
-							seen[key] = true
-							results = append(results, ResolvedTarget{
-								StackName:     ss.stackName,
-								ComposePath:   ss.composePath,
-								ServiceName:   sName,
-								ContainerName: s.ContainerName,
-								Image:         s.Image,
-								Labels:        s.ParsedLabels,
-							})
-						}
-						matchedTarget = true
-					}
-				}
-			}
-			if !matchedTarget {
-				return nil, fmt.Errorf("target stack or service not found: %s", target)
-			}
-			continue
-		}
-
-		// 2. Service Name or Double Dot Wildcard Matching
-		for _, ss := range allStacks {
-			var sNames []string
-			for sName := range ss.services {
-				sNames = append(sNames, sName)
-			}
-			sort.Strings(sNames)
-
-			for _, sName := range sNames {
-				if MatchWildcard(target, sName) {
-					s := ss.services[sName]
-					key := ss.stackName + "/" + sName
-					if !seen[key] {
-						seen[key] = true
-						results = append(results, ResolvedTarget{
-							StackName:     ss.stackName,
-							ComposePath:   ss.composePath,
-							ServiceName:   sName,
-							ContainerName: s.ContainerName,
-							Image:         s.Image,
-							Labels:        s.ParsedLabels,
-						})
-					}
-					matchedTarget = true
-				}
+	for _, sName := range topoOrdered {
+		sd := stacks[sName]
+		
+		hasSpecificServiceTargets := false
+		for tgt := range targetServicesMap {
+			if strings.HasPrefix(tgt, "/"+sName+"/") {
+				hasSpecificServiceTargets = true
+				break
 			}
 		}
 
-		// 3. Image / Registry Alias Matching (e.g. gar/app:v1.0, img:redis:7, or image substring)
-		if !matchedTarget {
-			expandedImage := ExpandImageAlias(target, oopsCfg.Registries)
-			cleanImageQuery := strings.TrimPrefix(strings.TrimPrefix(target, "image:"), "img:")
+		isFullStackTarget := !hasSpecificServiceTargets || !targetStacksMap[sName]
 
-			for _, ss := range allStacks {
-				var sNames []string
-				for sName := range ss.services {
-					sNames = append(sNames, sName)
-				}
-				sort.Strings(sNames)
+		var sNames []string
+		for srvName := range sd.services {
+			sNames = append(sNames, srvName)
+		}
+		sort.Strings(sNames)
 
-				for _, sName := range sNames {
-					s := ss.services[sName]
-					isImageMatch := s.Image == expandedImage ||
-						s.Image == cleanImageQuery ||
-						strings.HasSuffix(s.Image, "/"+cleanImageQuery) ||
-						strings.HasSuffix(s.Image, ":"+cleanImageQuery) ||
-						MatchWildcard(target, s.Image)
-
-					if isImageMatch {
-						key := ss.stackName + "/" + sName
-						if !seen[key] {
-							seen[key] = true
-							results = append(results, ResolvedTarget{
-								StackName:     ss.stackName,
-								ComposePath:   ss.composePath,
-								ServiceName:   sName,
-								ContainerName: s.ContainerName,
-								Image:         s.Image,
-								Labels:        s.ParsedLabels,
-							})
-						}
-						matchedTarget = true
-					}
+		for _, srvName := range sNames {
+			if !isFullStackTarget {
+				if !targetServicesMap["/"+sName+"/"+srvName] {
+					continue
 				}
 			}
-		}
 
-		if !matchedTarget {
-			return nil, fmt.Errorf("no matching services found for target: %s", target)
+			key := sName + "/" + srvName
+			if !seen[key] {
+				seen[key] = true
+				s := sd.services[srvName]
+				results = append(results, ResolvedTarget{
+					StackName:     sName,
+					ComposePath:   sd.composePath,
+					ServiceName:   srvName,
+					ContainerName: s.ContainerName,
+					Image:         s.Image,
+					Labels:        s.ParsedLabels,
+				})
+			}
 		}
 	}
 
 	return results, nil
 }
 
-// ResolveTargetsByImage resolves all services across all stacks matching the given image query or registry alias
 func ResolveTargetsByImage(workDir string, imageQuery string) ([]ResolvedTarget, error) {
 	return ResolveTargets(workDir, []string{"img:" + imageQuery})
 }

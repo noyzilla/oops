@@ -126,10 +126,8 @@ dns:
 Use `@group` syntax with any `oops` command:
 ```bash
 oops up                     # Starts default group (@default)
-oops up @all                # Starts all stacks dynamically (built-in engine discovery)
 oops up /edge               # Starts Edge Perimeter only
 oops up /db                 # Starts Databases
-oops stop @all
 oops restart /edge
 
 # Switch active profile (starts target profile & stops all other running services):
@@ -187,7 +185,6 @@ oops pull gar/my-app:v1.0.0
 
 # Start service groups or stacks
 oops up                     # Starts default profile (@default)
-oops up @all                # Starts all stacks
 oops up /edge               # Starts Edge Perimeter (Caddy + Oops DNS)
 oops up /db                 # Starts Databases (MySQL, Postgres, Redis)
 oops up /tool               # Starts Dev Tools (httpbin, mailpit)
