@@ -165,14 +165,18 @@ func runSelfUpdate(checkOnly, force bool) error {
 
 	// Attempt replace via atomic rename
 	if err := os.Rename(tmpFilePath, execPath); err != nil {
-		// If permission denied, attempt sudo atomic move
+		// If permission denied or cross-device link, attempt sudo move.
+		// We first remove the current binary to avoid "Text file busy" (ETXTBSY) 
+		// if mv falls back to cp across filesystems while the binary is running.
 		fmt.Println("==> Permission required to replace binary. Requesting sudo...")
+		_ = exec.Command("sudo", "rm", "-f", execPath).Run()
+
 		cmd := exec.Command("sudo", "mv", "-f", tmpFilePath, execPath)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed replacing binary at %s: %w\nPermission required. Please run: sudo oops selfupdate", execPath, err)
+			return fmt.Errorf("failed replacing binary at %s: %w\nPermission required. Please run: sudo %s selfupdate", execPath, err, execPath)
 		}
 		_ = exec.Command("sudo", "chmod", "755", execPath).Run()
 	}
