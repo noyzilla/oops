@@ -40,6 +40,27 @@ When provisioning a new workspace via `oops box init [path]`:
 - **Default Config Initialization**: Copies `oopsbox.yml.example` to `oopsbox.yml` if `oopsbox.yml` does not exist.
 - **Automatic Active Box Registration**: Automatically writes the new workspace canonical path to `~/.oops/active_box`.
 
+### Persistent Volumes & Configuration Mapping
+To maintain a clean and standardized workspace structure, Oopsbox enforces strict conventions for mapping container data volumes and configurations onto the host filesystem:
+
+- **Default Convention (Standard Environments)**:
+  - Configurations MUST be mapped to `./config/<service>/`
+  - Persistent data MUST be mapped to `./data/<service>/`
+  - Example: `./data/mysql/` or `./config/mysql/`
+
+- **Global / Shared Volumes (Cross-Project Data)**:
+  - For data or configuration that is explicitly shared across multiple projects or stacks, prepend the directory name with an underscore (`_`).
+  - Format: `./{config,data}/_<dirname>/`
+  - Example: `./data/_assets/` or `./config/_certs/`
+  - *Rationale*: The leading underscore forces the directory to sort at the very top of alphabetical file listings, providing an immediate visual cue that this directory spans across the entire ecosystem.
+
+- **Multi-Stack / Multi-Tenant Convention (Advanced Environments)**:
+  - When operating multiple organizations, profiles, or highly complex environments where service names might conflict across stacks, volumes MUST be prefixed with the stack name:
+  - Format: `./{config,data}/<stack>_<service>/`
+  - Example: `./data/lab_mysql/` or `./data/lab_redis/`
+
+This convention ensures zero collision between services while preventing the root directory from becoming polluted with unorganized volume folders.
+
 ### Active Box Management (`oops box active [path]`)
 - **Display Active Box**: Running `oops box active` without arguments prints the current active workspace path and its validation status.
 - **Set Active Box**: Running `oops box active <path>` validates that the target path contains valid compose stacks (`stacks/`) and writes the path to `~/.oops/active_box`.
