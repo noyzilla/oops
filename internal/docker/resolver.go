@@ -19,7 +19,7 @@ type ResolvedTarget struct {
 }
 
 // Standard stack startup dependency order
-var defaultStackOrder = []string{"edge", "db", "tool", "apps", "utils"}
+var defaultStackOrder = []string{"edge", "db", "tool", "config", "apps", "utils"}
 
 // MatchWildcard tests if a candidate string matches a target pattern
 func MatchWildcard(pattern, candidate string) bool {

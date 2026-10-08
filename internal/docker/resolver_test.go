@@ -64,7 +64,7 @@ services:
     image: redis:alpine
 `), 0644)
 
-	os.WriteFile(filepath.Join(tmpDir, "docker-compose.apps.yml"), []byte(`
+	os.WriteFile(filepath.Join(tmpDir, "docker-compose.yml"), []byte(`
 services:
   app-web:
     image: myapp:web
@@ -86,12 +86,12 @@ services:
 	if all[0].ServiceName != "caddy" || all[1].ServiceName != "mysql" || all[2].ServiceName != "redis" {
 		t.Errorf("unexpected ordering for all targets: %+v", all)
 	}
-	if all[0].StackName != "edge" || all[1].StackName != "db" || all[3].StackName != "apps" {
+	if all[0].StackName != "edge" || all[1].StackName != "db" || all[3].StackName != "." {
 		t.Errorf("unexpected stack names for targets: %+v", all)
 	}
 
-	// 2. Resolve stack target /apps
-	apps, err := docker.ResolveTargets(tmpDir, []string{"/apps"})
+	// 2. Resolve stack target /.
+	apps, err := docker.ResolveTargets(tmpDir, []string{"/."})
 	if err != nil {
 		t.Fatalf("unexpected error resolving /apps: %v", err)
 	}
@@ -323,7 +323,7 @@ services:
     image: redis:7-alpine
 `), 0644)
 
-	_ = os.WriteFile(filepath.Join(tmpDir, "compose.apps.yml"), []byte(`
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yml"), []byte(`
 services:
   api:
     image: my-api:latest
@@ -338,7 +338,7 @@ profiles:
     - mysql
     - redis
   apps:
-    - /apps
+    - /.
 `), 0644)
 
 	// 1. Resolve all with except @core -> should return only apps (api, worker)
@@ -350,8 +350,8 @@ profiles:
 		t.Fatalf("expected 2 targets (api, worker), got %d: %+v", len(allExceptCore), allExceptCore)
 	}
 	for _, target := range allExceptCore {
-		if target.StackName != "apps" {
-			t.Errorf("expected target to be in stack apps, got %s/%s", target.StackName, target.ServiceName)
+		if target.StackName != "." {
+			t.Errorf("expected target to be in stack ., got %s/%s", target.StackName, target.ServiceName)
 		}
 	}
 
