@@ -20,8 +20,8 @@ Oops provides an operator CLI binary (`oops <command>`) designed to manage multi
 ## Domain Context & Ubiquitous Language
 
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
-- **Group**: A distinct functional category and compose setup residing in `stacks/<group>/` containing a dedicated `compose.yml` (e.g. `/edge`, `/db`, `/tool`, `/apps`, or custom sub-directories).
-- **Service Configuration**: Version-controlled service configuration files residing modularly inside each group (`stacks/<group>/<service>/`, e.g. `stacks/edge/caddy/Caddyfile`, `stacks/db/mysql/my.cnf`).
+- **Group**: A distinct functional category and compose setup residing as a flat file at the project root (e.g. `compose.edge.yml`, `compose.db.yml`, `compose.apps.yml`).
+- **Service Configuration**: Version-controlled service configuration files residing modularly inside the `config/` directory (`config/<service>/`, e.g. `config/caddy/Caddyfile`, `config/mysql/my.cnf`).
 - **Target**: Explicit group (`/db`, `/apps`), scoped service (`/db/mysql`, `/apps/api`), exact service name (`caddy`, `mysql`), or Double Dot wildcard (`app..`, `..worker`, `..api..`).
 - **Rolling Update**: Sequential pull -> stop hook -> recreate -> health poll workflow.
 
@@ -32,7 +32,7 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
 - **Registry Aliases & Image Matching (`<alias>/<image>:<tag>` or `<image>:<tag>`)**:
   - Any target matching a configured registry alias (e.g. `gar/web-app:v1.0` -> `asia-southeast1-docker.pkg.dev/.../web-app:v1.0`), `img:<image>`, or exact image name resolves to all services across all stacks using that container image.
 - **Stack Target (`/<stack>`)**:
-  - Any target starting with a leading slash `/` without further subpaths (e.g., `/edge`, `/db`, `/apps`) targets the entire stack and executes on that stack's `compose.yml` (located under `stacks/<stack>/`).
+  - Any target starting with a leading slash `/` without further subpaths (e.g., `/edge`, `/db`, `/apps`) targets the entire stack and executes on that stack's compose file (e.g. `compose.edge.yml` or `compose.db.yml` at the project root).
 - **Scoped Service Target (`/<stack>/<service>`)**:
   - Path notation (e.g., `/db/mysql`, `/apps/web`) targets only the specified service strictly inside the designated stack.
 - **Exact Service Name (Bare string without `..`)**:
@@ -76,8 +76,8 @@ When running the Oops CLI via Docker wrapper container (`ghcr.io/noyzilla/oops:l
 ### Dual Working Modes & 3-Tier Command Context Architecture
 
 The CLI is engineered around two distinct developer working modes:
-1. **Oopsbox Infrastructure Mode**: The developer is sitting inside an **Oopsbox Workspace** (`stacks/` directory or `compose.yaml` present). Full access to remote server registration, stack editing, and server deployment (`oops deploy`).
-2. **Application Developer Mode**: The developer is sitting inside an **Application Project Directory** (e.g. `~/Workspaces/my-web-app`). Full access to developer stack control & status (`oops up db`, `oops status`, `oops logs`) using the machine's **Active Box** (`~/.oops/active_box`). Attempting to deploy or register remotes from an app directory is strictly blocked to prevent code corruption on remote servers.
+1. **Oopsbox Infrastructure Mode**: The developer is sitting inside an **Oopsbox Workspace** (`compose.yml` present). Full access to remote server registration, stack editing, and server deployment (`oops deploy`).
+2. **Application Developer Mode**: The developer is sitting inside an **Application Project Directory** (e.g. `~/Workspaces/my-web-app`). Full access to developer stack control & status (`oops up /db`, `oops status`, `oops logs`) using the machine's **Active Box** (`~/.oops/active_box`). Attempting to deploy or register remotes from an app directory is strictly blocked to prevent code corruption on remote servers.
 
 #### 3-Tier Command Context Matrix
 
