@@ -33,7 +33,11 @@ func ExecuteMySQL(ctx context.Context, containerTarget, query string) (string, e
 		containerTarget = "mysql"
 	}
 
-	rootPass := os.Getenv("MYSQL_ROOT_PASSWORD")
+	rootPass := InspectContainerEnv(ctx, containerTarget, "MYSQL_ROOT_PASSWORD")
+	if rootPass == "" {
+		rootPass = os.Getenv("MYSQL_ROOT_PASSWORD")
+	}
+
 	var execArgs []string
 	if rootPass != "" {
 		execArgs = []string{"exec", "-i", containerTarget, "mysql", "-u", "root", "-p" + rootPass, "-e", query}

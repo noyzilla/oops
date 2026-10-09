@@ -31,12 +31,26 @@ func ExecutePostgres(ctx context.Context, containerTarget, query string) (string
 		containerTarget = "postgres"
 	}
 
-	pgUser := os.Getenv("POSTGRES_USER")
+	pgUser := InspectContainerEnv(ctx, containerTarget, "POSTGRES_USER")
+	if pgUser == "" {
+		pgUser = os.Getenv("POSTGRES_USER")
+	}
 	if pgUser == "" {
 		pgUser = "postgres"
 	}
 
-	execArgs := []string{"exec", "-i", containerTarget, "psql", "-U", pgUser, "-c", query}
+	pgPass := InspectContainerEnv(ctx, containerTarget, "POSTGRES_PASSWORD")
+	if pgPass == "" {
+		pgPass = os.Getenv("POSTGRES_PASSWORD")
+	}
+
+	var execArgs []string
+	if pgPass != "" {
+		execArgs = []string{"exec", "-i", "-e", "PGPASSWORD=" + pgPass, containerTarget, "psql", "-U", pgUser, "-c", query}
+	} else {
+		execArgs = []string{"exec", "-i", containerTarget, "psql", "-U", pgUser, "-c", query}
+	}
+
 	cmd := exec.CommandContext(ctx, "docker", execArgs...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {

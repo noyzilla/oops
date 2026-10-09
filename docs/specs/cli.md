@@ -271,5 +271,6 @@ Release Mode is `host-release` (declared in `AGENTS.md`):
   - `oops up /db/mysql` starts only `mysql` service inside `db/compose.yml`.
   - `oops stop app..` executes `oops.stop.cmd` on all matching running containers sequentially with `--delay` (`-d`) gap.
   - `oops update app..` executes rolling update sequentially, waiting for health checks and observing delay gaps.
-  - `oops db mysql create my_db my_user` generates 20-char password when omitted and creates isolated user.
-  - `oops db postgres:pg-custom create my_db my_user my_pass` targets `pg-custom` container.
+  - `oops db mysql create my_db my_user` generates 20-char password, creates user, and automatically exports credentials to `config/env/mysql.my_db.env`.
+  - `oops db postgres:pg-custom create my_db my_user my_pass` targets `pg-custom` container and exports to `config/env/pg-custom.my_db.env`.
+  - `oops db mysql create my_db my_user -n` skips exporting the credential file.

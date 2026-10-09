@@ -217,13 +217,14 @@ oops update --image gar/my-app:v1.0.0
 ```
 
 ### Database Provisioning & Password Management
-Create databases, dedicated users, and rotate passwords (auto-generates 20-character secure passwords when omitted):
+Create databases, dedicated users, and rotate passwords (auto-generates 20-character secure passwords and exports credentials to `config/env/<container>.<db>.env`):
 ```bash
 # MySQL
-oops db mysql create myapp_db myapp_user            # Auto-generates password
-oops db mysql:mysql-analytics create report_db user # Target specific container
+oops db mysql create myapp_db myapp_user            # Auto-generates password & exports .env
+oops db mysql:mysql-analytics create report_db user # Target specific container (exports config/env/mysql-analytics.report_db.env)
 oops db mysql passwd myapp_user                     # Rotate password (auto-generates new)
 oops db mysql passwd myapp_user myNewPass123        # Set explicit password
+oops db mysql create app_db app_user -n             # Skip exporting .env file
 oops db mysql list
 oops db mysql drop myapp_db myapp_user
 
