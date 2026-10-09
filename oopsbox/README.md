@@ -11,19 +11,12 @@ Oopsbox is the production-ready, turnkey Infrastructure as Code (IaC) blueprint 
 ├── oops.yml              # Center Master Config: registries, groups, backups, shared dns (Committed)
 ├── oopsbox.yml           # Local Workstation Engine & DNS settings (git-ignored)
 ├── oopsbox.yml.example   # Workstation configuration template (Committed)
-├── stacks/               # All Multi-Stack Definitions (Pure IaC, Git-tracked)
-│   ├── edge/             # Group: Ingress Reverse Proxy, Auto-SSL & Oops Daemon (net-edge)
-│   │   ├── compose.yml
-│   │   └── caddy/
-│   │       └── Caddyfile
-│   ├── db/               # Group: Persistence & Cache (net-db - isolated from edge)
-│   │   ├── compose.yml
-│   │   └── mysql/
-│   │       └── my.cnf
-│   ├── tool/             # Group: Development Utilities & Mocking (httpbin, mailpit)
-│   │   └── compose.yml
-│   └── apps/             # Group: Application Services (web-app, worker)
-│       └── compose.yml
+├── compose.yml           # Root Stack (/.): Core environment and topology relationships (x-oops-depends_on)
+├── compose.edge-caddy.yml# Edge Reverse Proxy Stack (Caddy)
+├── compose.db.yml        # Persistence & Cache Stack (MySQL, Postgres, Redis on net-db)
+├── compose.tool.yml      # Dev & Mock Utilities Stack (httpbin, mailpit)
+├── compose.apps.yml      # Application Services Stack (web-app, worker)
+├── config/               # Version-controlled service configuration (e.g., caddy/Caddyfile)
 ├── data/                 # Live realtime container storage (High-IOPS persistent volume)
 │   ├── mysql/            # MySQL storage
 │   ├── postgres/         # PostgreSQL storage
@@ -103,17 +96,6 @@ registries:
   noyzilla: ghcr.io/noyzilla
   hub: docker.io/myorg
 
-profiles:
-  default:    # Default daily development: Edge Router & DNS
-    - /edge-caddy
-
-  # Example custom project profile:
-  # lab:
-  #   - /edge-caddy
-  #   - mysql
-  #   - redis
-  #   - web-app
-
 dns:
   upstreams:
     - 1.1.1.1:53
@@ -123,17 +105,18 @@ dns:
     # - .staging.oops 10.0.0.10
 ```
 
-Use `@group` syntax with any `oops` command:
+*Note: In older versions, stack profiles were defined here. They are now defined topologically in `compose.yml` via the `x-oops-depends_on` extension.*
+
+Use the `/<stack>` target syntax with any `oops` command:
 ```bash
-oops up                     # Starts default group (@default)
+oops up                     # Starts the root stack (/. mapped to compose.yml) and its dependencies
 oops up /edge-caddy         # Starts Edge Perimeter only
 oops up /db                 # Starts Databases
 oops up /storage            # Starts Object Storage (SeaweedFS)
 oops restart /edge-caddy
 
-# Switch active profile (starts target profile & stops all other running services):
-oops switch /edge-caddy
-oops switch @default
+# Switch active stack (starts target stack & stops all other running services):
+oops switch /apps
 
 # Stop all services except specified exclusions:
 oops stop -x /edge-caddy
@@ -179,13 +162,13 @@ alias oops='docker run --rm -it \
   -w "$HOME/oopsbox" \
   ghcr.io/noyzilla/oops:latest'
 
-# Pull images across all stacks, specific group, or registry alias
+# Pull images across all stacks, specific stack, or registry alias
 oops pull --all
-oops pull @default
+oops pull /apps
 oops pull gar/my-app:v1.0.0
 
 # Start service groups or stacks
-oops up                     # Starts default profile (@default)
+oops up                     # Starts default root stack (/. mapping to compose.yml)
 oops up /edge-caddy         # Starts Edge Perimeter (Caddy + Oops DNS)
 oops up /db                 # Starts Databases (MySQL, Postgres, Redis)
 oops up /storage            # Starts Object Storage (SeaweedFS)
@@ -220,20 +203,22 @@ oops update --image gar/my-app:v1.0.0
 Create databases, dedicated users, and rotate passwords (auto-generates 20-character secure passwords and exports credentials to `config/env/<container>.<db>.env`):
 ```bash
 # MySQL
-oops db mysql create myapp_db myapp_user            # Auto-generates password & exports .env
-oops db mysql:mysql-analytics create report_db user # Target specific container (exports config/env/mysql-analytics.report_db.env)
-oops db mysql passwd myapp_user                     # Rotate password (auto-generates new)
-oops db mysql passwd myapp_user myNewPass123        # Set explicit password
-oops db mysql create app_db app_user -n             # Skip exporting .env file
+oops db mysql create myapp_db                       # Auto-generates password & exports .env (User implicitly matches DB name)
+oops db mysql:mysql-analytics create report_db      # Target specific container (exports config/env/mysql-analytics.report_db.env)
+oops db mysql readonly myapp_db metabase            # Provision SELECT-only readonly user (myapp_db__ro_metabase)
+oops db mysql passwd myapp_db                       # Rotate password (auto-generates new)
+oops db mysql passwd myapp_db myNewPass123          # Set explicit password
+oops db mysql create app_db -n                      # Skip exporting .env file
 oops db mysql list
-oops db mysql drop myapp_db myapp_user
+oops db mysql drop myapp_db
 
 # PostgreSQL
-oops db postgres create myapp_db myapp_user               # Auto-generates password
-oops db postgres:pg-custom create analytics_db user       # Target specific container
-oops db postgres passwd myapp_user                        # Rotate password (auto-generates new)
+oops db postgres create myapp_db                    # Auto-generates password
+oops db postgres:pg-custom create analytics_db      # Target specific container
+oops db postgres readonly myapp_db metabase         # Provision SELECT-only readonly user
+oops db postgres passwd myapp_db                    # Rotate password (auto-generates new)
 oops db postgres list
-oops db postgres drop myapp_db myapp_user
+oops db postgres drop myapp_db
 ```
 
 ### Automated Backup Suite (Database & Data Volumes)
