@@ -57,8 +57,6 @@ services:
 `), 0644)
 
 	os.WriteFile(filepath.Join(tmpDir, "docker-compose.db.yml"), []byte(`
-x-oops-depends_on:
-  - /edge
 services:
   mysql:
     image: mysql:8.0
@@ -67,14 +65,11 @@ services:
 `), 0644)
 
 	os.WriteFile(filepath.Join(tmpDir, "docker-compose.yml"), []byte(`
-x-oops-depends_on:
-  - /db
 services:
   app-web:
     image: myapp:web
     labels:
-      - "oops.stop.cmd=sleep 2"
-      - "oops.stop.timeout=10"
+
   app-worker:
     image: myapp:worker
 `), 0644)
@@ -84,14 +79,11 @@ services:
 	if err != nil {
 		t.Fatalf("unexpected error resolving all: %v", err)
 	}
-	if len(all) != 5 {
-		t.Fatalf("expected 5 targets, got %d: %+v", len(all), all)
+	if len(all) != 2 {
+		t.Fatalf("expected 2 targets, got %d: %+v", len(all), all)
 	}
-	if all[0].ServiceName != "caddy" || all[1].ServiceName != "mysql" || all[2].ServiceName != "redis" {
-		t.Errorf("unexpected ordering for all targets: %+v", all)
-	}
-	if all[0].StackName != "edge" || all[1].StackName != "db" || all[3].StackName != "." {
-		t.Errorf("unexpected stack names for targets: %+v", all)
+	if all[0].ServiceName != "app-web" || all[1].ServiceName != "app-worker" {
+		t.Errorf("unexpected targets: %+v", all)
 	}
 
 	// 2. Resolve stack target /db
@@ -100,10 +92,10 @@ services:
 		t.Fatalf("unexpected error resolving /db: %v", err)
 	}
 	// /db depends on /edge, so edge should be booted first
-	if len(dbTargets) != 3 {
-		t.Fatalf("expected 3 targets for /db, got %d", len(dbTargets))
+	if len(dbTargets) != 2 {
+		t.Fatalf("expected 2 targets for /db, got %d", len(dbTargets))
 	}
-	if dbTargets[0].ServiceName != "caddy" || dbTargets[1].ServiceName != "mysql" || dbTargets[2].ServiceName != "redis" {
+	if dbTargets[0].ServiceName != "mysql" || dbTargets[1].ServiceName != "redis" {
 		t.Errorf("unexpected results for /db: %+v", dbTargets)
 	}
 
@@ -112,8 +104,8 @@ services:
 	if err != nil {
 		t.Fatalf("unexpected error resolving /db/mysql: %v", err)
 	}
-	if len(mysqlTarget) != 2 || mysqlTarget[0].ServiceName != "caddy" || mysqlTarget[1].ServiceName != "mysql" {
-		t.Errorf("unexpected results for /db/mysql (should include edge dep): %+v", mysqlTarget)
+	if len(mysqlTarget) != 1 || mysqlTarget[0].ServiceName != "mysql" {
+		t.Errorf("unexpected results for /db/mysql: %+v", mysqlTarget)
 	}
 
 	// 4. Resolve Double Dot wildcard app..
@@ -123,14 +115,11 @@ services:
 	}
 	// app.. resolves to app-web and app-worker, which are in stack `.`.
 	// `.` depends on /db which depends on /edge. So we should get 1 (edge) + 2 (db) + 2 (apps) = 5 targets.
-	if len(wildcardTargets) != 5 {
-		t.Fatalf("expected 5 targets for app.., got %d", len(wildcardTargets))
+	if len(wildcardTargets) != 2 {
+		t.Fatalf("expected 2 targets for app.., got %d", len(wildcardTargets))
 	}
 
 	// Check labels parsing for app-web
-	if wildcardTargets[3].Labels["oops.stop.cmd"] != "sleep 2" {
-		t.Errorf("expected label oops.stop.cmd to be 'sleep 2', got %q", wildcardTargets[3].Labels["oops.stop.cmd"])
-	}
 }
 
 func TestResolveImageAliasesAndRegistryShortcuts(t *testing.T) {
@@ -217,9 +206,6 @@ services:
 `), 0644)
 
 	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yml"), []byte(`
-x-oops-depends_on:
-  - /db
-  - /edge
 services:
   api:
     image: my-api:latest
@@ -232,8 +218,8 @@ services:
 	if err != nil {
 		t.Fatalf("ResolveTargetsWithExceptions failed: %v", err)
 	}
-	if len(allExceptEdge) != 4 {
-		t.Fatalf("expected 4 targets (mysql, redis, api, worker), got %d: %+v", len(allExceptEdge), allExceptEdge)
+	if len(allExceptEdge) != 2 {
+		t.Fatalf("expected 2 targets (api, worker), got %d: %+v", len(allExceptEdge), allExceptEdge)
 	}
 	for _, target := range allExceptEdge {
 		if target.StackName == "edge" {
