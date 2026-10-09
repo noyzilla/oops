@@ -2,7 +2,7 @@
 name: jarn-decisions
 description: >-
   This skill manages the lifecycle of Architectural Decision Records (ADRs) in docs/adr/,
-  evaluates trade-offs, and handles active vs .deprecated.md/.superseded.md file renaming
+  evaluates trade-offs, and handles active vs inactive file renaming
   for zero-token filtering.
 ---
 
@@ -16,7 +16,7 @@ This skill defines the procedural runbook for proposing, drafting, evaluating, a
 
 Architectural Decision Records capture strategic, macro-level architectural choices (such as choosing a database engine, introducing an event-driven bus, or setting an authentication mechanism). Unlike feature living specifications which evolve constantly, decision records document point-in-time rationale, trade-offs, and consequences.
 
-To protect AI agents from context window bloat and outdated assumptions, inactive decisions are suffixed with `.deprecated.md` or `.superseded.md`. This enables automated zero-token filtering during agent file discovery.
+To protect AI agents from context window bloat and outdated assumptions, inactive decisions are suffixed according to the Status Dictionary in `jarn-naming.md`. This enables automated zero-token filtering during agent file discovery.
 
 ## When to Use This Skill
 
@@ -59,19 +59,29 @@ Collaborate with the human lead to evaluate viable options:
 - Record the approved Context, Problem Statement, Decision, Consequences, and Evaluated Alternatives.
 - Keep status marked as `Proposed` until human lead sign-off.
 
-### Phase: Superseding & Deprecation Lifecycle
-When a new decision replaces or invalidates an existing ADR:
+### Phase: Superseding, Deprecation, & Rejection Lifecycle
+When a decision's lifecycle ends, apply the appropriate filename transition:
+
+**Filename Lifecycle Requirements**
+- All lifecycle postfixes MUST conform to the Status Dictionary in [.agents/rules/jarn-naming.md](../../rules/jarn-naming.md).
+- Select the postfix according to the document's domain and actual lifecycle state.
+- Do not invent, substitute, or infer unsupported postfixes.
+- Apply lifecycle transitions only when their defined completion criteria are satisfied.
+
+- **Rejection**:
+  - Rename the proposed ADR with the appropriate rejection postfix.
+  - Record the rationale for rejection so future AI agents scanning the directory know the idea was already evaluated.
 - **Superseding**:
-  - Locate the existing active ADR (e.g., `0002-mongodb.md`).
-  - Rename the file using Git: `git mv docs/adr/0002-mongodb.md docs/adr/0002-mongodb.superseded.md`.
-  - In `0002-mongodb.superseded.md`, update status to `Superseded by ADR-[XXXX]` and add a direct markdown link to the new ADR.
+  - Locate the existing active ADR.
+  - Rename the file using Git to the appropriate superseded postfix.
+  - In the superseded ADR, update status to `Superseded by ADR-[XXXX]` and add a direct markdown link to the new ADR.
   - In the new ADR, add a direct markdown link referencing the superseded ADR in the context section.
 - **Deprecation**:
-  - If a decision is retired without a direct replacement, rename the file using Git: `git mv docs/adr/<id>-<slug>.md docs/adr/<id>-<slug>.deprecated.md`.
+  - Rename the file using Git to the appropriate deprecated postfix.
   - Update status to `Deprecated` and document the rationale for retirement.
 
 ### Phase: Verification & Zero-Token Filtering
 - Verify that only active decisions use the clean `[ID]-[slug].md` naming convention.
-- Ensure all inactive decisions use `.deprecated.md` or `.superseded.md`.
+- Verify all lifecycle postfixes strictly comply with `jarn-naming.md`.
 - Run `git diff --check` to ensure no whitespace defects or broken links.
 - Commit the decision with conventional commit prefix `docs(decision): ...`.

@@ -15,7 +15,7 @@ The following actions require prior explicit human confirmation:
 
 - **Database Destruction**: Dropping databases, schemas, or tables, truncating tables, or applying unverified data-destructive migrations.
 - **Git History Rewrite**: Force-pushing (`git push --force` or `--force-with-lease`), deleting remote branches, or hard-resetting shared branches.
-- **Direct Edits & Commits to Main (Step 0 Invariant)**: Modifying or committing directly on `main`. Verify `git branch --show-current` and branch out (`git checkout -b <type>/<slug>`) before editing. **Exception**: `chore(release): vX.Y.Z` post-merge commits via `jarn-release`.
+- **Direct Edits & Commits to Main (Step 0 Invariant)**: Modifying or committing directly on `main` is structurally forbidden. You MUST empirically verify the active branch via terminal before invoking any edit tool. If on `main`, branch out (`git checkout -b <type>/<slug>`) immediately. **Exception**: `chore(release): vX.Y.Z` post-merge commits via `jarn-release`.
 - **Credential Exposure**: Adding, modifying, reading, or printing production secrets, private keys, API keys, or `.env` files.
 - **Uncontrolled Dependencies**: Adding new third-party libraries without architectural approval.
 - **Unbounded Deletion**: Recursively deleting directories or bulk deleting files outside build or scratch folders.
@@ -37,12 +37,18 @@ Every non-trivial modification follows a disciplined progression from inquiry to
 
 ### Inquiry vs Directive State Machine
 - **Inquiry Mode (Default / Consultation)**: All conversational requests are treated as Inquiry Mode by default. The agent is strictly prohibited from mutating application source files, remaining in read-only analysis, design debate, or living spec drafting mode.
-- **Defect Inquiry Invariant**: Reporting an issue, bug, or error log treats the conversation as Inquiry Mode. The agent MUST investigate and present the 4-step Diagnostic Report (Symptom, Root Cause, Impact/Blast Radius, Proposed Fix) before requesting an execution directive. Unilateral code edits without a directive are strictly prohibited.
+- **Mandatory Planning Invariant**: Before executing ANY code modifications (whether for new features, bug fixes, or refactoring), the agent MUST present a clear implementation plan containing the exact target files and a blast-radius impact assessment. Unilateral code edits without prior plan approval are strictly prohibited.
+- **Defect Inquiry Invariant**: Reporting an issue, bug, or error log treats the conversation as Inquiry Mode. The agent MUST investigate and present the 4-step Diagnostic Report (Symptom, Root Cause, Impact/Blast Radius, Proposed Fix) before requesting an execution directive.
 - **Directive Mode (Explicit Execution Trigger)**: The agent transitions to Directive Mode only upon explicit human directive (e.g., "ทำเลย", "เริ่มแก้ได้", "อนุมัติ", "proceed", or approving an implementation plan). Without an explicit directive, the agent must continue consultation and refine specifications.
 - **Directive Shortcuts (Aliases)**: To reduce friction, the following short commands are recognized as explicit directives (requiring a prefix to prevent accidental triggers):
-  - `\p` or `!p`: Proceed (Approve plan and execute in the working tree).
-  - `\ok` or `!ok`: Approve and proceed.
+  - `\p` or `!p`: Proceed (Approve plan and start executing in the working tree).
   - `\c` or `!c`: Commit (Approve the uncommitted diff and authorize `git commit`).
+  - `\a` or `!a`: Amend (Fix recent changes and amend into the previous commit).
+  - `\s` or `!s`: Status (Report current state, branch, pending tasks, and uncommitted files).
+  - `\t` or `!t`: Test (Run targeted tests/linters immediately).
+  - `\d` or `!d`: Discard (Abort current uncommitted changes via `git restore .`).
+  - `\m` or `!m`: Merge (Complete GATE 3 pre-merge audit and merge to main).
+  - `\y` or `!y` (Yield / Auto-pilot): Approve and instruct the agent to run continuously, making necessary decisions to complete the remaining tasks without stopping for human confirmation.
 - **Plan Approval vs. Commit Authority**: Plan approval grants authority to modify files and run verification tools in the Working Tree only. It does NOT grant blanket commit authority. Commits require explicit sub-task review confirmation.
 - **Inquiry Trade-offs**: When discussing architectural or non-trivial implementations, present at least two viable implementation options with technical trade-offs before requesting an execution directive.
 - **Ambiguous Directive Fallback (Safety Brake)**: If a vague directive is given without established context or approved plan, fall back to Inquiry Mode and ask for clarification.

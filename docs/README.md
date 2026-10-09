@@ -40,9 +40,30 @@ Every document in this directory answers a specific dimensional question:
   - Content: Strategic macro decisions (such as database engine selection, partitioning schemes, or messaging frameworks).
   - Lifecycle & Naming:
     - Active Decisions: Named with standard numeric slug (e.g., `0001-postgresql.md`).
-    - Inactive Decisions: Renamed with explicit status suffix (e.g., `0002-mongodb.deprecated.md` or `0004-session.superseded.md`).
+    - Inactive Decisions: Renamed with explicit status suffix conforming to the Status Dictionary in [.agents/rules/jarn-naming.md](../.agents/rules/jarn-naming.md) (e.g., `0002-mongodb.deprecated.md` or `0004-session.superseded.md`).
   - Template: Follows [.agents/templates/docs/adr.md](../.agents/templates/docs/adr.md).
   - Target: All developers and AI agents evaluating architectural changes.
+
+- **`docs/drafts/` (IDEATION - Active Brainstorming & Planning)**:
+  - Answers: What are we currently planning, discussing, or exploring before committing to a final specification?
+  - Content: Raw ideas, active discussions with AI, temporary schemas, and unstructured logic.
+  - Naming: Named with topic slug, strictly NO numeric prefix (e.g., `multi-server-deploy.md`).
+  - Target: Developers and AI agents in GATE 1 (Consultation Phase).
+
+- **`docs/archived/` (HISTORY - Preserved Reasoning)**:
+  - Answers: What were the original raw discussions and abandoned concepts that led to the finalized specification?
+  - Content: Frozen drafts that contain valuable historical context or "why" reasoning not fully captured in the final ADR or Spec.
+  - Lifecycle: Migrated from `docs/drafts/`. Must include `resolved_to: ...` in YAML frontmatter pointing to the finalized document.
+
+## The Draft Lifecycle & AI Collaboration Flow
+
+To optimize AI token consumption, preserve architectural reasoning, and maintain a clean Git history, all document drafting must follow this workflow:
+
+1. **Initiate (Drafting)**: Create a new `.md` file in `docs/drafts/` (e.g., `docs/drafts/my-feature.md`). Avoid using AI web-based "Artifact Modes" for long documents, as they consume excessive tokens by regenerating entire files on every minor edit.
+2. **Iterate (Targeted Patching)**: Open the draft in your IDE. For minor wording adjustments, edit the file manually. For logic or structural changes, highlight or copy snippets into the chat and instruct the AI. The AI will use targeted file patches to surgically edit only the requested lines, saving massive Output Tokens.
+3. **Finalize (Promotion & Archival)**: 
+   - Once consensus is reached, the formal document is generated in the correct taxonomy folder (`docs/specs/`, `docs/adr/`, etc., receiving a numeric prefix if applicable).
+   - The original draft is moved to `docs/archived/` if it contains valuable unextracted reasoning or historical context (The Non-Subtractive Principle). If it was merely temporary notes, it can be deleted.
 
 ## Baseline Centralized Templates & Directory Structure
 
@@ -55,5 +76,5 @@ To keep the repository clean and avoid mixing placeholder templates with actual 
 
 - **No Ad-Hoc Directories**: Never create fragmented horizontal directories (such as `docs/domain/`, `docs/database/`, or `docs/api/`). Feature-specific domain rules, API contracts, and storage impacts must be consolidated inside `docs/specs/<subsystem>.md`.
 - **Current System Truth over Task Delta**: Never create transient feature-request specs (e.g. `docs/specs/add-oauth.md`). In-flight tasks live in implementation plans or task trackers; `docs/specs/<subsystem>.md` is updated in place upon feature completion.
-- **Zero-Token Decision Filtering**: When querying `docs/adr/`, inspect file names first. Always exclude files ending in `.deprecated.md` or `.superseded.md` from context ingestion.
+- **Zero-Token Decision Filtering**: When querying `docs/adr/`, inspect file names first. Always exclude files ending with status dictionary postfixes (e.g., `.deprecated.md`, `.superseded.md`) from context ingestion.
 - **Targeted Reading**: When implementing or debugging a feature, read only the matching specification in `docs/specs/<subsystem>.md` rather than loading unrelated documentation directories.

@@ -7,12 +7,28 @@
 > First, use your directory listing tool on `.agents/rules/` to discover all active `jarn-*.md` files. Then, read each of them.
 >
 > **MANDATORY PRE-FLIGHT GUARD [มาตรฐานจุดตรวจก่อนเริ่มงาน]**:
-> - **Step 0 Branch Isolation**: NEVER edit or commit on `main`. Verify `git branch --show-current` before modifying any files. Branch out (`git checkout -b <type>/<slug>`) immediately if on `main`. (See [.agents/rules/jarn-governance.md](.agents/rules/jarn-governance.md))
+> - **Step 0 Branch Isolation (CRITICAL)**: STOP. Before you invoke ANY file-editing tools, you MUST use `run_command` to execute `git branch --show-current`. If the output is `main`, you are strictly forbidden from modifying files. You MUST run `git checkout -b <type>/<slug>` first. There are zero exceptions. (See [.agents/rules/jarn-governance.md](.agents/rules/jarn-governance.md))
+> - **Context Switching Guard**: If assigned a new task while on an active branch, DO NOT blindly checkout a new branch. You MUST ask the user to confirm, and ensure current work is fully committed and merged before switching context. (See [.agents/rules/jarn-lifecycle.md](.agents/rules/jarn-lifecycle.md))
+> - **Mandatory Planning Invariant**: ALWAYS present a concrete implementation plan detailing exactly what files will be modified and the expected impact (blast radius) before making any code changes. Wait for explicit human approval before invoking any edit tools.
 > - **Inquiry vs Directive**: Treat discussions as Inquiry Mode (read-only analysis). Do NOT mutate code without an explicit Directive trigger (e.g. "ทำเลย", "อนุมัติ", "proceed"). (See [.agents/rules/jarn-governance.md](.agents/rules/jarn-governance.md))
 > - **Working Tree Loop Default**: Keep changes uncommitted in the Working Tree by default. Plan approval authorizes coding in the working tree, NOT committing. Never run `git commit` without explicit sub-task review confirmation, unless an auto-commit directive was given upfront.
 > - **Operational Workflow Gates**: Adhere strictly to **GATE 1** (Living Spec & Mission Approval) -> **GATE 2** (Surgical Execution & Self-Verification) -> **GATE 3** (Knowledge Capture & Pre-Merge Audit).
 
 This document is the primary machine-readable entrypoint for AI coding agents collaborating on this codebase.
+
+## Documentation Language Policy
+
+**Language: en-th**
+
+Follow the selected language policy when creating or modifying project documentation.
+The policy applies to documentation authored by AI agents, including specifications, plans, and technical notes.
+`jarn-coding.md` defines the annotation format and terminology conventions.
+`jarn-quality.md` validates compliance with the active policy.
+
+Supported values:
+- `en` — English only.
+- `th` — Thai-first documentation, but all technical terminology, variables, API paths, and code symbols MUST be written in English to preserve AI comprehension.
+- `en-th` — English-first documentation with Thai annotations in square brackets `[...]`.
 
 ## Current Rule Manifest [รายการกฎที่ใช้งานอยู่]
 
@@ -87,4 +103,5 @@ When specialized expertise or operational procedures are required, activate the 
 - [jarn-review](.agents/skills/jarn-review/SKILL.md): Autonomous quality gate runbook (GATE 3) to inspect git status, run targeted verification, audit commit conventions, and synthesize pre-merge evidence against jarn-quality.md.
 - [jarn-diagnostics](.agents/skills/jarn-diagnostics/SKILL.md): Isolated defect investigation procedure bounded strictly to the living spec's blast-radius matrix without blind codebase scans.
 - [jarn-release](.agents/skills/jarn-release/SKILL.md): End-to-end automated release lifecycle, including SemVer calculation, CHANGELOG drafting, and tag publishing across any Git host.
+- [jarn-summary](.agents/skills/jarn-summary/SKILL.md): Aggregates, clarifies, and presents agreed requirements, task matrix, open decisions, and immediate next actions from chat history and specs.
 - [jarn-framework-update](.agents/skills/jarn-framework-update/SKILL.md): Update the installed Jarn framework, execute Shadow Merge, and identify required project migrations.

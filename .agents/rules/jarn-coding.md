@@ -13,11 +13,14 @@ This document defines the visual hygiene, bilingual annotation rules, and code c
 
 Strictly **NO emojis or decorative icons** in production code, commit subjects, build logs, terminal output, or technical spec comments. All comments, log messages, and spec texts must maintain clean visual hygiene to prevent parser noise and noisy Git diffs.
 
-## Bilingual Documentation Annotation Standard
+## Documentation Language Standard
 
-All **user-facing** governance documents, specs, and architectural guidelines must use **English as the lead technical language** for precision and AI scanning compatibility, followed by **Thai annotations in brackets `[...]`** for human developer intuition and rapid context scanning.
+All **user-facing** governance documents, specs, and architectural guidelines must strictly follow the **Documentation Language Policy** defined in `AGENTS.md` (e.g., `en`, `th`, `en-th`).
+- If `en` is active: Use English only.
+- If a bilingual policy (e.g., `en-th`) is active: Use English as the lead technical language, followed by annotations in the secondary language enclosed in brackets `[...]` for human context scanning.
+- If `th` is active: Use Thai as the lead language, but all technical terminology, variables, API paths, and code symbols MUST be written in English.
 
-**Scope**: This standard applies to root-level documents (`AGENTS.md`, `CONTEXT.md`, `README.md`, `ARCHITECTURE.md`, `DESIGN.md`) and `docs/` content that humans read directly. Files inside `.agents/rules/` and `.agents/skills/` are machine-readable agent instructions and MUST use **English only** — no Thai heading annotations — to minimize token consumption per session.
+**Scope Limit**: This policy applies to root-level documents (`AGENTS.md`, `CONTEXT.md`, `README.md`, `ARCHITECTURE.md`, `DESIGN.md`) and `docs/` content that humans read directly. Machine-readable agent instructions inside `.agents/rules/` and `.agents/skills/` MUST ALWAYS use **English only** to minimize token consumption per session, regardless of the active language policy.
 
 ## Documentation & Commenting Rules
 
