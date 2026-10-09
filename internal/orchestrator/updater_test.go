@@ -57,27 +57,6 @@ func TestParseDurationWithDefault(t *testing.T) {
 	}
 }
 
-func TestGetStopTimeout(t *testing.T) {
-	labelsWithTimeout := map[string]string{
-		"oops.stop.timeout": "45s",
-	}
-	if got := orchestrator.GetStopTimeout(labelsWithTimeout); got != 45*time.Second {
-		t.Errorf("expected 45s, got %v", got)
-	}
-
-	labelsNumeric := map[string]string{
-		"oops.stop.timeout": "60",
-	}
-	if got := orchestrator.GetStopTimeout(labelsNumeric); got != 60*time.Second {
-		t.Errorf("expected 60s, got %v", got)
-	}
-
-	labelsDefault := map[string]string{}
-	if got := orchestrator.GetStopTimeout(labelsDefault); got != 30*time.Second {
-		t.Errorf("expected default 30s, got %v", got)
-	}
-}
-
 func TestFindEnvFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	envPath := tmpDir + "/.env"

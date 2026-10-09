@@ -130,17 +130,6 @@ func (o *Orchestrator) updateAllowed(ctx context.Context, targets []docker.Resol
 			log.Printf("Warning: compose pull failed: %v", err)
 		}
 
-		// Step 2 - Execute Pre-Stop Hook if container is running
-		cID, err := o.FindContainerID(ctx, target)
-		if err == nil && cID != "" {
-			stopCmd := target.Labels["oops.stop.cmd"]
-			stopTimeout := GetStopTimeout(target.Labels)
-			if stopCmd != "" {
-				if err := ExecutePreStopHook(ctx, o.dockerCli, cID, stopCmd, stopTimeout); err != nil {
-					log.Printf("[%s] Pre-stop hook warning: %v", target.ServiceName, err)
-				}
-			}
-		}
 
 		// Step 3 - Recreate service container
 		log.Printf("[%s] Recreating container with --no-deps...", target.ServiceName)
@@ -176,15 +165,6 @@ func (o *Orchestrator) Stop(ctx context.Context, targets []docker.ResolvedTarget
 	for i, target := range targets {
 		log.Printf("==> [%d/%d] Stopping service %s (Stack: %s)...", i+1, len(targets), target.ServiceName, target.StackName)
 
-		cID, err := o.FindContainerID(ctx, target)
-		if err == nil && cID != "" {
-			stopCmd := target.Labels["oops.stop.cmd"]
-			stopTimeout := GetStopTimeout(target.Labels)
-			if stopCmd != "" {
-				_ = ExecutePreStopHook(ctx, o.dockerCli, cID, stopCmd, stopTimeout)
-			}
-		}
-
 		if err := RunComposeCommand(target.ComposePath, "stop", target.ServiceName); err != nil {
 			log.Printf("Warning: failed to stop %s: %v", target.ServiceName, err)
 		}
@@ -209,15 +189,6 @@ func (o *Orchestrator) Restart(ctx context.Context, targets []docker.ResolvedTar
 func (o *Orchestrator) restartAllowed(ctx context.Context, targets []docker.ResolvedTarget, delay time.Duration) error {
 	for i, target := range targets {
 		log.Printf("==> [%d/%d] Restarting service %s (Stack: %s)...", i+1, len(targets), target.ServiceName, target.StackName)
-
-		cID, err := o.FindContainerID(ctx, target)
-		if err == nil && cID != "" {
-			stopCmd := target.Labels["oops.stop.cmd"]
-			stopTimeout := GetStopTimeout(target.Labels)
-			if stopCmd != "" {
-				_ = ExecutePreStopHook(ctx, o.dockerCli, cID, stopCmd, stopTimeout)
-			}
-		}
 
 		if err := RunComposeCommand(target.ComposePath, "restart", target.ServiceName); err != nil {
 			log.Printf("Warning: failed to restart %s: %v", target.ServiceName, err)

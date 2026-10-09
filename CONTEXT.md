@@ -91,8 +91,6 @@ All Oops-managed container metadata is configured via Docker labels under the `o
 | :--- | :---: | :--- |
 | `oops.enable` | `bool` | Authorizes Oops to orchestrate, stop, and update this container (`"true"` / `"false"`). |
 | `oops.secret` | `string` | Secret authentication token required for webhook deployments of this specific target. |
-| `oops.stop.cmd` | `string` | Custom command executed inside the container prior to stopping. |
-| `oops.stop.timeout` | `int` | Grace period in seconds to wait for `oops.stop.cmd` before sending `SIGTERM`. |
 | `oops.health.url` | `string` | HTTP endpoint URL polled for 200 OK when native Docker healthcheck is absent. |
 
 ---

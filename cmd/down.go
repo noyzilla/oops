@@ -75,25 +75,6 @@ func newDownCmd() *cobra.Command {
 				reverseStacks = append(reverseStacks, orderedStacks[i])
 			}
 
-			orch, err := orchestrator.New()
-			if err == nil {
-				defer orch.Close()
-				// Run pre-stop hooks on all running containers
-				allTargets, err := docker.ResolveTargets(workDir, nil)
-				if err == nil {
-					for _, t := range allTargets {
-						cID, err := orch.FindContainerID(context.Background(), t)
-						if err == nil && cID != "" {
-							stopCmd := t.Labels["oops.stop.cmd"]
-							stopTimeout := orchestrator.GetStopTimeout(t.Labels)
-							if stopCmd != "" {
-								_ = orchestrator.ExecutePreStopHook(context.Background(), nil, cID, stopCmd, stopTimeout)
-							}
-						}
-					}
-				}
-			}
-
 			for i, stack := range reverseStacks {
 				composePath := composeMap[stack]
 				log.Printf("==> Tearing down stack /%s...", stack)
