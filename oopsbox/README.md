@@ -105,11 +105,11 @@ registries:
 
 profiles:
   default:    # Default daily development: Edge Router & DNS
-    - /edge
+    - /edge-caddy
 
   # Example custom project profile:
   # lab:
-  #   - /edge
+  #   - /edge-caddy
   #   - mysql
   #   - redis
   #   - web-app
@@ -126,17 +126,18 @@ dns:
 Use `@group` syntax with any `oops` command:
 ```bash
 oops up                     # Starts default group (@default)
-oops up /edge               # Starts Edge Perimeter only
+oops up /edge-caddy         # Starts Edge Perimeter only
 oops up /db                 # Starts Databases
-oops restart /edge
+oops up /storage            # Starts Object Storage (SeaweedFS)
+oops restart /edge-caddy
 
 # Switch active profile (starts target profile & stops all other running services):
-oops switch /edge
+oops switch /edge-caddy
 oops switch @default
 
 # Stop all services except specified exclusions:
-oops stop -x /edge
-oops stop -x /edge -x redis
+oops stop -x /edge-caddy
+oops stop -x /edge-caddy -x redis
 ```
 
 ---
@@ -185,8 +186,9 @@ oops pull gar/my-app:v1.0.0
 
 # Start service groups or stacks
 oops up                     # Starts default profile (@default)
-oops up /edge               # Starts Edge Perimeter (Caddy + Oops DNS)
+oops up /edge-caddy         # Starts Edge Perimeter (Caddy + Oops DNS)
 oops up /db                 # Starts Databases (MySQL, Postgres, Redis)
+oops up /storage            # Starts Object Storage (SeaweedFS)
 oops up /tool               # Starts Dev Tools (httpbin, mailpit)
 oops up /apps               # Starts Applications
 
@@ -198,8 +200,8 @@ oops up mailpit
 oops up app..
 
 # Switch profiles and stop other services
-oops switch /edge
-oops stop -x /edge
+oops switch /edge-caddy
+oops stop -x /edge-caddy
 ```
 
 ---

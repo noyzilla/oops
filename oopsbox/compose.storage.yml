@@ -1,0 +1,16 @@
+services:
+  seaweedfs:
+    image: chrislusf/seaweedfs
+    container_name: seaweedfs
+    hostname: seaweedfs.oops
+    restart: unless-stopped
+    command: "server -s3 -dir=/data"
+    volumes:
+      - ./data/storage:/data
+    networks:
+      - net-storage
+
+networks:
+  net-storage:
+    name: net-storage
+    driver: bridge
