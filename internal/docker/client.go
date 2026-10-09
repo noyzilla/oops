@@ -4,15 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os/exec"
+	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 )
 
@@ -25,7 +24,7 @@ func NormalizeGitURL(raw string) string {
 }
 
 // ValidateAndFindTargets finds matching target containers and validates the provided secret token
-func ValidateAndFindTargets(ctx context.Context, action, imageURL, gitURL, containerRegex, token string) ([]string, error) {
+func ValidateAndFindTargets(ctx context.Context, action, imageURL, gitURL, containerRegex, token string) ([]ResolvedTarget, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %v", err)
@@ -37,7 +36,7 @@ func ValidateAndFindTargets(ctx context.Context, action, imageURL, gitURL, conta
 		return nil, fmt.Errorf("failed to list containers: %v", err)
 	}
 
-	var targetIDs []string
+	var targets []ResolvedTarget
 
 	var re *regexp.Regexp
 	if containerRegex != "" {
@@ -97,156 +96,62 @@ func ValidateAndFindTargets(ctx context.Context, action, imageURL, gitURL, conta
 			return nil, fmt.Errorf("unauthorized for container %s", inspect.Name)
 		}
 
-		targetIDs = append(targetIDs, c.ID)
+		cFiles, hasCFiles := inspect.Config.Labels["com.docker.compose.project.config_files"]
+		cPath := ""
+		if hasCFiles && cFiles != "" {
+			cPaths := strings.Split(cFiles, ",")
+			cPath = cPaths[0] // just use the first one
+		} else {
+			cPath = filepath.Join(inspect.Config.Labels["com.docker.compose.project.working_dir"], "compose.yml")
+		}
+
+		targets = append(targets, ResolvedTarget{
+			StackName:     inspect.Config.Labels["com.docker.compose.project"],
+			ComposePath:   cPath,
+			ServiceName:   inspect.Config.Labels["com.docker.compose.service"],
+			ContainerName: strings.TrimPrefix(inspect.Name, "/"),
+			ContainerID:   c.ID,
+			Image:         inspect.Config.Image,
+			Labels:        inspect.Config.Labels,
+		})
 		log.Printf("Validated target container: %s (Name: %s)", c.ID[:10], inspect.Name)
 	}
 
-	return targetIDs, nil
+	return targets, nil
 }
 
 // ExecuteRecreation pulls the latest image and recreates the target containers
-func ExecuteRecreation(ctx context.Context, targetIDs []string, imageURL string) error {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return fmt.Errorf("failed to create docker client: %v", err)
-	}
-	defer cli.Close()
+func ExecuteRecreation(ctx context.Context, targets []ResolvedTarget, imageURL string, delayDur time.Duration) error {
+	for i, target := range targets {
+		log.Printf("Recreating %s...", target.ContainerName)
 
-	if imageURL != "" {
-		log.Printf("Pulling latest image: %s", imageURL)
-		out, err := cli.ImagePull(ctx, imageURL, image.PullOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to pull image: %v", err)
-		}
-
-		buf := make([]byte, 8192)
-		for {
-			_, err := out.Read(buf)
-			if err != nil {
-				break
+		if target.ComposePath != "" && target.ServiceName != "" {
+			cmdPull := exec.Command("docker", "compose", "-f", target.ComposePath, "pull", target.ServiceName)
+			if err := cmdPull.Run(); err != nil {
+				log.Printf("Warning: failed to compose pull %s: %v", target.ServiceName, err)
 			}
-		}
-		out.Close()
-		log.Printf("Successfully pulled image: %s", imageURL)
-	}
 
-	for _, id := range targetIDs {
-		if err := recreateSingleContainer(ctx, cli, id); err != nil {
-			log.Printf("Error recreating container %s: %v", id, err)
+			cmdUp := exec.Command("docker", "compose", "-f", target.ComposePath, "up", "-d", "--no-deps", target.ServiceName)
+			if err := cmdUp.Run(); err != nil {
+				return fmt.Errorf("failed to recreate %s: %v", target.ServiceName, err)
+			}
+		} else {
+			log.Printf("Warning: No compose info for %s, skipping", target.ContainerName)
+		}
+
+		if delayDur > 0 && i < len(targets)-1 {
+			time.Sleep(delayDur)
 		}
 	}
 
 	log.Println("Pruning dangling images...")
-	pruneReport, err := cli.ImagesPrune(ctx, filters.NewArgs(filters.Arg("dangling", "true")))
-	if err != nil {
-		log.Printf("Warning: failed to prune images: %v", err)
-	} else {
-		log.Printf("Pruned images, reclaimed space: %d bytes", pruneReport.SpaceReclaimed)
-	}
+	_ = exec.Command("docker", "image", "prune", "-f").Run()
 
-	return nil
-}
-
-// recreateSingleContainer handles the graceful shutdown, removal, and recreation of a single container
-func recreateSingleContainer(ctx context.Context, cli *client.Client, id string) error {
-	inspect, err := cli.ContainerInspect(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	name := inspect.Name
-	log.Printf("Recreating container %s...", name)
-
-	var stopCmd string
-	stopTimeout := 60
-
-	if val, exists := inspect.Config.Labels["oops.stop.cmd"]; exists {
-		stopCmd = val
-	}
-	if val, exists := inspect.Config.Labels["oops.stop.timeout"]; exists {
-		if t, err := strconv.Atoi(val); err == nil {
-			stopTimeout = t
-		}
-	}
-
-	if stopCmd != "" {
-		log.Printf("[%s] Executing stop command: %s (Timeout: %ds)", name, stopCmd, stopTimeout)
-
-		execConfig := container.ExecOptions{
-			Cmd: []string{"sh", "-c", stopCmd},
-		}
-
-		execID, err := cli.ContainerExecCreate(ctx, id, execConfig)
-		if err != nil {
-			log.Printf("[%s] Warning: Failed to create exec command: %v", name, err)
-		} else {
-			if err := cli.ContainerExecStart(ctx, execID.ID, container.ExecStartOptions{}); err != nil {
-				log.Printf("[%s] Warning: Failed to start exec command: %v", name, err)
-			} else {
-				startWait := time.Now()
-				for {
-					if time.Since(startWait).Seconds() > float64(stopTimeout) {
-						log.Printf("[%s] Warning: Stop command timed out after %ds", name, stopTimeout)
-						break
-					}
-
-					execInspect, err := cli.ContainerExecInspect(ctx, execID.ID)
-					if err != nil {
-						log.Printf("[%s] Warning: Error inspecting exec command: %v", name, err)
-						break
-					}
-
-					if !execInspect.Running {
-						log.Printf("[%s] Stop command completed (Exit Code: %d)", name, execInspect.ExitCode)
-						break
-					}
-					time.Sleep(1 * time.Second)
-				}
-			}
-		}
-	}
-
-	log.Printf("Stopping %s...", name)
-	timeout := 10
-	stopOptions := container.StopOptions{Timeout: &timeout}
-	if err := cli.ContainerStop(ctx, id, stopOptions); err != nil {
-		return fmt.Errorf("failed to stop container: %v", err)
-	}
-
-	log.Printf("Removing %s...", name)
-	if err := cli.ContainerRemove(ctx, id, container.RemoveOptions{Force: true}); err != nil {
-		return fmt.Errorf("failed to remove container: %v", err)
-	}
-
-	log.Printf("Creating %s...", name)
-
-	hostConfig := inspect.HostConfig
-
-	created, err := cli.ContainerCreate(
-		ctx,
-		inspect.Config,
-		hostConfig,
-		&network.NetworkingConfig{
-			EndpointsConfig: inspect.NetworkSettings.Networks,
-		},
-		nil,
-		name,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create container: %v", err)
-	}
-
-	log.Printf("Starting %s...", name)
-	if err := cli.ContainerStart(ctx, created.ID, container.StartOptions{}); err != nil {
-		return fmt.Errorf("failed to start new container: %v", err)
-	}
-
-	log.Printf("Successfully recreated container %s (New ID: %s)", name, created.ID[:10])
 	return nil
 }
 
 // ExecuteGitPull creates a temporary container using alpine/git to pull the latest code or checkout a tag, then restarts the target container
-func ExecuteGitPull(ctx context.Context, targetIDs []string, tag string) error {
+func ExecuteGitPull(ctx context.Context, targets []ResolvedTarget, tag string, delayDur time.Duration) error {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return fmt.Errorf("failed to create docker client: %v", err)
@@ -266,7 +171,8 @@ func ExecuteGitPull(ctx context.Context, targetIDs []string, tag string) error {
 		out.Close()
 	}
 
-	for _, id := range targetIDs {
+	for i, target := range targets {
+		id := target.ContainerID
 		inspect, err := cli.ContainerInspect(ctx, id)
 		if err != nil {
 			log.Printf("Error inspecting container %s: %v", id, err)
@@ -399,12 +305,19 @@ func ExecuteGitPull(ctx context.Context, targetIDs []string, tag string) error {
 		}
 
 		log.Printf("[%s] Restarting target container...", name)
-		timeout := 10
-		stopOptions := container.StopOptions{Timeout: &timeout}
-		if err := cli.ContainerRestart(ctx, id, stopOptions); err != nil {
-			log.Printf("[%s] Error restarting container: %v", name, err)
+		if target.ComposePath != "" && target.ServiceName != "" {
+			cmdRestart := exec.Command("docker", "compose", "-f", target.ComposePath, "restart", target.ServiceName)
+			if err := cmdRestart.Run(); err != nil {
+				log.Printf("[%s] Error restarting container via compose: %v", name, err)
+			} else {
+				log.Printf("[%s] Container restarted successfully", name)
+			}
 		} else {
-			log.Printf("[%s] Container restarted successfully", name)
+			log.Printf("[%s] Warning: No compose info, unable to restart via compose CLI", name)
+		}
+
+		if delayDur > 0 && i < len(targets)-1 {
+			time.Sleep(delayDur)
 		}
 	}
 

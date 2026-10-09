@@ -91,7 +91,7 @@ func HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Synchronously validate targets and verify the authentication token
-	targetIDs, err := docker.ValidateAndFindTargets(context.Background(), payload.Action, payload.Image, payload.URL, selector, token)
+	targets, err := docker.ValidateAndFindTargets(context.Background(), payload.Action, payload.Image, payload.URL, selector, token)
 	if err != nil {
 		log.Printf("Validation failed: %v", err)
 		if strings.Contains(err.Error(), "unauthorized") {
@@ -102,7 +102,7 @@ func HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(targetIDs) == 0 {
+	if len(targets) == 0 {
 		log.Printf("No matching containers found or no containers authorized")
 		http.Error(w, "No matching targets found", http.StatusNotFound)
 		return
@@ -113,15 +113,14 @@ func HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	// Execute Docker operations asynchronously
 	go func() {
 		if payload.Action == "git" {
-			if err := docker.ExecuteGitPull(context.Background(), targetIDs, payload.Tag); err != nil {
+			if err := docker.ExecuteGitPull(context.Background(), targets, payload.Tag, delayDur); err != nil {
 				log.Printf("Failed to execute git pull: %v", err)
 			}
 		} else {
-			if err := docker.ExecuteRecreation(context.Background(), targetIDs, payload.Image); err != nil {
+			if err := docker.ExecuteRecreation(context.Background(), targets, payload.Image, delayDur); err != nil {
 				log.Printf("Failed to recreate containers: %v", err)
 			}
 		}
-		_ = delayDur
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
