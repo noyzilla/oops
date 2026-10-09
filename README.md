@@ -34,7 +34,7 @@ Oops and Oopsbox eliminate DevOps complexity through three foundational principl
 oopsbox/
 ├── oops.yml              # Master Config: backups, registry shortcuts, DNS
 ├── oopsbox.yml           # Workstation Settings: VM engine (OrbStack/Colima), resources, local DNS
-├── compose.yml           # Root Stack (/.): Core environment and topology relationships (x-oops-depends_on)
+├── compose.yml           # Root Stack (/.): Core environment and topology relationships (include)
 ├── compose.edge-caddy.yml# Edge Reverse Proxy Stack (Caddy)
 ├── compose.db.yml        # Persistence & Cache Stack (MySQL, Postgres, Redis)
 ├── compose.tool.yml      # Dev & Mock Utilities Stack (httpbin, mailpit)
@@ -165,8 +165,6 @@ Add labels to target containers to authorize Oops and configure lifecycle hooks:
 | :--- | :---: | :--- |
 | `oops.enable` | Yes | Must be `"true"` to authorize Oops management. |
 | `oops.secret` | Yes | Secure webhook token for per-project authentication. |
-| `oops.stop.cmd` | No | Command to execute inside container *before* stopping (e.g. `php artisan horizon:terminate`). |
-| `oops.stop.timeout` | No | Timeout for graceful pre-stop hook (e.g. `30s`, `60s`). Default: `30s`. |
 | `oops.health.url` | No | HTTP health check URL for polling readiness after recreation. |
 | `oops.git.url` | Yes (Git Mode) | Git repository URL for volume source checkout. |
 | `oops.git.dir` | Yes (Git Mode) | Absolute path inside container where source is mounted (e.g. `/app`). |
