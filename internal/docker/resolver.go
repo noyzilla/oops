@@ -219,19 +219,16 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		}
 	}
 
-	// Build ordered list of target stacks
-	var tStacks []string
-	for s := range targetStacksMap {
-		tStacks = append(tStacks, s)
+	// Map service names to their stack for cross-stack dependency resolution
+	serviceToStack := make(map[string]string)
+	for sName, sd := range stacks {
+		for srvName := range sd.services {
+			serviceToStack[srvName] = sName
+		}
 	}
-	sort.Strings(tStacks)
 
-	var results []ResolvedTarget
-	seen := make(map[string]bool)
-
-	for _, sName := range tStacks {
-		sd := stacks[sName]
-		
+	// Convert any full stack targets into individual services so we can resolve their dependencies
+	for sName := range targetStacksMap {
 		hasSpecificServiceTargets := false
 		for tgt := range targetServicesMap {
 			if strings.HasPrefix(tgt, "/"+sName+"/") {
@@ -239,39 +236,113 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 				break
 			}
 		}
-
-		isFullStackTarget := !hasSpecificServiceTargets || !targetStacksMap[sName]
-
-		var sNames []string
-		for srvName := range sd.services {
-			sNames = append(sNames, srvName)
-		}
-		sort.Strings(sNames)
-
-		for _, srvName := range sNames {
-			if !isFullStackTarget {
-				if !targetServicesMap["/"+sName+"/"+srvName] {
-					continue
-				}
-			}
-
-			key := sName + "/" + srvName
-			if !seen[key] {
-				seen[key] = true
-				s := sd.services[srvName]
-				results = append(results, ResolvedTarget{
-					StackName:     sName,
-					ComposePath:   sd.composePath,
-					ServiceName:   srvName,
-					ContainerName: s.ContainerName,
-					Image:         s.Image,
-					Labels:        s.ParsedLabels,
-				})
+		if !hasSpecificServiceTargets {
+			for srvName := range stacks[sName].services {
+				targetServicesMap["/"+sName+"/"+srvName] = true
 			}
 		}
 	}
 
-	return results, nil
+	// Recursively resolve native depends_on dependencies
+	var expandDeps func(srvPath string)
+	expandDeps = func(srvPath string) {
+		parts := strings.Split(strings.TrimPrefix(srvPath, "/"), "/")
+		if len(parts) != 2 {
+			return
+		}
+		stackName, srvName := parts[0], parts[1]
+		sd, ok := stacks[stackName]
+		if !ok {
+			return
+		}
+		srv, ok := sd.services[srvName]
+		if !ok {
+			return
+		}
+
+		for _, dep := range srv.ParsedDependsOn {
+			depStack, ok := serviceToStack[dep]
+			if !ok {
+				continue // external or missing dependency
+			}
+			depPath := "/" + depStack + "/" + dep
+			if !targetServicesMap[depPath] {
+				targetServicesMap[depPath] = true
+				targetStacksMap[depStack] = true
+				expandDeps(depPath)
+			}
+		}
+	}
+
+	// Expand all explicitly targeted services
+	var initialTargets []string
+	for tgt := range targetServicesMap {
+		initialTargets = append(initialTargets, tgt)
+	}
+	for _, tgt := range initialTargets {
+		expandDeps(tgt)
+	}
+
+	// Perform topological sort (DFS)
+	var sortedResults []ResolvedTarget
+	visited := make(map[string]bool)
+	visiting := make(map[string]bool)
+
+	var visit func(srvPath string) error
+	visit = func(srvPath string) error {
+		if visiting[srvPath] {
+			return fmt.Errorf("circular dependency detected involving %s", srvPath)
+		}
+		if visited[srvPath] {
+			return nil
+		}
+		visiting[srvPath] = true
+
+		parts := strings.Split(strings.TrimPrefix(srvPath, "/"), "/")
+		stackName, srvName := parts[0], parts[1]
+		srv := stacks[stackName].services[srvName]
+
+		// Visit dependencies first
+		for _, dep := range srv.ParsedDependsOn {
+			depStack, ok := serviceToStack[dep]
+			if ok {
+				depPath := "/" + depStack + "/" + dep
+				if targetServicesMap[depPath] {
+					if err := visit(depPath); err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		visiting[srvPath] = false
+		visited[srvPath] = true
+
+		sortedResults = append(sortedResults, ResolvedTarget{
+			StackName:     stackName,
+			ComposePath:   stacks[stackName].composePath,
+			ServiceName:   srvName,
+			ContainerName: srv.ContainerName,
+			Image:         srv.Image,
+			Labels:        srv.ParsedLabels,
+		})
+		return nil
+	}
+
+	// Sort the targetServicesMap keys before visiting to ensure deterministic order
+	var targetPaths []string
+	for tgt := range targetServicesMap {
+		targetPaths = append(targetPaths, tgt)
+	}
+	sort.Strings(targetPaths)
+
+	for _, tgt := range targetPaths {
+		if err := visit(tgt); err != nil {
+			return nil, err
+		}
+	}
+
+	return sortedResults, nil
 }
 
 func ResolveTargetsByImage(workDir string, imageQuery string) ([]ResolvedTarget, error) {

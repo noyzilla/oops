@@ -21,6 +21,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    depends_on:
+      - mysql
     networks:
       - net-edge
       - net-db
@@ -44,6 +46,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    depends_on:
+      - mysql
     networks:
       - net-db
 

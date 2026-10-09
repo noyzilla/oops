@@ -212,29 +212,33 @@ func (o *Orchestrator) Up(ctx context.Context, targets []docker.ResolvedTarget, 
 }
 
 func (o *Orchestrator) upAllowed(targets []docker.ResolvedTarget, delay time.Duration) error {
-	stackServiceMap := make(map[string][]string)
-	stackComposeMap := make(map[string]string)
-	var orderedStacks []string
-
-	for _, t := range targets {
-		if _, exists := stackServiceMap[t.StackName]; !exists {
-			orderedStacks = append(orderedStacks, t.StackName)
-			stackComposeMap[t.StackName] = t.ComposePath
-		}
-		stackServiceMap[t.StackName] = append(stackServiceMap[t.StackName], t.ServiceName)
+	type executionGroup struct {
+		stackName   string
+		composePath string
+		services    []string
 	}
 
-	for i, stack := range orderedStacks {
-		services := stackServiceMap[stack]
-		composePath := stackComposeMap[stack]
+	var groups []executionGroup
+	for _, t := range targets {
+		if len(groups) > 0 && groups[len(groups)-1].stackName == t.StackName {
+			groups[len(groups)-1].services = append(groups[len(groups)-1].services, t.ServiceName)
+		} else {
+			groups = append(groups, executionGroup{
+				stackName:   t.StackName,
+				composePath: t.ComposePath,
+				services:    []string{t.ServiceName},
+			})
+		}
+	}
 
-		log.Printf("==> Starting stack /%s (Services: %v)...", stack, services)
-		cmdArgs := append([]string{"up", "-d"}, services...)
-		if err := RunComposeCommand(composePath, cmdArgs...); err != nil {
+	for i, group := range groups {
+		log.Printf("==> Starting stack /%s (Services: %v)...", group.stackName, group.services)
+		cmdArgs := append([]string{"up", "-d"}, group.services...)
+		if err := RunComposeCommand(group.composePath, cmdArgs...); err != nil {
 			return err
 		}
 
-		if delay > 0 && i < len(orderedStacks)-1 {
+		if delay > 0 && i < len(groups)-1 {
 			log.Printf("Pausing %v before starting next stack...", delay)
 			time.Sleep(delay)
 		}
