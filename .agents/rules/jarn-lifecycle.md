@@ -40,9 +40,10 @@ GATE 1 → GATE 2 → GATE 3
 
 ### GATE 2: Surgical Execution & Self-Verification (The Dev Pairing Gate)
 
-- **Step 0 Branch Isolation**: Before modifying, creating, or deleting any codebase file, verify `git branch --show-current`. If on `main`, immediately execute `git checkout -b <type>/<slug>`. Working directly on `main` is strictly prohibited.
+- **Step 0 Branch Isolation**: System restriction: File modification on `main` is blocked. You must execute `git branch --show-current` as your first action. If on `main`, immediately execute `git checkout -b <type>/<slug>` before proceeding with ANY issue execution.
+- **Context Switching Guard**: If assigned a new task that requires a different branch while currently working on an active branch, you MUST notify the user and ask for confirmation. You MUST ensure the current work is fully committed and merged (or cleanly stashed/abandoned) before executing a new `git checkout -b`.
 - **Working Tree Loop by Default**: All changes across the codebase remain in the working tree uncommitted by default. Approving an implementation plan authorizes coding and self-verification in the working tree only; it does NOT grant blanket commit authority.
-- **Discrete Issue Execution**: Work through issue files in `.scratch/<task-slug>/issues/` in sequence. Upon completion and passing verification, micro-commit and transition the issue file to `XXXX-<slug>.done.md`.
+- **Discrete Issue Execution**: Work through issue files in `.scratch/<task-slug>/issues/` in sequence. Upon completion and passing verification, micro-commit and transition the issue file to the appropriate terminal lifecycle postfix as defined in the Status Dictionary in [jarn-naming.md](jarn-naming.md).
 - **Never Derail Workflow**: Mid-flight discoveries or missing sub-tasks must be appended as new issue files in `.scratch/<task-slug>/issues/` rather than derailing the active work.
 - **Scratch Sandbox Isolation**: Temporary reproduction scripts, mock payloads, or diagnostic logs must reside strictly in `.scratch/<task-slug>/tmp/`. Writing scratch files to the project root is strictly prohibited.
 - **Sub-task Micro-Commit Sequencing**: The Driver agent implements the active issue in the working tree, runs targeted verification, and presents the uncommitted diff for Navigator review. Execute `git commit` only upon explicit confirmation.
@@ -59,7 +60,7 @@ GATE 1 → GATE 2 → GATE 3
 - **Code-Spec Parity Verification**: Ensure code implementations match living specs in `docs/specs/<subsystem>.md`.
 - **Evidence Attachment**: Attach empirical test execution logs demonstrating clean passing results (Exit Code 0).
 - **Pre-Merge Audit Execution**: Activate and fulfill the universal quality gate checklist in [jarn-quality.md](jarn-quality.md) and project extensions in `REVIEW.md` via the `jarn-review` skill.
-- **Knowledge Capture & Zero Git Clutter**: When all issues in `.scratch/<task-slug>/issues/` are `.done.md`, co-evolve living specs in `docs/specs/`, record changes in `CHANGELOG.md` under `[Unreleased]`, and update milestones in root `TASK.md`. Because `.scratch/` is git-ignored, it leaves zero git trace on `main`.
+- **Knowledge Capture & Zero Git Clutter**: When all active issues in `.scratch/<task-slug>/issues/` have reached a terminal state as defined in the Status Dictionary in `jarn-naming.md`, co-evolve living specs in `docs/specs/`, record changes in `CHANGELOG.md` under `[Unreleased]`, and update milestones in root `TASK.md`. Because `.scratch/` is git-ignored, it leaves zero git trace on `main`.
 - **Continuous Flow (Default)**: Complete GATE 3, audit against `REVIEW.md`, and execute the merge autonomously once authorized by the Senior/Lead role.
 - **Handoff Interruption (Brake Flow)**: Halt execution and perform a handoff if `CONTRIBUTING.md` mandates a role handoff (e.g., QA) or if the human lead instructs. Update `plan.md`, commit with `handoff(<target>): <message>`, push to origin, and halt.
 - Provide a concise walkthrough of changes and test results, then conclude the task cleanly.

@@ -47,7 +47,7 @@ This document defines the naming conventions for configurations, variables, slug
 ### Slug Formatting Invariants
 - **Lowercase & Hyphens Only**: Strictly lowercase `a-z`, digits `0-9`, and single hyphens `-`. No uppercase, spaces, or underscores.
 - **Concise Scope**: 2–5 words focusing on domain intent. Omit conversational filler words (`the`, `a`, `and`, `how-to`).
-- **Numeric Prefixes**: When sequential order or identifier tracking is required (ADRs in `docs/adr/` and runbooks in `docs/development/`), use a 4-digit zero-padded prefix: `XXXX-<slug>.md` (e.g., `0001-project-identity.md`).
+- **Numeric Prefixes**: When sequential order or identifier tracking is required (ADRs in `docs/adr/` and runbooks in `docs/development/`), use a 4-digit zero-padded prefix: `XXXX-<slug>.md` (e.g., `0001-project-identity.md`). **Drafts do NOT receive a numeric prefix** (e.g., `docs/drafts/project-identity.md`). A number is permanently assigned only upon finalization (when moved to its permanent directory) to prevent unused gaps and preserve historical records.
 
 ## Domain & Intent-Based Naming
 
@@ -57,10 +57,21 @@ This document defines the naming conventions for configurations, variables, slug
 - **Domain Separation Invariant**: Shared utilities MUST remain strictly stateless and technical. Placing domain-specific business rules, entity logic, or database access inside shared utility files is strictly prohibited.
 - **Boolean Predicates**: Boolean variables and functions use clear prefixes (`is_active`, `has_access`, `can_modify`, `should_retry`).
 
-## Filename Lifecycle Postfixes (Zero-Token Status Filtering)
+## The Status Dictionary (Zero-Token Status Filtering)
 
 - **Rule**: Filename extensions may include a lifecycle postfix immediately preceding `.md` (`XXXX-<slug>.<postfix>.md`) to communicate document and task state for instant zero-token filtering via `ls` or globbing without reading file contents.
-- **Stable Numeric Prefix**: The leading `XXXX-` sequence identifier MUST NOT change when a postfix is appended or transitioned.
-- **Standard Postfixes**:
-  - **Architectural Decision Records (`docs/adr/`)**: `[none]` (Active / Accepted), `.superseded.md` (Replaced by newer ADR), `.deprecated.md` (Retired without direct replacement).
-  - **Task Issues (`.scratch/<slug>/issues/`)**: `[none]` (Pending / In Queue), `.done.md` (Completed & Committed), `.blocked.md` (Blocked by prerequisite issue), `.deferred.md` (Postponed to future milestone), `.dropped.md` (Cancelled / Won't do).
+- **Stable Numeric Prefix**: The leading `XXXX-` sequence identifier MUST NOT change when a status postfix is transitioned (e.g., active to `.superseded.md`). Note: Drafts do not possess numeric prefixes.
+
+### Status Dictionary Table
+
+| Postfix | Target Domain | Definition & Usage |
+| :--- | :--- | :--- |
+| `[none]` | All | Active, ongoing, accepted, or pending state. |
+| `.done.md` | Task Issues | The task has been completed, verified, and committed. |
+| `.blocked.md` | Task Issues | The task cannot proceed due to a prerequisite or external blocker. |
+| `.deferred.md` | Task Issues | The task is postponed to a future milestone. |
+| `.dropped.md` | Task Issues | The task is cancelled or "won't do". |
+| `.superseded.md` | ADRs | The decision was active but is replaced by a newer ADR. |
+| `.deprecated.md` | ADRs | The decision is retired without a direct replacement. |
+| `.rejected.md` | ADRs | The proposal was evaluated but formally rejected. Kept for historical record. |
+| *(Archive)* | Drafts | Active brainstorming drafts (`docs/drafts/<slug>.md`) that finalize with significant reasoning are moved to `docs/archived/<slug>.md` to freeze as a knowledge system. |
