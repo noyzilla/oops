@@ -112,37 +112,53 @@ For each matched service in target order:
 
 ### Database Management (`oops db <mysql|postgres>[:<target>] <action>`)
 - **Supported Engines**: `mysql`, `postgres`
-- **Syntax**: `oops db mysql[:<target>] <create|passwd|list|drop> [args...]`
-- **Target Resolution**:
-  - `mysql` -> Default container `mysql`
-  - `mysql:<target>` (e.g. `mysql:mysql-analytics`) -> Target container `mysql-analytics`
-  - `postgres` -> Default container `postgres`
-  - `postgres:<target>` (e.g. `postgres:pg-replica`) -> Target container `pg-replica`
-- **Password Generation & Enforcement**: If password argument is omitted or empty (in `create` or `passwd`), generate a 20-character secure alphanumeric string (`[A-Za-z0-9]`). Never permit creating or updating users with blank passwords.
+- **Syntax**: 
+  - `oops db mysql[:<target>] create <db_name> [password]`
+  - `oops db mysql[:<target>] readonly <db_name> <app_name> [password]`
+  - `oops db mysql[:<target>] passwd <user_name> [new_password]`
+  - `oops db mysql[:<target>] list`
+  - `oops db mysql[:<target>] drop <db_name>`
+- **Naming Constraints & Architecture (1 DB = 1 User)**:
+  - **Hierarchy Rule**: A `db_name` must contain at most one underscore (`_`), restricting databases to 2 levels (e.g., `xxx` for Level 1, `xxx_report` for Level 2).
+  - **Auto User Mapping**: The `create` command ALWAYS creates a database and a user with the EXACT SAME NAME (`db_name`).
+  - **Top User Inheritance**: If a Level 2 database is created (`xxx_report`), the Level 1 Top User (`xxx`) automatically receives access. (In MySQL this is handled via wildcard grants `xxx\_%` during Level 1 creation; in Postgres this is handled via explicit `GRANT` during Level 2 creation).
+- **Readonly Users**: 
+  - The `readonly` command creates a dedicated SELECT-only user with the suffix `__ro_<app_name>` (e.g., `xxx_report__ro_metabase`).
+  - Generates an isolated `.env` credential file specific to this readonly user.
+- **Credential Generation**: Automatic `.env` generation strictly binds to the created user context. `create` generates `config/env/<engine>.<db_name>.env`. `readonly` generates `config/env/<engine>.<user_name>.env`.
 - **MySQL Queries**:
   - **Create**:
     ```sql
-    CREATE DATABASE IF NOT EXISTS `<db>` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-    CREATE USER IF NOT EXISTS '<user>'@'%' IDENTIFIED BY '<pass>';
-    GRANT ALL PRIVILEGES ON `<db>`.* TO '<user>'@'%';
+    CREATE DATABASE IF NOT EXISTS `<db_name>` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE USER IF NOT EXISTS '<db_name>'@'%' IDENTIFIED BY '<pass>';
+    GRANT ALL PRIVILEGES ON `<db_name>`.* TO '<db_name>'@'%';
+    -- If Level 1 (no underscore), also grant wildcard:
+    GRANT ALL PRIVILEGES ON `<db_name>\_%`.* TO '<db_name>'@'%';
     FLUSH PRIVILEGES;
     ```
-  - **Passwd**:
+  - **Readonly**:
     ```sql
-    ALTER USER '<user>'@'%' IDENTIFIED BY '<new_pass>';
+    CREATE USER IF NOT EXISTS '<user_name>'@'%' IDENTIFIED BY '<pass>';
+    GRANT SELECT ON `<db_name>`.* TO '<user_name>'@'%';
     FLUSH PRIVILEGES;
     ```
 - **PostgreSQL Queries**:
   - **Create**:
     ```sql
-    CREATE ROLE "<user>" WITH LOGIN PASSWORD '<pass>';
-    CREATE DATABASE "<db>" OWNER "<user>";
-    GRANT ALL PRIVILEGES ON DATABASE "<db>" TO "<user>";
-    GRANT ALL ON SCHEMA public TO "<user>";
+    CREATE ROLE "<db_name>" WITH LOGIN PASSWORD '<pass>';
+    CREATE DATABASE "<db_name>" OWNER "<db_name>";
+    GRANT ALL PRIVILEGES ON DATABASE "<db_name>" TO "<db_name>";
+    GRANT ALL ON SCHEMA public TO "<db_name>";
+    -- If Level 2 (contains underscore), also explicit grant to Top User:
+    GRANT ALL PRIVILEGES ON DATABASE "<db_name>" TO "<top_user>";
     ```
-  - **Passwd**:
+  - **Readonly**:
     ```sql
-    ALTER ROLE "<user>" WITH PASSWORD '<new_pass>';
+    CREATE ROLE "<user_name>" WITH LOGIN PASSWORD '<pass>';
+    GRANT CONNECT ON DATABASE "<db_name>" TO "<user_name>";
+    GRANT USAGE ON SCHEMA public TO "<user_name>";
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO "<user_name>";
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO "<user_name>";
     ```
 
 ### Container Status Inspection (`oops status [targets...]`)

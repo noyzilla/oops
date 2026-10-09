@@ -9,13 +9,27 @@ import (
 )
 
 // BuildMySQLCreateSQL builds query to create database and user with privileges
-func BuildMySQLCreateSQL(dbName, username, password string) string {
-	return fmt.Sprintf(
+func BuildMySQLCreateSQL(dbName, password string, isLevel1 bool) string {
+	sql := fmt.Sprintf(
 		"CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; "+
 			"CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '%s'; "+
-			"GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'%%'; "+
+			"GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'%%'; ",
+		dbName, dbName, password, dbName, dbName,
+	)
+	if isLevel1 {
+		sql += fmt.Sprintf("GRANT ALL PRIVILEGES ON `%s\\_%%`.* TO '%s'@'%%'; ", dbName, dbName)
+	}
+	sql += "FLUSH PRIVILEGES;"
+	return sql
+}
+
+// BuildMySQLReadonlySQL builds query to create a readonly user
+func BuildMySQLReadonlySQL(dbName, username, password string) string {
+	return fmt.Sprintf(
+		"CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '%s'; "+
+			"GRANT SELECT ON `%s`.* TO '%s'@'%%'; "+
 			"FLUSH PRIVILEGES;",
-		dbName, username, password, dbName, username,
+		username, password, dbName, username,
 	)
 }
 

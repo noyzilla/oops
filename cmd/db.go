@@ -17,7 +17,7 @@ func newDBCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "db <engine>[:<target>] <action> [args...]",
 		Short: "Database provisioning and credentials management for mysql or postgres",
-		Long:  "Manages database and user provisioning for supported engines: mysql, postgres. Actions: create, passwd, list, drop.",
+		Long:  "Manages database and user provisioning for supported engines: mysql, postgres. Actions: create, readonly, passwd, list, drop.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 2 {
 				return cmd.Help()
@@ -36,11 +36,79 @@ func newDBCmd() *cobra.Command {
 
 			switch action {
 			case "create":
-				if len(remainingArgs) < 2 {
-					return fmt.Errorf("usage: oops db %s create <db_name> <user_name> [password]", engineSpec)
+				if len(remainingArgs) < 1 {
+					return fmt.Errorf("usage: oops db %s create <db_name> [password]", engineSpec)
 				}
 				dbName := remainingArgs[0]
-				userName := remainingArgs[1]
+				userName := dbName
+				
+				dbParts := strings.Split(dbName, "_")
+				if len(dbParts) > 2 {
+					return fmt.Errorf("database name '%s' exceeds maximum allowed 2 levels (only one underscore allowed)", dbName)
+				}
+				isLevel1 := len(dbParts) == 1
+				var topUser string
+				if !isLevel1 {
+					topUser = dbParts[0]
+				}
+
+				var password string
+				if len(remainingArgs) >= 2 && remainingArgs[1] != "" {
+					password = remainingArgs[1]
+				} else {
+					var err error
+					password, err = db.GeneratePassword(20)
+					if err != nil {
+						return err
+					}
+				}
+
+				if engine == "mysql" {
+					if containerTarget == "" {
+						containerTarget = "mysql"
+					}
+					sql := db.BuildMySQLCreateSQL(dbName, password, isLevel1)
+					_, err := db.ExecuteMySQL(context.Background(), containerTarget, sql)
+					if err != nil {
+						return err
+					}
+				} else if engine == "postgres" {
+					if containerTarget == "" {
+						containerTarget = "postgres"
+					}
+					sql := db.BuildPostgresCreateSQL(dbName, password, topUser)
+					_, err := db.ExecutePostgres(context.Background(), containerTarget, sql)
+					if err != nil {
+						return err
+					}
+				} else {
+					return fmt.Errorf("unsupported database engine: %s", engine)
+				}
+
+				fmt.Printf("Database: %s\nUser: %s\nPassword: %s\n", dbName, userName, password)
+				
+				if !noExport {
+					if err := writeEnvFile(engine, containerTarget, dbName, userName, password); err != nil {
+						fmt.Printf("Warning: failed to export env file: %v\n", err)
+					}
+				}
+				
+				return nil
+
+			case "readonly":
+				if len(remainingArgs) < 2 {
+					return fmt.Errorf("usage: oops db %s readonly <db_name> <app_name> [password]", engineSpec)
+				}
+				dbName := remainingArgs[0]
+				appName := remainingArgs[1]
+				
+				dbParts := strings.Split(dbName, "_")
+				if len(dbParts) > 2 {
+					return fmt.Errorf("database name '%s' exceeds maximum allowed 2 levels (only one underscore allowed)", dbName)
+				}
+				
+				userName := fmt.Sprintf("%s__ro_%s", dbName, appName)
+
 				var password string
 				if len(remainingArgs) >= 3 && remainingArgs[2] != "" {
 					password = remainingArgs[2]
@@ -56,7 +124,7 @@ func newDBCmd() *cobra.Command {
 					if containerTarget == "" {
 						containerTarget = "mysql"
 					}
-					sql := db.BuildMySQLCreateSQL(dbName, userName, password)
+					sql := db.BuildMySQLReadonlySQL(dbName, userName, password)
 					_, err := db.ExecuteMySQL(context.Background(), containerTarget, sql)
 					if err != nil {
 						return err
@@ -65,7 +133,7 @@ func newDBCmd() *cobra.Command {
 					if containerTarget == "" {
 						containerTarget = "postgres"
 					}
-					sql := db.BuildPostgresCreateSQL(dbName, userName, password)
+					sql := db.BuildPostgresReadonlySQL(dbName, userName, password)
 					_, err := db.ExecutePostgres(context.Background(), containerTarget, sql)
 					if err != nil {
 						return err
@@ -74,7 +142,7 @@ func newDBCmd() *cobra.Command {
 					return fmt.Errorf("unsupported database engine: %s", engine)
 				}
 
-				fmt.Printf("Database: %s\nUser: %s\nPassword: %s\n", dbName, userName, password)
+				fmt.Printf("Readonly User: %s\nTarget DB: %s\nPassword: %s\n", userName, dbName, password)
 				
 				if !noExport {
 					if err := writeEnvFile(engine, containerTarget, dbName, userName, password); err != nil {
@@ -200,7 +268,7 @@ func writeEnvFile(engine, containerTarget, dbName, userName, password string) er
 		return err
 	}
 
-	fileName := fmt.Sprintf("%s.%s.env", containerTarget, dbName)
+	fileName := fmt.Sprintf("%s.%s.env", containerTarget, userName)
 	filePath := filepath.Join(envDir, fileName)
 
 	var port string

@@ -9,14 +9,32 @@ import (
 )
 
 // BuildPostgresCreateSQL builds queries to create user and database with privileges
-func BuildPostgresCreateSQL(dbName, username, password string) string {
-	return fmt.Sprintf(
+func BuildPostgresCreateSQL(dbName, password string, topUser string) string {
+	sql := fmt.Sprintf(
 		"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '%s') THEN "+
 			"CREATE ROLE \"%s\" WITH LOGIN PASSWORD '%s'; END IF; END $$; "+
 			"CREATE DATABASE \"%s\" OWNER \"%s\"; "+
 			"GRANT ALL PRIVILEGES ON DATABASE \"%s\" TO \"%s\"; "+
 			"\\c \"%s\"; GRANT ALL ON SCHEMA public TO \"%s\";",
-		username, username, password, dbName, username, dbName, username, dbName, username,
+		dbName, dbName, password, dbName, dbName, dbName, dbName, dbName, dbName,
+	)
+	if topUser != "" {
+		sql += fmt.Sprintf(" GRANT ALL PRIVILEGES ON DATABASE \"%s\" TO \"%s\";", dbName, topUser)
+	}
+	return sql
+}
+
+// BuildPostgresReadonlySQL builds queries to create a readonly user
+func BuildPostgresReadonlySQL(dbName, username, password string) string {
+	return fmt.Sprintf(
+		"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '%s') THEN "+
+			"CREATE ROLE \"%s\" WITH LOGIN PASSWORD '%s'; END IF; END $$; "+
+			"GRANT CONNECT ON DATABASE \"%s\" TO \"%s\"; "+
+			"\\c \"%s\"; "+
+			"GRANT USAGE ON SCHEMA public TO \"%s\"; "+
+			"GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"%s\"; "+
+			"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO \"%s\";",
+		username, username, password, dbName, username, dbName, username, username, username,
 	)
 }
 
