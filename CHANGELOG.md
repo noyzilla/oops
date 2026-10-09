@@ -4,7 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
-## [Unreleased]
+## [v1.1.0] - 2026-10-09
+
+### Added
+- Dedicated `oops db <engine> readonly <db_name> <app_name>` subcommand to explicitly provision SELECT-only database credentials mapping to `<db_name>__ro_<app_name>`.
+- Automated `.env` file generation specifically scoped to readonly user credentials.
+- MySQL implicit wildcard inheritance for Top User granting `xxx\_%` upon Level 1 creation.
+- PostgreSQL explicit inheritance mapping Level 2 databases to Level 1 Top User via `GRANT`.
+
+### Changed
+- Refactored `oops db <engine> create` syntax to accept a single `<db_name>`, enforcing a strict 1:1 database-to-user architecture.
+- Enforced maximum 2-level hierarchy naming constraint (max one underscore `_`) for database provisioning.
 
 ## [v1.0.0] - 2026-10-09
 
@@ -207,17 +217,6 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Primary `OOPSBOX_DIR` environment variable support in `ResolveWorkDir` with backward-compatible `OOPS_DIR` fallback.
 - Docker CLI wrapper and shell function documentation for running `oops` from any directory or on Google Container-Optimized OS (COS) and locked-down `noexec` environments.
 
-## [Unreleased]
-
-### Added
-- Dedicated `oops db <engine> readonly <db_name> <app_name>` subcommand to explicitly provision SELECT-only database credentials mapping to `<db_name>__ro_<app_name>`.
-- Automated `.env` file generation specifically scoped to readonly user credentials.
-- MySQL implicit wildcard inheritance for Top User granting `xxx\_%` upon Level 1 creation.
-- PostgreSQL explicit inheritance mapping Level 2 databases to Level 1 Top User via `GRANT`.
-
-### Changed
-- Refactored `oops db <engine> create` syntax to accept a single `<db_name>`, enforcing a strict 1:1 database-to-user architecture.
-- Enforced maximum 2-level hierarchy naming constraint (max one underscore `_`) for database provisioning.
 
 ## [0.6.0] - 2026-10-04
 
