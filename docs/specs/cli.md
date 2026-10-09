@@ -83,7 +83,7 @@ The CLI is engineered around two distinct developer working modes:
 
 | Tier | Category | Subcommands | Context Resolution & Safety Invariant |
 | :--- | :--- | :--- | :--- |
-| **Tier 1** | **Workspace & Git Deployment** | `oops remote`, `oops deploy`, `oops rx` | **Git Project Boundary**: Requires execution inside a Git Project repository (`.git` at root or parent) and valid Oopsbox Workspace. |
+| **Tier 1** | **Workspace & Git Deployment** | `oops remote`, `oops deploy`, `oops sync`, `oops rx` | **Git Project Boundary**: Requires execution inside a Git Project repository (`.git` at root or parent) and valid Oopsbox Workspace. |
 | **Tier 2** | **Local Container Orchestration** | `oops up`, `oops down`, `oops status`, `oops logs`, `oops db`, `oops backup`, `oops dns` | **Zero Git Dependency**: Operates on local containers and active box DNS/environment configuration without `.git` (standalone `oopsbox` or machine Active Box). |
 | **Tier 3** | **Global Machine Tools** | `oops box`, `oops ip`, `oops version`, `oops selfupdate` | **Global Context**: Standalone machine tools runnable from any directory without restriction. |
 
@@ -237,6 +237,7 @@ Oops commands can be invoked from any terminal directory. The working directory 
 | `oops box switch` | `<path>` | Gracefully tears down current box, updates active box, and starts target box |
 | `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store / Keychain |
 | `oops deploy` | `[-r <remote>] [ref]` | Deploys workspace updates to remote server over SSH |
+| `oops sync` | `[push\|pull\|env\|secret] [-r <remote>]` | Synchronizes configurations (`.env`) and sensitive data (`config/secrets/`) with remote server (See `docs/specs/env-sync.md`) |
 | `oops remote add` | `<ssh-target> [-r <name>]` | Registers remote server via SSH (namespaced as `oops-<name>` in Git), sets up local Git remote |
 | `oops remote list` | *(none)* | Lists registered remote servers (displays logical names without `oops-` prefix) |
 | `oops remote remove` | `<name>` | Removes registered remote server configuration (`oops-<name>`) |
