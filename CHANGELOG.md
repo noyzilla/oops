@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+### Added
+- Implemented `oops sync` CLI suite (`oops sync push|pull|env|secret`) for synchronized file transfer of environment variables and sensitive configuration over SSH.
+- Added Suffix Mapping Protocol (`.<remote>`) to translate remote-specific `.env` names back to standard `.env` formats seamlessly during synchronization.
+
 ## [v1.1.0] - 2026-10-09
 
 ### Added
