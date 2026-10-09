@@ -6,11 +6,15 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.0.0] - 2026-10-09
+
 ### Added
+- Added SeaweedFS object storage configuration (`compose.storage.yml`) to support S3-compatible workloads locally.
 - Introduced `x-oops-depends_on` inside compose manifests for automated topological dependency resolution, replacing the central `profiles:` block in `oops.yml`.
 
 ### Changed
 - `oops up` now targets the default `/.` stack (`compose.yml`) instead of `@default`, enabling fully decentralized project-level architecture.
+- Reorganized edge configuration files (`compose.edge-caddy.yml`, etc.) and updated orchestration paths.
 
 ### Removed
 - Abolished `@profile` syntax and legacy `@all` dynamic resolver support.
