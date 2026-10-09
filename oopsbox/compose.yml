@@ -2,13 +2,14 @@
 # Oops Default Stack (compose.yml)
 # ==============================================================================
 # This is the default entrypoint when running `oops up` with no arguments.
-# You can define which stacks should boot by declaring them in x-oops-depends_on.
+# You can define which stacks should boot by including them via the 'include' directive.
+# Included stacks will automatically start when this compose file is started.
 # ==============================================================================
 
-x-oops-depends_on:
-  - /edge-caddy
-  - /db
-  - /apps
+include:
+  - compose.edge-caddy.yml
+  - compose.db.yml
+  - compose.apps.yml
 
 services:
   oops:

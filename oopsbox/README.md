@@ -11,7 +11,7 @@ Oopsbox is the production-ready, turnkey Infrastructure as Code (IaC) blueprint 
 ├── oops.yml              # Center Master Config: registries, groups, backups, shared dns (Committed)
 ├── oopsbox.yml           # Local Workstation Engine & DNS settings (git-ignored)
 ├── oopsbox.yml.example   # Workstation configuration template (Committed)
-├── compose.yml           # Root Stack (/.): Core environment and topology relationships (x-oops-depends_on)
+├── compose.yml           # Root Stack (/.): Core environment and topology relationships (include)
 ├── compose.edge-caddy.yml# Edge Reverse Proxy Stack (Caddy)
 ├── compose.db.yml        # Persistence & Cache Stack (MySQL, Postgres, Redis on net-db)
 ├── compose.tool.yml      # Dev & Mock Utilities Stack (httpbin, mailpit)
@@ -105,7 +105,7 @@ dns:
     # - .staging.oops 10.0.0.10
 ```
 
-*Note: In older versions, stack profiles were defined here. They are now defined topologically in `compose.yml` via the `x-oops-depends_on` extension.*
+*Note: In older versions, stack profiles were defined here. They are now defined topologically in `compose.yml` via the native Docker Compose `include` directive.*
 
 Use the `/<stack>` target syntax with any `oops` command:
 ```bash

@@ -11,8 +11,6 @@ services:
       # Oops Orchestration
       oops.enable: "true"
       oops.secret: "${OOPS_SECRET:-change_this_to_a_secure_token}"
-      oops.stop.cmd: ""
-      oops.stop.timeout: "30s"
       oops.health.url: "http://localhost:80/health"
 
       # Caddy Proxy Ingress (Public Facing / HTTPS)
@@ -39,8 +37,8 @@ services:
       # Oops Orchestration
       oops.enable: "true"
       oops.secret: "${OOPS_SECRET:-change_this_to_a_secure_token}"
-      oops.stop.cmd: "echo 'Finishing background tasks...'"
-      oops.stop.timeout: "60"
+    pre_stop:
+      - command: /bin/sh -c "echo 'Finishing background tasks...'"
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
       interval: 5s

@@ -42,7 +42,7 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
   - **Suffix Match (`..<suffix>`)**: e.g., `..worker` matches all services ending with `worker` (e.g. `mail-worker`, `job-worker`).
   - **Contains Match (`..<keyword>..`)**: e.g., `..api..` matches any service name containing `api`.
 - **Default Stack (Omitted Target)**:
-  - If no target is specified, the CLI defaults to targeting the `/.` stack (`compose.yml`). Any services or dependencies required for the default environment should be declared in `compose.yml` via `x-oops-depends_on: [\"/edge\", \"/db\"]`.
+  - If no target is specified, the CLI defaults to targeting the `/.` stack (`compose.yml`). Any services or dependencies required for the default environment should be declared in `compose.yml` via the `include` directive (e.g., `include: ["compose.edge-caddy.yml", "compose.db.yml"]`).
 
 ### Workspace Directory Resolution (`ResolveWorkDir`)
 
@@ -90,10 +90,9 @@ The CLI is engineered around two distinct developer working modes:
 ### Sequential Lifecycle Hooks & Inter-Service Delay Protocol
 When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down`, or `oops up` targeting wildcards such as `app..` or whole stacks):
 - **Sequential Service Execution**: Matched services are processed sequentially one by one in resolved dependency or lexicographical order.
-- **Graceful Pre-Stop Hook (`oops.stop.cmd`)**:
-  - Before stopping or restarting any running container, inspect for the `oops.stop.cmd` label.
-  - If present, execute the stop command inside the container with timeout `oops.stop.timeout` (default 30s).
-  - If the hook times out or errors, log a warning and proceed with container termination.
+- **Native Docker Compose Hooks**:
+  - Relies entirely on Docker Compose (v2.30.0+) native lifecycle hooks (`pre_start`, `post_start`, `pre_stop`) defined within `compose.yml`.
+  - The CLI delegates container stopping and initialization to `docker compose up / stop` which natively executes these hooks.
 - **Inter-Service Delay Gap (`--delay, -d <duration|int>`)**:
   - Optional flag with shorthand `-d` (e.g., `-d 5s`, `-d 5`, `--delay 5s`, or `--delay 5`) to introduce a pause between each consecutive service operation in a group.
   - Accepts standard duration strings (e.g. `5s`, `10s`, `1m`) or integer seconds (e.g. `5`), behaving intuitively like `sleep`.
@@ -102,9 +101,8 @@ When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down
 ### Sequential Rolling Update Algorithm (`oops update <targets...>`)
 For each matched service in target order:
 - **Step 1 - Pull**: Run `docker compose -f <group_compose> pull <service>`.
-- **Step 2 - Stop Hook (if defined)**: If container has label `oops.stop.cmd`, execute the command inside the running container with timeout `oops.stop.timeout` (default `OOPS_STOP_TIMEOUT` or 30s).
-- **Step 3 - Recreate**: Run `docker compose -f <group_compose> up -d --no-deps <service>`.
-- **Step 4 - Health Polling**:
+- **Step 2 - Recreate**: Run `docker compose -f <group_compose> up -d --no-deps <service>`. (This delegates stop/start and native `pre_stop`/`pre_start` hooks to Compose).
+- **Step 3 - Health Polling**:
   - Poll Docker container inspection state `.State.Health.Status` every `OOPS_HEALTHCHECK_INTERVAL` (default 3s).
   - If `.State.Health.Status == "healthy"`: Service update succeeded. If `-d` / `--delay` is set, pause for the delay gap before advancing to next service.
   - If container has no native healthcheck but has `oops.health.url`: Send HTTP GET requests until 200 OK is received.
@@ -286,7 +284,7 @@ Release Mode is `host-release` (declared in `AGENTS.md`):
 - **Acceptance Scenarios**:
   - `oops up /<group>` correctly locates compose file in `edge/`, `db/`, `tool/`, `apps/`.
   - `oops up /db/mysql` starts only `mysql` service inside `db/compose.yml`.
-  - `oops stop app..` executes `oops.stop.cmd` on all matching running containers sequentially with `--delay` (`-d`) gap.
+  - `oops stop app..` delegates to `docker compose stop` sequentially with `--delay` (`-d`) gap, natively respecting `pre_stop` hooks.
   - `oops update app..` executes rolling update sequentially, waiting for health checks and observing delay gaps.
   - `oops db mysql create my_db my_user` generates 20-char password, creates user, and automatically exports credentials to `config/env/mysql.my_db.env`.
   - `oops db postgres:pg-custom create my_db my_user my_pass` targets `pg-custom` container and exports to `config/env/pg-custom.my_db.env`.

@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Changed
+- Deprecated custom `x-oops-depends_on` topological resolution in favor of native Docker Compose `include` directive. `oops` now relies on Compose's built-in dependency management.
+
 ### Added
 - Implemented `oops sync` CLI suite (`oops sync push|pull|env|secret`) for synchronized file transfer of environment variables and sensitive configuration over SSH.
 - Added Suffix Mapping Protocol (`.<remote>`) to translate remote-specific `.env` names back to standard `.env` formats seamlessly during synchronization.

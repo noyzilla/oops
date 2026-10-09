@@ -76,7 +76,7 @@ Uses `traefik:v3.1` as a cloud-native dynamic reverse proxy with built-in metric
 # Start Traefik edge proxy
 oops up /edge-traefik
 
-# Note: You can set this as default by updating x-oops-depends_on in compose.yml
+# Note: You can set this as default by updating `include` in compose.yml
 ```
 
 ### Application Container Labels (`compose.apps.yml`)
@@ -113,7 +113,7 @@ Uses the classic `nginxproxy/nginx-proxy` paired with `nginxproxy/acme-companion
 # Start Nginx edge proxy
 oops up /edge-nginx
 
-# Note: You can set this as default by updating x-oops-depends_on in compose.yml
+# Note: You can set this as default by updating `include` in compose.yml
 ```
 
 ### Application Container Environment (`compose.apps.yml`)

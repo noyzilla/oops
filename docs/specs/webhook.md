@@ -60,9 +60,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 #### 1. Image Recreation Mode (`action: "image"`)
 - Asynchronously pulls the specified image (`docker pull <image>`).
 - For each target container in sequence:
-  - **Stop Hook**: If `oops.stop.cmd` is defined, executes the command inside the running container with timeout `oops.stop.timeout` (default 30s).
-  - **Stop & Remove**: Stops container with 10s grace period and removes existing container.
-  - **Recreate & Start**: Creates a new container preserving original network settings, host configuration, environment, mounts, and labels, then starts it.
+  - **Recreate & Start**: Executes `docker compose -f <compose_file> pull <service>` followed by `docker compose -f <compose_file> up -d --no-deps <service>`. This delegates native `pre_stop` and `pre_start` hooks to Compose directly.
   - **Inter-Service Delay Gap**: If `payload.delay` is specified, pauses for the designated duration before advancing to the next target container.
 - **Image Pruning**: Automatically runs dangling image cleanup (`docker image prune -f`) to reclaim disk space.
 
@@ -71,7 +69,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
   - Spawns a temporary lightweight container using `alpine/git` mounted via `VolumesFrom` targeting the target container.
   - Configures safe directory and executes `git fetch --all --tags --force && git checkout -f tags/<tag>` into directory `oops.git.dir`.
   - **Tool Helper Hook**: If `oops.tool.image` and `oops.tool.cmd` labels are present, runs a temporary helper container to execute migrations or assets builds.
-  - **Stop Hook & Restart**: If `oops.stop.cmd` is defined, executes stop hook before restarting the target container.
+  - **Restart**: Restarts the target container using `docker compose restart`.
   - **Inter-Service Delay Gap**: If `payload.delay` is specified, pauses before advancing to the next target container.
 
 ---
@@ -120,7 +118,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
   - `cmd/server.go`: Subcommand initialization for webhook daemon.
   - `internal/config/`: Port and secret configuration.
   - `internal/webhook/`: HTTP handler, payload parser, router.
-  - `internal/docker/`: Docker SDK client, exec stop hooks, container recreation, git pull runner.
+  - `internal/docker/`: Docker CLI execution engine (delegating `up`, `pull`, `stop` to `docker compose`), git pull runner.
 
 ---
 
@@ -130,5 +128,5 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Acceptance Scenarios**:
   - `POST /update` with invalid token returns `401 Unauthorized`.
   - `POST /update` with missing image on image action returns `400 Bad Request`.
-  - `POST /update` matching target container triggers stop hook and recreates container.
+  - `POST /update` matching target container successfully delegates to `docker compose up -d` maintaining hooks.
   - `POST /update` with git action executes temporary git checkout and restarts target container.
