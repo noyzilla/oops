@@ -32,19 +32,14 @@ Oops and Oopsbox eliminate DevOps complexity through three foundational principl
 
 ```text
 oopsbox/
-├── oops.yml              # Master Config: profiles (@default, @lab), registry shortcuts, backups, DNS
+├── oops.yml              # Master Config: backups, registry shortcuts, DNS
 ├── oopsbox.yml           # Workstation Settings: VM engine (OrbStack/Colima), resources, local DNS
-├── stacks/               # Pure Git-Tracked Infrastructure as Code (IaC)
-│   ├── edge/             # Group: Ingress Reverse Proxy (Caddy) + Oops Daemon (net-edge)
-│   │   ├── compose.yml
-│   │   └── caddy/Caddyfile
-│   ├── db/               # Group: Persistence & Cache (MySQL, Postgres, Redis on isolated net-db)
-│   │   ├── compose.yml
-│   │   └── mysql/my.cnf
-│   ├── tool/             # Group: Dev & Mock Utilities (httpbin, mailpit on net-edge)
-│   │   └── compose.yml
-│   └── apps/             # Group: Application Services (web-app, worker)
-│       └── compose.yml
+├── compose.yml           # Root Stack (/.): Core environment and topology relationships (x-oops-depends_on)
+├── compose.edge-caddy.yml# Edge Reverse Proxy Stack (Caddy)
+├── compose.db.yml        # Persistence & Cache Stack (MySQL, Postgres, Redis)
+├── compose.tool.yml      # Dev & Mock Utilities Stack (httpbin, mailpit)
+├── compose.apps.yml      # Application Services Stack (web-app, worker)
+├── config/               # Version-controlled service configuration (e.g., caddy/Caddyfile)
 ├── data/                 # Live container storage (High-IOPS persistent host volumes)
 └── backups/              # Automated database dumps & filesystem data archives
 ```
@@ -65,18 +60,17 @@ oopsbox/
 
 The `oops` CLI binary manages multi-group containers, performs safe rolling updates, automates database provisioning, and executes backups.
 
-### Smart Target & Profile Selectors
+### Smart Target Selectors
 ```bash
-# Start default profile (@default defined in oops.yml)
+# Start default root stack (/. mapped to compose.yml) and its dependencies
 oops up
 
-# Start custom project profile or whole group
-oops up @lab
-oops up /edge
+# Start specific stack
+oops up /edge-caddy
 oops up /db
 
-# Switch active profile (starts target profile & gracefully stops others)
-oops switch @lab
+# Switch active stack (starts target stack & gracefully stops others)
+oops switch /apps
 
 # Double Dot (..) wildcards
 oops restart app..          # Matches all services starting with 'app'
@@ -96,10 +90,15 @@ oops update gar/my-app:v2.0
 
 ### Automated Database & User Provisioning
 ```bash
-# Generate 20-char secure passwords and provision DB + User + Grants
-oops db mysql create my_database my_user
-oops db postgres:pg-replica create analytics_db analyst_user
-oops db mysql passwd my_user new_password
+# Provision DB & User (1:1 mapped User implicitly created) with a 20-char secure password
+oops db mysql create my_database
+oops db postgres:pg-replica create analytics_db
+
+# Provision SELECT-only readonly users (mapped as <db_name>__ro_<app_name>)
+oops db mysql readonly my_database metabase
+
+# Rotate user password
+oops db mysql passwd my_database new_password
 ```
 
 ### Automated Backup & Safe Interactive Restore
