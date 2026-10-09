@@ -14,6 +14,7 @@ type ResolvedTarget struct {
 	ComposePath   string            `json:"compose_path"`
 	ServiceName   string            `json:"service_name"`
 	ContainerName string            `json:"container_name"`
+	ContainerID   string            `json:"container_id"`
 	Image         string            `json:"image"`
 	Labels        map[string]string `json:"labels"`
 }
@@ -121,7 +122,6 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		stackName   string
 		composePath string
 		services    map[string]ComposeService
-		dependsOn   []string
 	}
 
 	stacks := make(map[string]*stackData)
@@ -137,7 +137,6 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 			stackName:   s,
 			composePath: cPath,
 			services:    cfg.Services,
-			dependsOn:   cfg.OopsDependsOn,
 		}
 		allStacks = append(allStacks, s)
 	}
@@ -220,59 +219,17 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		}
 	}
 
-	// DFS for topological sort of stacks
-	var topoOrdered []string
-	visited := make(map[string]bool)
-	visiting := make(map[string]bool)
-
-	var visit func(stackName string, callStack []string) error
-	visit = func(stackName string, callStack []string) error {
-		if visiting[stackName] {
-			return fmt.Errorf("circular stack dependency detected: %s -> %s", strings.Join(callStack, " -> "), stackName)
-		}
-		if visited[stackName] {
-			return nil
-		}
-		
-		sd, exists := stacks[stackName]
-		if !exists {
-			return fmt.Errorf("stack not found: %s", stackName)
-		}
-
-		visiting[stackName] = true
-		callStack = append(callStack, stackName)
-
-		// Visit dependencies first
-		for _, dep := range sd.dependsOn {
-			depStack := strings.TrimPrefix(dep, "/")
-			if err := visit(depStack, callStack); err != nil {
-				return err
-			}
-		}
-
-		visiting[stackName] = false
-		visited[stackName] = true
-		topoOrdered = append(topoOrdered, stackName)
-		return nil
-	}
-
-	// Build topological order for all target stacks
+	// Build ordered list of target stacks
 	var tStacks []string
 	for s := range targetStacksMap {
 		tStacks = append(tStacks, s)
 	}
 	sort.Strings(tStacks)
 
-	for _, s := range tStacks {
-		if err := visit(s, nil); err != nil {
-			return nil, err
-		}
-	}
-
 	var results []ResolvedTarget
 	seen := make(map[string]bool)
 
-	for _, sName := range topoOrdered {
+	for _, sName := range tStacks {
 		sd := stacks[sName]
 		
 		hasSpecificServiceTargets := false
