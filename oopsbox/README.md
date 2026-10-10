@@ -244,7 +244,7 @@ oops backup-data prune              # Prune expired data volume archives
 Trigger deployments from GitHub Actions or GitLab CI via the Webhook Engine:
 ```bash
 curl -X POST https://webhook.yourdomain.com/deploy \
-  -H "X-Oops-Token: your_secret_token" \
+  -H "Authorization: Bearer your_secret_token" \
   -H "Content-Type: application/json" \
   -d '{"target": "app..", "mode": "image"}'
 ```

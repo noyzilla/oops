@@ -35,7 +35,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 ### Authentication Protocol
 - Requests must supply a valid authentication token via:
-  - Header: `X-Oops-Token: <TOKEN>` or `Authorization: Bearer <TOKEN>`
+  - Header: `Authorization: Bearer <TOKEN>`
 - Validation Logic:
   - Token is verified against each target container's `oops.secret` label.
   - If a global fallback secret is configured (`OOPS_SECRET`), it authorizes containers where `oops.secret` matches or is omitted.
