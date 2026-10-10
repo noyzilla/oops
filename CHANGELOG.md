@@ -12,6 +12,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Added Suffix Mapping Protocol (`.<remote>`) to translate remote-specific `.env` names back to standard `.env` formats seamlessly during synchronization.
 
 ### Changed
+- Enforced strict requirement of `Authorization: Bearer <TOKEN>` in webhook headers, removing `X-Oops-Token` and the environment variable `OOPS_SECRET` fallback.
 - `oops up` execution now strictly respects the topological dependency tree (DFS) rather than simple alphabetical stack sorting.
 - Deprecated custom `x-oops-depends_on` topological resolution in favor of native Docker Compose `include` directive. `oops` now relies on Compose's built-in dependency management.
 
