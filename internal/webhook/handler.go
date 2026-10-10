@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/noyzilla/oops/internal/docker"
@@ -32,11 +31,8 @@ func HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := r.Header.Get("X-Oops-Token")
-	if token == "" {
-		authHeader := r.Header.Get("Authorization")
-		token = strings.TrimPrefix(authHeader, "Bearer ")
-	}
+	authHeader := r.Header.Get("Authorization")
+	token := strings.TrimPrefix(authHeader, "Bearer ")
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -84,11 +80,6 @@ func HandleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Received deployment webhook -> Action: %q, Target: %q, Image: %q, URL: %q, Tag: %q, Delay: %q",
 		payload.Action, selector, payload.Image, payload.URL, payload.Tag, payload.Delay)
-
-	// Fallback global secret if token wasn't provided or needed
-	if token == "" {
-		token = os.Getenv("OOPS_SECRET")
-	}
 
 	// Synchronously validate targets and verify the authentication token
 	targets, err := docker.ValidateAndFindTargets(context.Background(), payload.Action, payload.Image, payload.URL, selector, token)
