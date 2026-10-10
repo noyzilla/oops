@@ -76,6 +76,7 @@ To prevent misaligned implementations, unnecessary documentation churn, and AI c
 ### Living Spec Synthesis (`docs/specs/`) — Spec is Law
 - Once consensus is reached, the AI synthesizes the agreement into the subsystem living specification under `docs/specs/<subsystem>.md` using `.agents/templates/docs/spec.md`.
 - **Current System Truth Invariant**: Living specifications define current system truth (e.g. `docs/specs/authentication.md`), never in-flight feature requests or task deltas (e.g., `docs/specs/add-oauth.md` is forbidden). All code implementations must strictly conform to the spec.
+- **Strict Spec Adherence (No Spec, No Code)**: AI agents and contributors are strictly forbidden from writing code, adding CLI options, creating aliases, or implementing backward compatibility that is not explicitly defined in the living specification. Every implemented logic must have a backing spec. Do not guess user intent or build "just in case" features.
 - The specification defines current truth: business rules, state machines, API contracts, and explicit verification criteria. Historical evolution is recorded cleanly in `CHANGELOG.md` and Git commit logs.
 
 ### Dependency & Blast-Radius Scoping
