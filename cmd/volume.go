@@ -5,20 +5,20 @@ import (
 	"os"
 
 	"github.com/noyzilla/oops/internal/orchestrator"
-	"github.com/noyzilla/oops/internal/storage"
+	"github.com/noyzilla/oops/internal/volume"
 	"github.com/spf13/cobra"
 )
 
-func newStorageCmd() *cobra.Command {
+func newVolumeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "storage",
-		Short: "Inspect and link persistent storage paths",
+		Use:   "volume",
+		Short: "Inspect and link persistent volume paths",
 	}
-	cmd.AddCommand(newStorageCheckCmd(), newStorageLinkCmd())
+	cmd.AddCommand(newVolumeCheckCmd(), newVolumeLinkCmd())
 	return cmd
 }
 
-func newStorageCheckCmd() *cobra.Command {
+func newVolumeCheckCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "check",
 		Short: "Reports dead links and unmounted paths used by containers and backups",
@@ -40,18 +40,18 @@ func newStorageCheckCmd() *cobra.Command {
 				return err
 			}
 			if len(findings) == 0 {
-				cmd.Println("Storage OK: no dead links or unmounted paths found.")
+				cmd.Println("Volume OK: no dead links or unmounted paths found.")
 				return nil
 			}
 			for _, f := range findings {
 				cmd.Printf("UNHEALTHY  %-24s %s\n           %s -> %s: %s\n", f.Stack, f.Source, f.Problem.Path, f.Problem.Target, f.Problem.Reason)
 			}
-			return fmt.Errorf("storage check found %d unhealthy path(s)", len(findings))
+			return fmt.Errorf("volume check found %d unhealthy path(s)", len(findings))
 		},
 	}
 }
 
-func newStorageLinkCmd() *cobra.Command {
+func newVolumeLinkCmd() *cobra.Command {
 	var name string
 	var force bool
 
@@ -66,7 +66,7 @@ func newStorageLinkCmd() *cobra.Command {
 				return err
 			}
 
-			linkPath, err := storage.NewChecker().Link(workDir, name, args[0], orchestrator.StoragePrefixes(workDir), force)
+			linkPath, err := volume.NewChecker().Link(workDir, name, args[0], orchestrator.StoragePrefixes(workDir), force)
 			if err != nil {
 				return err
 			}

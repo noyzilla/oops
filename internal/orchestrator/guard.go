@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/noyzilla/oops/internal/docker"
-	"github.com/noyzilla/oops/internal/storage"
+	"github.com/noyzilla/oops/internal/volume"
 )
 
 // edgeStackName is never blocked: the webhook server and DNS live in the edge stack
@@ -79,7 +79,7 @@ func parseBindSources(raw []byte) map[string][]string {
 
 
 // planGuard decides which targets are allowed and blocked given the detected Bad Links
-func planGuard(targets []docker.ResolvedTarget, check func(source string) *storage.Problem,
+func planGuard(targets []docker.ResolvedTarget, check func(source string) *volume.Problem,
 	binds func(composePath string) map[string][]string, ranks map[string]int, unlisted int) (allowed []docker.ResolvedTarget, blocked []BlockedService) {
 
 	rank := func(t docker.ResolvedTarget) int {
@@ -134,7 +134,7 @@ func planGuard(targets []docker.ResolvedTarget, check func(source string) *stora
 func StoragePrefixes(workDir string) []string {
 	cfg, err := docker.LoadOopsConfig(workDir)
 	if err != nil || cfg.Storage.MountPrefixes == nil {
-		return storage.DefaultMountPrefixes
+		return volume.DefaultMountPrefixes
 	}
 	return cfg.Storage.MountPrefixes
 }
@@ -142,7 +142,7 @@ func StoragePrefixes(workDir string) []string {
 // CheckBackupDir refuses a backup directory that is a dead link or sits on the OS disk under a mount prefix.
 // It is deliberately independent of container management.
 func CheckBackupDir(workDir, backupDir string) error {
-	if p := storage.NewChecker().CheckPath(backupDir, StoragePrefixes(workDir), true); p != nil {
+	if p := volume.NewChecker().CheckPath(backupDir, StoragePrefixes(workDir), true); p != nil {
 		return fmt.Errorf("backup directory %s is unhealthy: %s -> %s: %s", backupDir, p.Path, p.Target, p.Reason)
 	}
 	return nil
@@ -152,7 +152,7 @@ func CheckBackupDir(workDir, backupDir string) error {
 type Finding struct {
 	Stack   string
 	Source  string
-	Problem storage.Problem
+	Problem volume.Problem
 }
 
 // InspectBox checks every bind source of every stack plus the backup directory
@@ -161,7 +161,7 @@ func InspectBox(workDir, backupDir string) ([]Finding, error) {
 	if err != nil {
 		return nil, err
 	}
-	checker := storage.NewChecker()
+	checker := volume.NewChecker()
 	prefixes := StoragePrefixes(workDir)
 
 	var stacks []string
@@ -213,10 +213,10 @@ func (o *Orchestrator) applyGuard(targets []docker.ResolvedTarget) ([]docker.Res
 		return targets, nil
 	}
 
-	checker := storage.NewChecker()
+	checker := volume.NewChecker()
 	prefixes := StoragePrefixes(o.WorkDir)
 	logged := make(map[string]bool)
-	check := func(source string) *storage.Problem {
+	check := func(source string) *volume.Problem {
 		p := checker.CheckPath(source, prefixes, false)
 		if p != nil && !logged[p.Path] {
 			logged[p.Path] = true

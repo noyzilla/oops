@@ -1,11 +1,11 @@
 ---
-title: Storage Guard
+title: Volume Guard
 status: active
 tags: [storage, mount, symlink, priority, safety, oopsbox]
 synapses: ["CONTEXT.md", "docs/specs/oopsbox.md", "docs/specs/cli.md", "docs/architecture/data-persistent-storage.md"]
 ---
 
-# Specification: Storage Guard [ตัวป้องกันข้อมูลหลุดลง OS disk]
+# Specification: Volume Guard [ตัวป้องกันข้อมูลหลุดลง OS disk]
 
 - **Status**: Active
 - **Target Audience**: Developers, Operators, and AI Coding Agents
@@ -15,12 +15,12 @@ synapses: ["CONTEXT.md", "docs/specs/oopsbox.md", "docs/specs/cli.md", "docs/arc
 
 ## Overview & Scope
 
-Storage Guard validates host paths that hold persistent data. It prevents a service from silently writing data to the OS disk when a persistent disk is unmounted or a symlink is dead. [ตรวจ path ที่ mount เข้า container และ backup dir]
+Volume Guard validates host paths that hold persistent data. It prevents a service from silently writing data to the OS disk when a persistent disk is unmounted or a symlink is dead. [ตรวจ path ที่ mount เข้า container และ backup dir]
 
 Scope:
 - **Container guard**: every bind-mount source (resolved from `docker compose config`) of the services an operation will start. No path is special-cased; `data/` is covered because compose binds through it.
 - **Backup guard**: the backup directory (`OOPS_BACKUP_DIR`, default `./backups`), checked only when a backup, prune, or restore command runs. Backups are host-local, usually not mounted into compose, and never affect container management.
-- **Operator tools**: `oops storage check` and `oops storage link`.
+- **Operator tools**: `oops volume check` and `oops volume link`.
 - Guarded container commands: `oops up`, `oops restart`, `oops update`, `oops switch`, and `oops box start`. Webhook deploy (Docker API recreation of existing containers) is out of scope and not guarded.
 
 ## Domain Context & Ubiquitous Language
@@ -61,8 +61,8 @@ priority:
 - `OOPS_BACKUP_DIR` may point anywhere on the host and need not be inside the oopsbox.
 
 ### Operator Tools
-- `oops storage check`: inspects every bind source of every stack plus the backup directory, prints each Bad Path with its reason, exits non-zero when any is found.
-- `oops storage link <target> [--name data] [--force]`: creates `<oopsbox>/data` as a symlink to `<target>` after verifying the target is an existing, healthy directory. An existing symlink is replaced only with `--force`. A directory that contains data is never replaced; an empty directory is.
+- `oops volume check`: inspects every bind source of every stack plus the backup directory, prints each Bad Path with its reason, exits non-zero when any is found.
+- `oops volume link <target> [--name data] [--force]`: creates `<oopsbox>/data` as a symlink to `<target>` after verifying the target is an existing, healthy directory. An existing symlink is replaced only with `--force`. A directory that contains data is never replaced; an empty directory is.
 
 ### Blocking Behavior
 - Affected services are those whose resolved bind-mount sources (from `docker compose config --env-file <oopsbox>/.env`) is a Bad Path.
@@ -80,19 +80,19 @@ priority:
 
 ## Interface & Data Contracts
 
-- **Config Contract**: `OopsConfig.Storage.MountPrefixes []string`, `OopsConfig.Priority []string`, loaded by `LoadOopsConfig`. CLI: `oops storage check`, `oops storage link <target> [--name] [--force]`.
-- **Package**: `internal/storage` provides path inspection, prefix matching, root-device comparison, and link creation. Filesystem and device lookups are injectable for tests.
+- **Config Contract**: `OopsConfig.Storage.MountPrefixes []string`, `OopsConfig.Priority []string`, loaded by `LoadOopsConfig`. CLI: `oops volume check`, `oops volume link <target> [--name] [--force]`.
+- **Package**: `internal/volume` provides path inspection, prefix matching, root-device comparison, and link creation. Filesystem and device lookups are injectable for tests.
 - **Error Contract**: Message names the Bad Path, its target, the reason (dead or on OS disk), and the list of Blocked Services.
 
 ## Dependency & Blast-Radius Matrix
 
-- **Upstream Callers (Inbound)**: `cmd/up.go`, `cmd/restart.go`, `cmd/update.go`, `cmd/switch.go`, `cmd/box.go`, `cmd/backup.go`, `cmd/restore.go`, `cmd/storage.go`.
+- **Upstream Callers (Inbound)**: `cmd/up.go`, `cmd/restart.go`, `cmd/update.go`, `cmd/switch.go`, `cmd/box.go`, `cmd/backup.go`, `cmd/restore.go`, `cmd/volume.go`.
 - **Downstream Dependencies (Outbound)**: `docker compose config`, `internal/docker` (resolver, config), operating system `stat`.
-- **Bounded Blast Radius**: `internal/storage/`, `internal/docker/config.go`, `internal/orchestrator/guard.go`, `internal/orchestrator/updater.go`, `cmd/`.
+- **Bounded Blast Radius**: `internal/volume/`, `internal/docker/config.go`, `internal/orchestrator/guard.go`, `internal/orchestrator/updater.go`, `cmd/`.
 
 ## Verification & Acceptance Criteria
 
-- **Targeted Test Command**: `go test -v -race ./internal/storage/... ./internal/docker/... ./internal/orchestrator/... ./cmd/...`
+- **Targeted Test Command**: `go test -v -race ./internal/volume/... ./internal/docker/... ./internal/orchestrator/... ./cmd/...`
 - **Happy Path**: Healthy paths start all services with no output change.
 - **Error Handling**: A dead link or an unmounted path under a Mount Prefix blocks affected and lower-priority services, starts the rest, and exits non-zero.
-- **Boundary Cases**: `/mnt` vs `/mntx`, prefix `/`, empty prefix list, macOS dead-link-only mode, missing backup directory, `storage link` replacement rules.
+- **Boundary Cases**: `/mnt` vs `/mntx`, prefix `/`, empty prefix list, macOS dead-link-only mode, missing backup directory, `volume link` replacement rules.

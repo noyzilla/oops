@@ -1,6 +1,6 @@
 // Package storage validates host paths used for persistent data so containers and backups
 // never silently write to the OS disk when a persistent disk is missing or a link is dead.
-package storage
+package volume
 
 import (
 	"os"

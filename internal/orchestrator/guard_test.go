@@ -4,17 +4,17 @@ import (
 	"testing"
 
 	"github.com/noyzilla/oops/internal/docker"
-	"github.com/noyzilla/oops/internal/storage"
+	"github.com/noyzilla/oops/internal/volume"
 )
 
 func tgt(stack, svc string) docker.ResolvedTarget {
 	return docker.ResolvedTarget{StackName: stack, ServiceName: svc, ComposePath: "/box/stacks/" + stack + "/compose.yml"}
 }
 
-func badUnder(prefix string) func(string) *storage.Problem {
-	return func(src string) *storage.Problem {
-		if storage.UnderPrefix(src, prefix) {
-			return &storage.Problem{Path: prefix, Target: "/mnt/x", Reason: "dead"}
+func badUnder(prefix string) func(string) *volume.Problem {
+	return func(src string) *volume.Problem {
+		if volume.UnderPrefix(src, prefix) {
+			return &volume.Problem{Path: prefix, Target: "/mnt/x", Reason: "dead"}
 		}
 		return nil
 	}

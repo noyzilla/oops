@@ -237,7 +237,7 @@ func init() {
 	rootCmd.AddCommand(newRestoreCmd())
 	rootCmd.AddCommand(newRestoreDBCmd())
 	rootCmd.AddCommand(newRestoreDataCmd())
-	rootCmd.AddCommand(newStorageCmd())
+	rootCmd.AddCommand(newVolumeCmd())
 	rootCmd.AddCommand(newDNSCmd())
 	rootCmd.AddCommand(newIPCmd())
 	rootCmd.AddCommand(newRemoteCmd())

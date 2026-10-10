@@ -1,6 +1,6 @@
 //go:build windows
 
-package storage
+package volume
 
 import "fmt"
 

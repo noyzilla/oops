@@ -11,7 +11,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Implemented `oops sync` CLI suite (`oops sync push|pull|env|secret`) for synchronized file transfer of environment variables and sensitive configuration over SSH.
 - Added Suffix Mapping Protocol (`.<remote>`) to translate remote-specific `.env` names back to standard `.env` formats seamlessly during synchronization.
 
-### Changed
+- Renamed `oops storage` command to `oops volume` and migrated `internal/storage` to `internal/volume`.
 - Enforced strict requirement of `Authorization: Bearer <TOKEN>` in webhook headers, removing `X-Oops-Token` and the environment variable `OOPS_SECRET` fallback.
 - `oops up` execution now strictly respects the topological dependency tree (DFS) rather than simple alphabetical stack sorting.
 - Deprecated custom `x-oops-depends_on` topological resolution in favor of native Docker Compose `include` directive. `oops` now relies on Compose's built-in dependency management.
