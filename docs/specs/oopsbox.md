@@ -57,24 +57,9 @@ To maintain a clean and standardized workspace structure, Oopsbox enforces stric
 
 This convention ensures zero collision between services while preventing the root directory from becoming polluted with unorganized volume folders.
 
-### Active Box Management (`oops box active [path]`)
-- **Display Active Box**: Running `oops box active` without arguments prints the current active workspace path and its validation status.
-- **Set Active Box**: Running `oops box active <path>` validates that the target path contains valid compose manifests (`compose.yaml`) and writes the path to `~/.oops/active_box`.
-
-### Engine Runtime & Boot Lifecycle (`oops box start`)
-- **Engine Auto-Detection & Boot (`engine.type`)**:
-  - Checks `engine.type` in `oopsbox.yaml` or `OOPS_ENGINE_TYPE` env var (default: `auto`).
-  - `auto`: Prioritizes `orbstack` -> `colima` -> `docker`.
-  - `orbstack`: Ensures OrbStack is running (`orb start` on macOS).
-  - `colima`: Ensures Colima is running with configured CPU/Memory/Disk specs.
-  - `docker`: Verifies Docker daemon connectivity (`docker info`).
-- **Static DNS Mapping (`data/oops/dns.records`)**: Generates and updates `data/oops/dns.records` mapping `host.<tld>` to host gateway IP and `vm.<tld>` to container engine IP.
-- **macOS Local DNS Resolver**: Configures `/etc/resolver/<tld>` pointing to local DNS listener (`127.0.0.1:53` or VM IP).
-- **Default Stack Boot**: Automatically delegates to `oops up` to boot default services declared in `compose.yaml`.
-
 ### Multi-Box Switching (`oops box switch <path>`)
 When switching between isolated organization workspaces:
-- **Graceful Teardown**: Runs `oops down` on the currently active box to release shared container names (`caddy-proxy`, `mysql`, `postgres`, `redis`, `oops`) and host ports.
+- **Force Container Wipe**: Forcefully stops and removes all existing containers on the Docker daemon (`docker.WipeAllContainers`) to release shared container names (`caddy-proxy`, `mysql`, `postgres`, `redis`, `oops`) and host ports.
 - **Zero Data Loss**: Persistent service data remains intact in `./data/`.
 - **State Handover**: Sets `~/.oops/active_box` to the target path and invokes `oops box start` on the target workspace.
 
@@ -87,11 +72,10 @@ When switching between isolated organization workspaces:
 | Subcommand | Arguments | Description |
 | :--- | :--- | :--- |
 | `oops box init` | `[path]` | Downloads latest release blueprint, generates secure credentials in `.env`, initializes `oopsbox.yaml`, and sets active box |
-| `oops box active` | `[path]` | Displays or sets the currently active Oopsbox workspace in `~/.oops/active_box` |
 | `oops box list` | *(none)* | Lists known and active Oopsbox workspaces |
 | `oops box start` | *(none)* | Boots container engine (OrbStack/Colima/Docker), configures resolver, syncs DNS records, and starts default stack \(`oops up`\) |
 | `oops box stop` | *(none)* | Stops all running stacks via `oops down` on the active box |
-| `oops box switch` | `<path>` | Gracefully tears down current box, updates active box, and starts target box |
+| `oops box switch` | `<path>` | Forcefully wipes all existing containers, updates active box, and starts target box |
 | `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store / Keychain |
 
 ## Dependency & Blast-Radius Matrix
@@ -112,5 +96,5 @@ When switching between isolated organization workspaces:
   - Active box resolution and validation functions handle non-existent, invalid, and valid directories with `compose.yaml`.
 - **CLI Behavior**:
   - `oops box --help` displays all subcommands cleanly.
-  - `oops box active` displays active box and validation status.
-  - Tab completion correctly suggests `oops box` and all subcommands (`init`, `active`, `list`, `start`, `stop`, `switch`, `cert`).
+  - `oops box list` displays active box and validation status.
+  - Tab completion correctly suggests `oops box` and all subcommands (`init`, `list`, `start`, `stop`, `switch`, `cert`).

@@ -23,7 +23,6 @@ func newBoxCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newBoxInitCmd())
-	cmd.AddCommand(newBoxActiveCmd())
 	cmd.AddCommand(newBoxListCmd())
 	cmd.AddCommand(newBoxStartCmd())
 	cmd.AddCommand(newBoxStopCmd())
@@ -55,46 +54,6 @@ func newBoxInitCmd() *cobra.Command {
 			fmt.Printf("  cd %s && oops box start\n", createdDir)
 			fmt.Println("Or start it directly:")
 			fmt.Printf("  oops box start -C %s\n", createdDir)
-			return nil
-		},
-	}
-}
-
-func newBoxActiveCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "active [path]",
-		Short: "Displays or sets the currently active Oopsbox workspace",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				active, err := box.GetActiveBox()
-				if err != nil {
-					return err
-				}
-				if active == "" {
-					fmt.Println("No active Oopsbox workspace set in ~/.oops/active_box")
-					return nil
-				}
-				valid := box.HasValidStacks(active)
-				fmt.Printf("Active Box : %s\n", active)
-				if !valid {
-					fmt.Printf("Status     : Warning: Directory does not contain valid compose stacks (services/ or compose.yaml)\n")
-				} else {
-					fmt.Printf("Status     : Ready (Valid stacks discovered)\n")
-				}
-				return nil
-			}
-
-			targetPath := args[0]
-			canon := box.CanonicalPath(targetPath)
-			if !box.HasValidStacks(canon) {
-				return fmt.Errorf("target directory %s is not a valid Oopsbox workspace (missing services/ or compose.yaml)", canon)
-			}
-
-			if err := box.SetActiveBox(canon); err != nil {
-				return fmt.Errorf("failed to set active box: %w", err)
-			}
-			fmt.Printf("Active Oopsbox workspace set to: %s\n", canon)
 			return nil
 		},
 	}
@@ -252,10 +211,13 @@ func newBoxSwitchCmd() *cobra.Command {
 				return nil
 			}
 
-			// 1. Gracefully teardown current active workspace if running
-			if active != "" && box.HasValidStacks(active) {
-				log.Printf("==> [Switch] Tearing down current active workspace: %s", active)
-				_ = stopWorkspaceStacks(active)
+			// 1. Forcefully stop and remove all existing containers on Docker daemon before switching
+			log.Printf("==> [Switch] Forcefully wiping all existing containers on Docker daemon...")
+			ctx := context.Background()
+			if count, err := docker.WipeAllContainers(ctx); err != nil {
+				log.Printf("Warning: error wiping containers: %v", err)
+			} else {
+				log.Printf("==> [Switch] Stopped and removed %d containers", count)
 			}
 
 			// 2. Set new active box

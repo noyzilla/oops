@@ -122,10 +122,9 @@ For each matched service in target order:
 | `oops dns reload` | *(none)* | Atomically reloads DNS daemon |
 | `oops ip` | `[service]` | Displays IP address of container |
 | `oops box init` | `[path]` | Initializes Oopsbox workspace from blueprint, sets active box |
-| `oops box active` | `[path]` | Displays or sets active workspace in `~/.oops/active_box` |
 | `oops box start` | *(none)* | Boots VM engine and starts default stack |
 | `oops box stop` | *(none)* | Stops all running stacks on active box |
-| `oops box switch` | `<path>` | Tears down current box and switches to target box |
+| `oops box switch` | `<path>` | Forcefully wipes all containers, updates active box, and boots target box |
 | `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store |
 | `oops deploy` | `[/<project>] [@<remote>]` | Deploys stack to remote server via Direct SSH Tar Streaming |
 | `oops sync` | `[push\|pull] [@<remote>]` | 1:1 Mirror Directory sync between `/@<remote>/` and remote server |
