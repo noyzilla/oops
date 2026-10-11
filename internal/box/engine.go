@@ -21,22 +21,30 @@ type OopsboxConfig struct {
 	} `yaml:"engine"`
 }
 
-// LoadOopsboxConfig reads oopsbox.yml from the workspace directory if present.
+// LoadOopsboxConfig reads oopsbox.yaml (or oopsbox.yml) from the workspace directory if present.
 func LoadOopsboxConfig(workDir string) (*OopsboxConfig, error) {
 	cfg := &OopsboxConfig{}
 	cfg.Engine.Type = "auto"
 
-	cfgPath := filepath.Join(workDir, "oopsbox.yml")
+	cfgPath := filepath.Join(workDir, "oopsbox.yaml")
 	data, err := os.ReadFile(cfgPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return cfg, nil
+			legacyPath := filepath.Join(workDir, "oopsbox.yml")
+			data, err = os.ReadFile(legacyPath)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return cfg, nil
+				}
+				return nil, err
+			}
+		} else {
+			return nil, err
 		}
-		return nil, err
 	}
 
 	if err := yaml.Unmarshal(data, cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse oopsbox.yml: %w", err)
+		return nil, fmt.Errorf("failed to parse oopsbox.yaml: %w", err)
 	}
 
 	if cfg.Engine.Type == "" {

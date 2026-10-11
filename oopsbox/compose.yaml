@@ -1,15 +1,13 @@
-# ==============================================================================
-# Oops Default Stack (compose.yml)
-# ==============================================================================
-# This is the default entrypoint when running `oops up` with no arguments.
-# You can define which stacks should boot by including them via the 'include' directive.
-# Included stacks will automatically start when this compose file is started.
-# ==============================================================================
-
-include:
-  - compose.edge-caddy.yml
-  - compose.db.yml
-  - compose.apps.yml
+x-oops-groups:
+  edge:
+    - /services/caddy/caddy-proxy
+  db:
+    - /services/mysql/mysql
+    - /services/postgres/postgres
+    - /services/redis/redis
+  tools:
+    - /services/httpbin/httpbin
+    - /services/mailpit/mailpit
 
 services:
   oops:
@@ -30,7 +28,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     labels:
-      # Ingress through Caddy
       caddy: "${OOPS_DOMAIN:-oops.web.oops}"
       caddy.reverse_proxy: "{{upstreams 8080}}"
     volumes:
@@ -45,3 +42,14 @@ services:
       timeout: 3s
       start_period: 3s
       retries: 3
+
+networks:
+  net-edge:
+    name: net-edge
+    driver: bridge
+  net-db:
+    name: net-db
+    driver: bridge
+  net-storage:
+    name: net-storage
+    driver: bridge

@@ -1,0 +1,16 @@
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    hostname: mailpit.oops
+    restart: unless-stopped
+    labels:
+      oops.enable: "true"
+      caddy: "mailpit.web.oops"
+      caddy.reverse_proxy: "{{upstreams 8025}}"
+    networks:
+      - net-edge
+
+networks:
+  net-edge:
+    external: true

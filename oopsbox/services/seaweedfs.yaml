@@ -12,5 +12,4 @@ services:
 
 networks:
   net-storage:
-    name: net-storage
-    driver: bridge
+    external: true

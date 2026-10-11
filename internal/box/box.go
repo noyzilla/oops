@@ -91,15 +91,19 @@ func CreateWorkspace(targetPath string) (string, error) {
 		return "", fmt.Errorf("failed to initialize .env credentials: %w", err)
 	}
 
-	// 3. Initialize oopsbox.yml if not exists
-	cfgPath := filepath.Join(canonical, "oopsbox.yml")
-	exampleCfg := filepath.Join(canonical, "oopsbox.yml.example")
+	// 3. Initialize oopsbox.yaml if not exists
+	cfgPath := filepath.Join(canonical, "oopsbox.yaml")
+	exampleCfg := filepath.Join(canonical, "oopsbox.yaml.example")
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+		// check legacy example if new one not found
+		if _, err := os.Stat(exampleCfg); os.IsNotExist(err) {
+			exampleCfg = filepath.Join(canonical, "oopsbox.yml.example")
+		}
 		if data, err := os.ReadFile(exampleCfg); err == nil {
 			if err := os.WriteFile(cfgPath, data, 0644); err != nil {
-				return "", fmt.Errorf("failed to create oopsbox.yml: %w", err)
+				return "", fmt.Errorf("failed to create oopsbox.yaml: %w", err)
 			}
-			fmt.Println("==> Initialized oopsbox.yml from template.")
+			fmt.Println("==> Initialized oopsbox.yaml from template.")
 		}
 	}
 

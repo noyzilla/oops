@@ -1,5 +1,5 @@
 # ==============================================================================
-# Oopsbox Workstation Configuration (oopsbox.yml)
+# Oopsbox Workstation Configuration (oopsbox.yaml)
 # ==============================================================================
 # Local developer workstation settings (VM engine, hardware resources, local DNS).
 # This file is git-ignored to allow individual developer overrides.
@@ -16,4 +16,3 @@ engine:
   memory: 4                 # Memory in GB allocated to VM (OrbStack / Colima)
   disk: 60                  # Disk size in GB allocated to VM (Colima)
   vm_type: vz               # VM hypervisor engine: vz (recommended) or qemu (Colima)
-

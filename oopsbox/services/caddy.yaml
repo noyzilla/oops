@@ -16,12 +16,10 @@ services:
     networks:
       - net-edge
 
-
 volumes:
   caddy_data:
   caddy_config:
 
 networks:
   net-edge:
-    name: net-edge
-    driver: bridge
+    external: true

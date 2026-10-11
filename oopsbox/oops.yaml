@@ -1,15 +1,15 @@
 # ==============================================================================
-# Oops Unified Stack Configuration (oops.yml)
+# Oops Unified Stack Configuration (oops.yaml)
 # ==============================================================================
-# Master configuration for registry aliases and shortcuts.
+# Master configuration for registry aliases, backups, DNS, and storage guard.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
 # Registry Aliases (Short prefixes for long image repositories)
 # Usage:
-#   oops pull gar/my-app:v1.0
-#   oops update gar/my-app:v1.0 -d 2s
-#   oops restart gar/my-app:v1.0
+#   oops pull noyzilla/my-app:v1.0
+#   oops update noyzilla/my-app:v1.0 -d 2s
+#   oops restart noyzilla/my-app:v1.0
 # ------------------------------------------------------------------------------
 registries:
   noyzilla: ghcr.io/noyzilla
@@ -53,10 +53,6 @@ dns:
 
 # ------------------------------------------------------------------------------
 # Storage Guard (blocks services whose bind-mount paths are unhealthy)
-# A path is unhealthy when it passes through a dead symlink, or resolves under a mount
-# prefix while still on the OS disk (persistent disk not mounted). Backups use
-# OOPS_BACKUP_DIR and are checked only by backup commands. Tools: oops storage check|link.
-#   mount_prefixes: replaces the default [/mnt, /media, /Volumes]; [] keeps only dead-link checks
 # ------------------------------------------------------------------------------
 #storage:
 #  mount_prefixes: [/mnt, /media, /Volumes]

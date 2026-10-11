@@ -1,5 +1,8 @@
 # Environment variables & local workstation config
 .env
+oopsbox.yaml
+oopsbox.yml
+compose.local.yaml
 devoops.yml
 
 # Physical storage data (Live realtime data)

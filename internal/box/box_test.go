@@ -56,8 +56,8 @@ func TestExtractTarGz(t *testing.T) {
 		Name string
 		Body string
 	}{
-		{"oops-main/oopsbox/stacks/edge/compose.yml", "services:\n  caddy-proxy:\n    image: caddy"},
-		{"oops-main/oopsbox/oopsbox.yml.example", "engine:\n  type: auto"},
+		{"oops-main/oopsbox/stacks/edge/compose.yaml", "services:\n  caddy-proxy:\n    image: caddy"},
+		{"oops-main/oopsbox/oopsbox.yaml.example", "engine:\n  type: auto"},
 	}
 
 	for _, f := range files {
@@ -87,12 +87,12 @@ func TestExtractTarGz(t *testing.T) {
 		t.Fatalf("ExtractTarGz failed: %v", err)
 	}
 
-	composeFile := filepath.Join(tmpDir, "stacks", "edge", "compose.yml")
+	composeFile := filepath.Join(tmpDir, "stacks", "edge", "compose.yaml")
 	if _, err := os.Stat(composeFile); err != nil {
 		t.Errorf("expected extracted file at %s, got error: %v", composeFile, err)
 	}
 
-	cfgFile := filepath.Join(tmpDir, "oopsbox.yml.example")
+	cfgFile := filepath.Join(tmpDir, "oopsbox.yaml.example")
 	if _, err := os.Stat(cfgFile); err != nil {
 		t.Errorf("expected extracted file at %s, got error: %v", cfgFile, err)
 	}
@@ -153,8 +153,8 @@ func TestLoadOopsboxConfig(t *testing.T) {
 	yamlContent := `engine:
   type: orbstack
 `
-	if err := os.WriteFile(filepath.Join(tmpDir, "oopsbox.yml"), []byte(yamlContent), 0644); err != nil {
-		t.Fatalf("failed to write oopsbox.yml: %v", err)
+	if err := os.WriteFile(filepath.Join(tmpDir, "oopsbox.yaml"), []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("failed to write oopsbox.yaml: %v", err)
 	}
 
 	cfg, err = LoadOopsboxConfig(tmpDir)
