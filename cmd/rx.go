@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/noyzilla/oops/internal/remote"
 	"github.com/spf13/cobra"
 )
 
@@ -31,10 +32,15 @@ func HandleDynamicRxCommands(args []string) (bool, error) {
 		return true, fmt.Errorf("cannot execute '%s' command inside 'oops rx'", action)
 	}
 
+	boxPath := "~/oopsbox"
+	cfg, err := remote.LoadConfig(workDir, serverName)
+	if err == nil && cfg.Path != "" {
+		boxPath = cfg.Path
+	}
 	sshTarget := resolveSSHTarget(workDir, serverName)
 
-	remoteCmd := fmt.Sprintf("cd ~/oopsbox && if command -v oops >/dev/null 2>&1; then oops %s; elif [ -f /var/lib/google/bin/oops ]; then /var/lib/google/bin/oops %s; else oops %s; fi",
-		strings.Join(commandArgs, " "), strings.Join(commandArgs, " "), strings.Join(commandArgs, " "))
+	remoteCmd := fmt.Sprintf("cd %s && if command -v oops >/dev/null 2>&1; then oops %s; elif [ -f /var/lib/google/bin/oops ]; then /var/lib/google/bin/oops %s; else oops %s; fi",
+		boxPath, strings.Join(commandArgs, " "), strings.Join(commandArgs, " "), strings.Join(commandArgs, " "))
 
 	sshArgs := []string{"-o", "StrictHostKeyChecking=accept-new", "-t", sshTarget, remoteCmd}
 
@@ -67,20 +73,24 @@ func printRxHelp() {
 	fmt.Println("Oops Remote Execution (rx)")
 	fmt.Println()
 	fmt.Println("Usage:")
-	fmt.Println("  oops rx [@<remote>] <command> [args...]")
+	fmt.Println("  oops rx [@<remote>] <oops-cmd> [args...]")
+	fmt.Println()
+	fmt.Println("Description:")
+	fmt.Println("  Forwards an oops command directly to the remote server over SSH")
+	fmt.Println("  (e.g. 'oops rx ps' executes 'oops ps' inside the remote workspace).")
 	fmt.Println()
 	fmt.Println("Examples:")
-	fmt.Println("  oops rx status                     Check container status on default remote server")
-	fmt.Println("  oops rx logs app -f                Follow app container logs on default remote server")
-	fmt.Println("  oops rx @lima-debian status        Check container status on '@lima-debian'")
-	fmt.Println("  oops rx @prod up /db               Start /db stack on '@prod'")
+	fmt.Println("  oops rx ps                         Runs 'oops ps' on default remote server")
+	fmt.Println("  oops rx status                     Runs 'oops status' on default remote server")
+	fmt.Println("  oops rx logs app -f                Follows app container logs on default remote server")
+	fmt.Println("  oops rx @prod up +db               Runs 'oops up +db' on '@prod'")
 }
 
 func newRxCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "rx [@<remote>] <command> [args...]",
-		Short: "Executes commands directly on a remote server over SSH",
-		Long:  "Executes any oops operational command (status, logs, up, down, db, backup, etc.) on a remote server over SSH using [@<remote>] or default server.",
+		Use:   "rx [@<remote>] <oops-cmd> [args...]",
+		Short: "Forwards an oops command directly to a remote server over SSH",
+		Long:  "Executes oops operational subcommands (status, ps, logs, up, down, db, backup, etc.) on a remote server over SSH inside the target workspace directory.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			printRxHelp()
 			return nil

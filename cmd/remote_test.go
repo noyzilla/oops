@@ -33,20 +33,28 @@ func TestParseRemoteConnectTarget(t *testing.T) {
 		input       string
 		wantTarget  string
 		wantCapsule string
+		wantPath    string
 	}{
-		{"@prod", "prod", "prod"},
-		{"prod", "prod", "prod"},
-		{"user@1.2.3.4", "user@1.2.3.4", "1.2.3.4"},
-		{"@user@1.2.3.4", "user@1.2.3.4", "1.2.3.4"},
-		{"root@vps.example.com:22", "root@vps.example.com:22", "vps.example.com"},
-		{"@staging-box", "staging-box", "staging-box"},
+		{"@prod", "prod", "prod", ""},
+		{"prod", "prod", "prod", ""},
+		{"@prod:~/oopsbox", "prod", "prod", "~/oopsbox"},
+		{"@prod:/opt/oopsbox", "prod", "prod", "/opt/oopsbox"},
+		{"@prod:oopsbox", "prod", "prod", "~/oopsbox"},
+		{"user@1.2.3.4", "user@1.2.3.4", "1.2.3.4", ""},
+		{"@user@1.2.3.4", "user@1.2.3.4", "1.2.3.4", ""},
+		{"user@1.2.3.4:~/custom", "user@1.2.3.4", "1.2.3.4", "~/custom"},
+		{"user@1.2.3.4:/data/box", "user@1.2.3.4", "1.2.3.4", "/data/box"},
+		{"user@1.2.3.4:custom", "user@1.2.3.4", "1.2.3.4", "~/custom"},
+		{"root@vps.example.com:/oopsbox", "root@vps.example.com", "vps.example.com", "/oopsbox"},
+		{"@staging-box", "staging-box", "staging-box", ""},
+		{"@staging-box:~/devbox", "staging-box", "staging-box", "~/devbox"},
 	}
 
 	for _, tt := range tests {
-		gotTarget, gotCapsule := parseRemoteConnectTarget(tt.input)
-		if gotTarget != tt.wantTarget || gotCapsule != tt.wantCapsule {
-			t.Errorf("parseRemoteConnectTarget(%q) = (%q, %q); want (%q, %q)",
-				tt.input, gotTarget, gotCapsule, tt.wantTarget, tt.wantCapsule)
+		gotTarget, gotCapsule, gotPath := parseRemoteConnectTarget(tt.input)
+		if gotTarget != tt.wantTarget || gotCapsule != tt.wantCapsule || gotPath != tt.wantPath {
+			t.Errorf("parseRemoteConnectTarget(%q) = (%q, %q, %q); want (%q, %q, %q)",
+				tt.input, gotTarget, gotCapsule, gotPath, tt.wantTarget, tt.wantCapsule, tt.wantPath)
 		}
 	}
 }
@@ -120,3 +128,19 @@ func TestRemoteCapsuleAddAndList(t *testing.T) {
 	}
 }
 
+func TestRemoteSubcommands(t *testing.T) {
+	remoteCmd := newRemoteCmd()
+	expected := []string{"connect", "setup", "list", "remove", "rename"}
+	for _, exp := range expected {
+		found := false
+		for _, c := range remoteCmd.Commands() {
+			if c.Name() == exp {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected subcommand %q in remote command", exp)
+		}
+	}
+}

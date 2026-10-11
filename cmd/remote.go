@@ -27,6 +27,7 @@ func newRemoteCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newRemoteConnectCmd())
+	cmd.AddCommand(newRemoteSetupCmd())
 	cmd.AddCommand(newRemoteListCmd())
 	cmd.AddCommand(newRemoteRemoveCmd())
 	cmd.AddCommand(newRemoteRenameCmd())
@@ -58,9 +59,23 @@ func isTerminal() bool {
 	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
-func parseRemoteConnectTarget(raw string) (string, string) {
+func parseRemoteConnectTarget(raw string) (string, string, string) {
 	clean := strings.TrimSpace(raw)
 	clean = strings.TrimPrefix(clean, "@")
+
+	var remotePath string
+	if idx := strings.Index(clean, ":"); idx != -1 {
+		rawPath := strings.TrimSpace(clean[idx+1:])
+		clean = clean[:idx]
+		if rawPath != "" {
+			if !strings.HasPrefix(rawPath, "/") && !strings.HasPrefix(rawPath, "~") {
+				remotePath = "~/" + rawPath
+			} else {
+				remotePath = rawPath
+			}
+		}
+	}
+
 	sshTarget := clean
 
 	var capsuleName string
@@ -70,14 +85,11 @@ func parseRemoteConnectTarget(raw string) (string, string) {
 		capsuleName = clean
 	}
 
-	if idx := strings.Index(capsuleName, ":"); idx != -1 {
-		capsuleName = capsuleName[:idx]
-	}
 	if idx := strings.Index(capsuleName, "/"); idx != -1 {
 		capsuleName = capsuleName[:idx]
 	}
 
-	return sshTarget, capsuleName
+	return sshTarget, capsuleName, remotePath
 }
 
 func capsuleHasContent(capsuleDir string) bool {
@@ -99,7 +111,7 @@ func capsuleHasContent(capsuleDir string) bool {
 
 func newRemoteConnectCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "connect @<remote> [remote-path] [--path <remote-path>]",
+		Use:   "connect @<remote>[:<path>] [remote-path] [--path <remote-path>]",
 		Short: "Connects to a remote server, inspects workspace, and syncs capsule",
 		Long:  "Connects to remote server via SSH, detects existing Oopsbox workspace and local capsule, prompts or auto-syncs, and registers /@<host>/remote.yaml.",
 		Args:  cobra.RangeArgs(1, 2),
@@ -110,14 +122,20 @@ func newRemoteConnectCmd() *cobra.Command {
 			}
 
 			rawRemote := args[0]
-			sshTarget, capsuleName := parseRemoteConnectTarget(rawRemote)
+			sshTarget, capsuleName, inlinePath := parseRemoteConnectTarget(rawRemote)
 			if capsuleName == "" {
 				return fmt.Errorf("invalid remote target '%s'", rawRemote)
 			}
 
-			remotePath := remoteConnectPathFlag
-			if len(args) > 1 && args[1] != "" {
+			remotePath := inlinePath
+			if remotePath == "" && len(args) > 1 && args[1] != "" {
 				remotePath = args[1]
+			}
+			if remotePath == "" && cmd.Flags().Changed("path") {
+				remotePath = remoteConnectPathFlag
+			}
+			if remotePath == "" {
+				remotePath = remoteConnectPathFlag
 			}
 			if remotePath == "" {
 				remotePath = "~/oopsbox"
@@ -137,16 +155,25 @@ func newRemoteConnectCmd() *cobra.Command {
 				cmd.Printf("Notice: could not verify remote docker daemon on %s: %v (%s)\n", sshTarget, err, out)
 			}
 
-			// 2. Check if remote server has Oopsbox workspace at remotePath
+			// 2. Check and auto-bootstrap server prerequisites (docker compose plugin & oops CLI)
+			ready, _ := remote.CheckServerPrerequisites(sshTarget)
+			if !ready {
+				cmd.Printf("==> Remote server '@%s' missing docker-compose-plugin or oops CLI. Running automated setup...\n", capsuleName)
+				if err := remote.SetupServer(sshTarget, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+					cmd.Printf("Warning: automated setup encountered an error: %v\n", err)
+				}
+			}
+
+			// 3. Check if remote server has Oopsbox workspace at remotePath
 			checkCmd := fmt.Sprintf("test -d %s && (test -f %s/compose.yaml || test -f %s/.env || test -d %s/services) && echo 'EXISTS' || echo 'NOT_FOUND'",
 				remotePath, remotePath, remotePath, remotePath)
 			out, _ := remote.ExecuteRemoteSSH(sshTarget, checkCmd)
 			remoteHasWorkspace := strings.Contains(out, "EXISTS")
 
-			// 3. Check if local capsule already has content
+			// 4. Check if local capsule already has content
 			localHasFiles := capsuleHasContent(capsuleDir)
 
-			// 4. Save/update remote.yaml first so sync operations can resolve config
+			// 5. Save/update remote.yaml first so sync operations can resolve config
 			cfg := &remote.Config{
 				Host: sshTarget,
 				Path: remotePath,
@@ -205,6 +232,53 @@ func newRemoteConnectCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&remoteConnectPathFlag, "path", "~/oopsbox", "Remote working directory path")
 	return cmd
+}
+
+func newRemoteSetupCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "setup [@<remote>]",
+		Short: "Installs or upgrades docker-compose-plugin and oops CLI to latest version on remote server",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
+			if err != nil {
+				return err
+			}
+
+			var remoteName string
+			if len(args) > 0 {
+				remoteName = strings.TrimPrefix(args[0], "@")
+			} else {
+				remotes, err := remote.ListRemotes(workDirAbs)
+				if err != nil {
+					return err
+				}
+				if len(remotes) == 0 {
+					return fmt.Errorf("no remote servers registered. Run 'oops remote connect @<remote>[:<path>]' first")
+				}
+				remoteName = remotes[0]
+				for _, r := range remotes {
+					if r == "prod" {
+						remoteName = "prod"
+						break
+					}
+				}
+			}
+
+			cfg, err := remote.LoadConfig(workDirAbs, remoteName)
+			if err != nil {
+				return fmt.Errorf("remote '@%s' not found: %w", remoteName, err)
+			}
+
+			cmd.Printf("==> Running environment setup on remote '@%s' (%s)...\n", remoteName, cfg.Host)
+			if err := remote.SetupServer(cfg.Host, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+				return fmt.Errorf("remote setup failed on '@%s': %w", remoteName, err)
+			}
+
+			cmd.Printf("✓ Environment setup completed successfully on '@%s'\n", remoteName)
+			return nil
+		},
+	}
 }
 
 func newRemoteListCmd() *cobra.Command {

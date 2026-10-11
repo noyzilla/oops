@@ -7,6 +7,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
+- SCP-style colon remote path parsing in `oops remote connect @<remote>[:<path>] [remote-path] [--path <p>]`, supporting home-relative paths (`@prod:path`, `@prod:~/path`) and absolute paths (`@prod:/opt/path`).
+- `oops remote setup [@<remote>]` command to unconditionally install or upgrade the remote server to the latest `oops` CLI binary from GitHub releases and ensure `docker-compose-plugin` is present.
+- Automatic server prerequisite checking (`docker compose` and `oops` binary) and setup bootstrap during `oops remote connect`.
+- Dynamic remote path resolution in `oops rx` from `remote.yaml` configuration.
 - `oops remote connect @<remote> [remote-path]` with smart first-time detection and sync state machine (both exist -> prompt push/pull, remote only -> auto pull to capsule, local only -> auto push, neither -> init empty `remote.yaml`).
 - Standardized CLI Target Sigil & Argument Bracketing notation (`CONTEXT.md` and `docs/specs/cli.md`) establishing the Sigil-Outside Invariant (`@<remote>`, `/<project>`, `+<group>`).
 - Multi `-f` Compose Flag Chaining protocol anchoring path resolution to root `compose.yaml` (eliminating `include:`).
@@ -18,6 +22,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Service Triad architecture in `oopsbox/` blueprint (`services/`, `config/`, `data/`).
 
 ### Changed
+- Clarified `oops rx [@<remote>] <oops-cmd> [args...]` as forwarding exclusively `oops` subcommands inside the remote Oopsbox workspace.
 - Renamed `oops remote add` to `oops remote connect @<remote> [remote-path]`.
 - Standardized `oops remote remove @<remote>` to use canonical `@<remote>` syntax across CLI and documentation.
 - Ecosystem-wide strict `.yaml` enforcement across `compose.yaml`, `oops.yaml`, `oopsbox.yaml`, `remote.yaml`, and `services/*.yaml`.

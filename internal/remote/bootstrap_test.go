@@ -30,3 +30,16 @@ func TestGenerateBootstrapRemoteScript(t *testing.T) {
 		t.Errorf("expected script to call git init --bare, got:\n%s", script)
 	}
 }
+
+func TestGenerateServerSetupScript(t *testing.T) {
+	script := GenerateServerSetupScript()
+	if !strings.Contains(script, "docker-compose-plugin") {
+		t.Errorf("expected script to install docker-compose-plugin, got:\n%s", script)
+	}
+	if !strings.Contains(script, "oops CLI") {
+		t.Errorf("expected script to install oops CLI, got:\n%s", script)
+	}
+	if !strings.Contains(script, "docker-cli-plugins") {
+		t.Errorf("expected script to contain COS plugin fallback, got:\n%s", script)
+	}
+}

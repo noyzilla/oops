@@ -95,7 +95,7 @@ To ensure complete naming parity across CLI subcommands, developer documentation
 
 - **Required Parameter Standard [พารามิเตอร์บังคับ]**:
   - Always written as `sigil<placeholder>` or `<placeholder>` (e.g. `@<remote>`, `/<project>`, `<service>`).
-  - Examples: `oops remote connect @<remote> [path]`, `oops remote remove @<remote>`.
+  - Examples: `oops remote connect @<remote>[:<path>]`, `oops remote remove @<remote>`.
 - **Optional Parameter Standard [พารามิเตอร์ทางเลือก]**:
   - Always wrapped in square brackets as `[sigil<placeholder>]` or `[placeholder]` (e.g. `[@<remote>]`, `[/<project>]`, `[<service>]`).
   - Examples: `oops deploy [/<project>] [@<remote>]`, `oops rx [@<remote>] <cmd>`.

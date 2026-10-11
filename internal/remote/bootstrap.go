@@ -3,6 +3,7 @@ package remote
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 )
@@ -158,6 +159,134 @@ chmod 755 "$BARE_PATH/hooks/post-receive"
 `, barePath, boxPath, cosScript, hookScript)
 }
 
+
+// GenerateServerSetupScript generates the bash script to verify and install docker-compose-plugin and oops CLI on the remote host.
+func GenerateServerSetupScript() string {
+	cosScript := GenerateCOSPluginScript()
+	return fmt.Sprintf(`#!/bin/bash
+set -euo pipefail
+
+echo "==> [Remote Setup] Verifying host environment..."
+
+# 1. Detect COS vs standard Linux & setup SUDO helper
+IS_COS=0
+if [ -f /etc/os-release ] && grep -qi "cloud-developed\|container-optimized" /etc/os-release; then
+    IS_COS=1
+fi
+
+SUDO=""
+if [ "$(id -u)" -ne 0 ]; then
+    if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+        SUDO="sudo -n"
+    elif command -v sudo >/dev/null 2>&1; then
+        SUDO="sudo"
+    fi
+fi
+
+# 2. Ensure docker compose is installed or upgraded
+if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+    echo "==> [Remote Setup] Installing docker-compose-plugin..."
+    if [ "$IS_COS" -eq 1 ]; then
+%s
+    else
+        if command -v apt-get >/dev/null 2>&1; then
+            $SUDO apt-get update -qq && $SUDO apt-get install -y -qq docker-compose-plugin || true
+        elif command -v yum >/dev/null 2>&1; then
+            $SUDO yum install -y docker-compose-plugin || true
+        elif command -v dnf >/dev/null 2>&1; then
+            $SUDO dnf install -y docker-compose-plugin || true
+        fi
+    fi
+else
+    echo "✓ docker compose is installed ($(docker compose version 2>/dev/null | head -n1))"
+    # Upgrade docker-compose-plugin to latest if package manager supports it
+    if [ "$IS_COS" -eq 1 ]; then
+%s
+    elif command -v apt-get >/dev/null 2>&1; then
+        $SUDO apt-get install --only-upgrade -y -qq docker-compose-plugin 2>/dev/null || true
+    elif command -v yum >/dev/null 2>&1; then
+        $SUDO yum update -y docker-compose-plugin 2>/dev/null || true
+    elif command -v dnf >/dev/null 2>&1; then
+        $SUDO dnf update -y docker-compose-plugin 2>/dev/null || true
+    fi
+fi
+
+# 3. Always install or upgrade oops CLI to latest version
+echo "==> [Remote Setup] Fetching and installing latest oops CLI release..."
+ARCH="$(uname -m)"
+case "${ARCH}" in
+    x86_64)        OOPS_ARCH="amd64" ;;
+    aarch64|arm64) OOPS_ARCH="arm64" ;;
+    *)             OOPS_ARCH="amd64" ;;
+esac
+TARGET_BIN="/usr/local/bin/oops"
+if [ "$IS_COS" -eq 1 ]; then
+    TARGET_BIN="/var/lib/google/bin/oops"
+fi
+if [ -n "$SUDO" ] || [ "$(id -u)" -eq 0 ]; then
+    $SUDO mkdir -p "$(dirname "$TARGET_BIN")" 2>/dev/null || true
+    $SUDO curl -fsSL "https://github.com/noyzilla/oops/releases/latest/download/oops-linux-${OOPS_ARCH}" -o "${TARGET_BIN}.tmp" 2>/dev/null || true
+    if [ -s "${TARGET_BIN}.tmp" ]; then
+        $SUDO mv "${TARGET_BIN}.tmp" "$TARGET_BIN"
+        $SUDO chmod 755 "$TARGET_BIN"
+        echo "✓ oops CLI installed/upgraded to latest release"
+    else
+        rm -f "${TARGET_BIN}.tmp" 2>/dev/null || true
+        if [ -f "$TARGET_BIN" ]; then
+            echo "Notice: Could not download newer release, keeping existing oops binary"
+        fi
+    fi
+fi
+
+if [ "$IS_COS" -eq 1 ]; then
+    for profile in "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile"; do
+        if [ -f "$profile" ] || [ "$profile" = "$HOME/.bashrc" ]; then
+            if ! grep -q "/var/lib/google/bin" "$profile" 2>/dev/null; then
+                if [ -s "$profile" ]; then
+                    sed -i '1s|^|export PATH="/var/lib/google/bin:$PATH"\n|' "$profile" 2>/dev/null || echo 'export PATH="/var/lib/google/bin:$PATH"' >> "$profile"
+                else
+                    echo 'export PATH="/var/lib/google/bin:$PATH"' > "$profile"
+                fi
+            fi
+        fi
+    done
+fi
+
+echo "✓ Remote server environment setup complete."
+`, cosScript, cosScript)
+}
+
+// CheckServerPrerequisites checks if docker compose and oops CLI are installed on the remote server.
+func CheckServerPrerequisites(sshTarget string) (bool, error) {
+	checkCmd := "docker compose version >/dev/null 2>&1 && (command -v oops >/dev/null 2>&1 || [ -f /var/lib/google/bin/oops ]) && echo 'READY' || echo 'MISSING'"
+	out, err := ExecuteRemoteSSH(sshTarget, checkCmd)
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains(out, "READY"), nil
+}
+
+// SetupServer streams and executes the setup script on the remote server via SSH.
+func SetupServer(sshTarget string, outWriter, errWriter io.Writer) error {
+	script := GenerateServerSetupScript()
+	cleanTarget := strings.TrimPrefix(sshTarget, "ssh://")
+	if idx := strings.Index(cleanTarget, "/"); idx != -1 {
+		cleanTarget = cleanTarget[:idx]
+	}
+
+	sshArgs := []string{
+		"-o", "StrictHostKeyChecking=accept-new",
+		cleanTarget,
+		"bash -s",
+	}
+
+	cmd := exec.Command("ssh", sshArgs...)
+	cmd.Stdin = bytes.NewBufferString(script)
+	cmd.Stdout = outWriter
+	cmd.Stderr = errWriter
+
+	return cmd.Run()
+}
 
 // ExecuteRemoteSSH executes a bash script string on sshTarget using system SSH.
 func ExecuteRemoteSSH(sshTarget, script string) (string, error) {
