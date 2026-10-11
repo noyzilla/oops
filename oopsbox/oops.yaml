@@ -1,7 +1,7 @@
 # ==============================================================================
 # Oops Unified Stack Configuration (oops.yaml)
 # ==============================================================================
-# Master configuration for registry aliases, backups, DNS, and storage guard.
+# Master configuration for registry aliases, backups, DNS, and volume guard.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ dns:
     # - .staging.oops 10.0.0.10
 
 # ------------------------------------------------------------------------------
-# Storage Guard (blocks services whose bind-mount paths are unhealthy)
+# Volume Guard (blocks services whose bind-mount paths are unhealthy)
 # ------------------------------------------------------------------------------
-#storage:
+#volume:
 #  mount_prefixes: [/mnt, /media, /Volumes]

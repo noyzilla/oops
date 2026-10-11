@@ -2,7 +2,7 @@
 title: Data Architecture - Persistent Data and Storage Path Abstraction
 status: active
 tags: [architecture, data, storage, symlink, backup, git, best-practice]
-synapses: ["ARCHITECTURE.md", "docs/specs/storage-guard.md", "docs/specs/oopsbox.md"]
+synapses: ["ARCHITECTURE.md", "docs/specs/volume-guard.md", "docs/specs/oopsbox.md"]
 ---
 
 # Architecture Deep-Dive: Persistent Data and Storage Path Abstraction [สถาปัตยกรรมข้อมูลถาวรและการแยกชั้น path ของ storage]
@@ -10,7 +10,7 @@ synapses: ["ARCHITECTURE.md", "docs/specs/storage-guard.md", "docs/specs/oopsbox
 - **Status**: Active
 - **Target Audience**: System Architects, Lead Engineers, and AI Coding Agents
 - **Parent**: [ARCHITECTURE.md](../../ARCHITECTURE.md)
-- **Enforcement Spec**: [Storage Guard](../specs/storage-guard.md)
+- **Enforcement Spec**: [Volume Guard](../specs/volume-guard.md)
 
 ## Overview & Scope
 
@@ -23,19 +23,19 @@ This document defines how persistent data and backups are placed so that the sam
 > Configuration describes logical locations. The host decides physical locations.
 
 - Compose files reference only repository-relative paths such as `../../data/mysql`.
-- No compose file, `.env`, or `oops.yml` contains a physical disk path such as `/mnt/disks/data-1`.
-- The mapping from logical path to physical disk lives in one place: the `data` link created by the host bootstrap layer (`oops storage link`). Backup location is a host-local setting (`OOPS_BACKUP_DIR`). [ผูก logical -> physical ที่จุดเดียว]
+- No compose file, `.env`, or `oops.yaml` contains a physical disk path such as `/mnt/disks/data-1`.
+- The mapping from logical path to physical disk lives in one place: the `data` link created by the host bootstrap layer (`oops volume link`). Backup location is a host-local setting (`OOPS_BACKUP_DIR`). [ผูก logical -> physical ที่จุดเดียว]
 
 ## Component Topology & Boundaries
 
 ```mermaid
 graph TD
-    Git[(Git Repository)] --> Box[oopsbox: stacks, oops.yml]
+    Git[(Git Repository)] --> Box[oopsbox: stacks, oops.yaml]
     Box --> DataLink[data/ symlink]
     Bootstrap[Host Bootstrap] --> DataLink
     DataLink --> DataDisk[(Persistent Data Disk)]
     Env[OOPS_BACKUP_DIR host env] --> BackupDisk[(Separate Backup Storage)]
-    Guard[Storage Guard] -. validates bind sources .-> DataLink
+    Guard[Volume Guard] -. validates bind sources .-> DataLink
     BackupCmd[oops backup] -. validates .-> BackupDisk
 ```
 
@@ -65,19 +65,19 @@ If the persistent disk is not mounted, the mount-point directory still exists on
 ## Resilience, Scalability & Failure Modes
 
 ### Mount Validation
-Before starting or recreating containers, the [Storage Guard](../specs/storage-guard.md) inspects every bind-mount source the target services use, not only `data/`:
+Before starting or recreating containers, the [Volume Guard](../specs/volume-guard.md) inspects every bind-mount source the target services use, not only `data/`:
 - A path through a dead link is unhealthy.
-- A path that resolves under a configured mount prefix (`storage.mount_prefixes`, default `/mnt`, `/media`, `/Volumes`) must sit on a different device than the root filesystem, proving a separate disk is mounted.
+- A path that resolves under a configured mount prefix (`volume.mount_prefixes`, default `/mnt`, `/media`, `/Volumes`) must sit on a different device than the root filesystem, proving a separate disk is mounted.
 
 Backups are validated separately and only when a backup command runs: `OOPS_BACKUP_DIR` must exist and, under a mount prefix, must not be on the OS disk. This never blocks containers, because backups are not mounted into compose.
 
 ### Operator Tooling
-- `oops storage check` reports dead links and unmounted paths across all stacks and the backup directory.
-- `oops storage link <target>` creates the `data` link after verifying the target exists and is mounted.
+- `oops volume check` reports dead links and unmounted paths across all stacks and the backup directory.
+- `oops volume link <target>` creates the `data` link after verifying the target exists and is mounted.
 
 ### Failure Containment by Priority
 - Services that bind through an unhealthy link are blocked.
-- Every lower-priority service (`priority` in `oops.yml`) is also blocked, because it may depend on the blocked data service.
+- Every lower-priority service (`priority` in `oops.yaml`) is also blocked, because it may depend on the blocked data service.
 - The `edge` stack stays up, so DNS and the webhook server remain reachable for diagnosis and repair.
 - The command exits non-zero so automation and operators see the failure.
 

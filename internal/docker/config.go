@@ -57,27 +57,31 @@ func (d *DNSConfig) GetUpstreams() []string {
 	return nil
 }
 
-// StorageConfig defines persistent storage guard settings in oops.yml
-type StorageConfig struct {
+// VolumeConfig defines persistent volume guard settings in oops.yaml
+type VolumeConfig struct {
 	MountPrefixes []string `yaml:"mount_prefixes,omitempty"`
 }
+
+// StorageConfig is an alias for VolumeConfig for backward compatibility
+type StorageConfig = VolumeConfig
 
 type OopsConfig struct {
 	Registries map[string]string   `yaml:"registries,omitempty"`
 	Backups    BackupConfig        `yaml:"backups,omitempty"`
 	DNS        DNSConfig           `yaml:"dns,omitempty"`
-	Storage    StorageConfig       `yaml:"storage,omitempty"`
+	Volume     VolumeConfig        `yaml:"volume,omitempty"`
+	Storage    StorageConfig       `yaml:"storage,omitempty"` // Deprecated fallback: use Volume
 }
 
-// LoadOopsConfig finds and parses oops.yml / oops.yaml
+// LoadOopsConfig finds and parses oops.yaml
 func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 	cfg := &OopsConfig{
 		Registries: make(map[string]string),
 	}
 
 	candidates := []string{
-		filepath.Join(workDir, "oops.yml"),
 		filepath.Join(workDir, "oops.yaml"),
+		filepath.Join(workDir, "oops.yml"),
 	}
 
 	for _, c := range candidates {
@@ -98,7 +102,6 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 					cfg.Registries[k] = strings.TrimRight(v, "/")
 				}
 			}
-
 
 			// Merge backups
 			if fileCfg.Backups.Retention != "" && cfg.Backups.Retention == "" {
@@ -122,7 +125,12 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 				cfg.DNS.Records = fileCfg.DNS.Records
 			}
 
-			if fileCfg.Storage.MountPrefixes != nil {
+			// Merge Volume / Storage prefixes
+			if fileCfg.Volume.MountPrefixes != nil {
+				cfg.Volume.MountPrefixes = fileCfg.Volume.MountPrefixes
+				cfg.Storage.MountPrefixes = fileCfg.Volume.MountPrefixes
+			} else if fileCfg.Storage.MountPrefixes != nil {
+				cfg.Volume.MountPrefixes = fileCfg.Storage.MountPrefixes
 				cfg.Storage.MountPrefixes = fileCfg.Storage.MountPrefixes
 			}
 			break
