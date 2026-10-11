@@ -77,6 +77,35 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ---
 
+## CLI Notation & Target Sigil Standards [มาตรฐานไวยากรณ์ Sigil และอาร์กิวเมนต์]
+
+To ensure complete naming parity across CLI subcommands, developer documentation, and AI coding agents, all CLI argument placeholders must adhere to this unified standard:
+
+### 1. Target Sigil Namespaces [ตารางกำหนด Sigil นำหน้า]
+
+| Sigil | Domain Target | Meaning / Resolves To | Example Syntax |
+| :---: | :--- | :--- | :--- |
+| **`@`** | **Remote Host Capsule** | Target remote server capsule at `/@<remote>/` | `@prod`, `@staging`, `@192.168.1.50` |
+| **`/`** | **Project Stack** | Dedicated application composition at `compose.<project>.yaml` | `/myapp`, `/api`, `/worker` |
+| **`+`** | **Service Group** | Aggregated service group declared in `compose.yaml` under `x-groups:` | `+db`, `+monitoring` |
+| **`.`** | **Internal Subsystem** | Internal system services (e.g. DNS daemon) | `.dns` |
+| *(none)* | **Service Template** | Atomic reusable service definition at `services/<service>.yaml` | `mysql`, `redis`, `caddy` |
+
+### 2. Argument Bracketing & Sigil-Outside Invariant [กฎการใช้วงเล็บและ Sigil อยู่นอกวงเล็บ]
+
+- **Required Parameter Standard [พารามิเตอร์บังคับ]**:
+  - Always written as `sigil<placeholder>` or `<placeholder>` (e.g. `@<remote>`, `/<project>`, `<service>`).
+  - Examples: `oops remote connect @<remote> [path]`, `oops remote remove @<remote>`.
+- **Optional Parameter Standard [พารามิเตอร์ทางเลือก]**:
+  - Always wrapped in square brackets as `[sigil<placeholder>]` or `[placeholder]` (e.g. `[@<remote>]`, `[/<project>]`, `[<service>]`).
+  - Examples: `oops deploy [/<project>] [@<remote>]`, `oops rx [@<remote>] <cmd>`.
+- **Sigil-Outside Invariant (Anti-HTML Collision Guard) [กฎ Sigil อยู่นอกวงเล็บแหลม]**:
+  - Sigils (`@`, `/`, `+`) MUST strictly reside outside angle brackets `<...>`.
+  - **Correct**: `[@<remote>]`, `[/<project>]`, `[+<group>]`, `@<remote>`, `/<project>`.
+  - **Forbidden**: `[<@remote>]`, `[</project>]`, `</project>`. (Placing `/` inside `<...>` collides with HTML/XML closing tags like `</project>` in Markdown renderers, syntax highlighters, and terminal parsers).
+
+---
+
 ## Docker Labels Taxonomy
 
 All Oops-managed container metadata is configured via Docker labels under the `oops.` namespace:

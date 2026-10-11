@@ -38,7 +38,14 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
 | `<service>` | Single Service | Auto-detects `services/<service>.yaml`, executing `-f compose.yaml -f services/<service>.yaml [-f compose.local.yaml] up <service>` |
 | `+<group>` | Service Group | Resolves members from `x-groups.<group>` in `compose.yaml`, chaining member templates + `[-f compose.local.yaml]` |
 | `/<project>` | Project Stack | Resolves dependencies (`depends_on` / `x-services`), chaining `-f compose.yaml [dependencies] -f compose.<project>.yaml [-f compose.<project>.local.yaml] [-f compose.local.yaml] up` |
+| `@<remote>` | Remote Host Capsule | Resolves capsule `/@<remote>/` and deploys via Direct SSH Streaming (`oops deploy`) |
 | `..wildcard..` | Wildcard Pattern | Matches service names matching prefix (`app..`), suffix (`..worker`), or substring (`..api..`). |
+
+#### CLI Argument Bracketing & Sigil-Outside Invariant [มาตรฐานการใช้วงเล็บอาร์กิวเมนต์]
+All command signatures adhere to the ubiquitous language defined in [CONTEXT.md](../../CONTEXT.md):
+- **Required**: `sigil<placeholder>` (e.g. `@<remote>`, `/<project>`, `+<group>`, `<service>`).
+- **Optional**: `[sigil<placeholder>]` (e.g. `[@<remote>]`, `[/<project>]`, `[+<group>]`, `[<service>]`).
+- **Sigil-Outside Invariant**: Sigils (`@`, `/`, `+`) strictly stay outside `<...>` to prevent collision with HTML/XML tags (e.g. `</project>`).
 
 ### Tail-Chaining Invariant (Left-to-Right Precedence)
 All machine-specific overrides (`*.local.yaml`) are strictly appended to the tail of the `-f` flag pipeline:
@@ -128,9 +135,9 @@ For each matched service in target order:
 | `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store |
 | `oops deploy` | `[/<project>] [@<remote>]` | Deploys stack to remote server via Direct SSH Tar Streaming |
 | `oops sync` | `[push\|pull] [@<remote>]` | 1:1 Mirror Directory sync between `/@<remote>/` and remote server |
-| `oops remote add` | `<ssh-alias> [@<name>]` | Registers remote server creating `/@<name>/remote.yaml` |
+| `oops remote connect` | `@<remote> [path] [--path <p>]` | Connects to remote host, detects workspace, syncs capsule, writes `/@<host>/remote.yaml` |
 | `oops remote list` | *(none)* | Lists registered remotes discovered in `/@*/remote.yaml` |
-| `oops remote remove` | `<name>` | Removes registered remote directory `/@<name>/` |
+| `oops remote remove` | `@<remote>` | Removes registered remote directory `/@<remote>/` |
 | `oops rx` | `[@<remote>] <cmd> [args...]` | Remote Execute: Forwards command over SSH to remote target |
 | `oops version` | `[-v, --version]` | Displays Oops version and build information |
 | `oops selfupdate` | `[-c, --check] [-f, --force]` | Self-updates binary from GitHub release |

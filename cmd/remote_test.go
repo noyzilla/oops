@@ -28,25 +28,48 @@ func TestIsKnownRemoteOrHost(t *testing.T) {
 	}
 }
 
-func TestDeriveRemoteName(t *testing.T) {
+func TestParseRemoteConnectTarget(t *testing.T) {
+	tests := []struct {
+		input       string
+		wantTarget  string
+		wantCapsule string
+	}{
+		{"@prod", "prod", "prod"},
+		{"prod", "prod", "prod"},
+		{"user@1.2.3.4", "user@1.2.3.4", "1.2.3.4"},
+		{"@user@1.2.3.4", "user@1.2.3.4", "1.2.3.4"},
+		{"root@vps.example.com:22", "root@vps.example.com:22", "vps.example.com"},
+		{"@staging-box", "staging-box", "staging-box"},
+	}
+
+	for _, tt := range tests {
+		gotTarget, gotCapsule := parseRemoteConnectTarget(tt.input)
+		if gotTarget != tt.wantTarget || gotCapsule != tt.wantCapsule {
+			t.Errorf("parseRemoteConnectTarget(%q) = (%q, %q); want (%q, %q)",
+				tt.input, gotTarget, gotCapsule, tt.wantTarget, tt.wantCapsule)
+		}
+	}
+}
+
+func TestCapsuleHasContent(t *testing.T) {
 	tmpDir := t.TempDir()
+	capsuleDir := filepath.Join(tmpDir, "@prod")
+	_ = os.MkdirAll(capsuleDir, 0755)
 
-	// 1. First remote defaults to prod
-	name, err := deriveRemoteName(tmpDir, "user@1.2.3.4", "")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if name != "prod" {
-		t.Errorf("deriveRemoteName first time = %q, want 'prod'", name)
+	// Initially empty (or only remote.yaml)
+	if capsuleHasContent(capsuleDir) {
+		t.Errorf("expected empty capsule to return false")
 	}
 
-	// 2. Explicit remote @staging
-	name, err = deriveRemoteName(tmpDir, "user@1.2.3.4", "@staging")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	_ = os.WriteFile(filepath.Join(capsuleDir, "remote.yaml"), []byte("host: x\n"), 0644)
+	if capsuleHasContent(capsuleDir) {
+		t.Errorf("expected capsule with only remote.yaml to return false")
 	}
-	if name != "staging" {
-		t.Errorf("deriveRemoteName with explicit @staging = %q, want 'staging'", name)
+
+	// Add .env
+	_ = os.WriteFile(filepath.Join(capsuleDir, ".env"), []byte("FOO=BAR\n"), 0644)
+	if !capsuleHasContent(capsuleDir) {
+		t.Errorf("expected capsule with .env to return true")
 	}
 }
 

@@ -7,15 +7,19 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
+- `oops remote connect @<remote> [remote-path]` with smart first-time detection and sync state machine (both exist -> prompt push/pull, remote only -> auto pull to capsule, local only -> auto push, neither -> init empty `remote.yaml`).
+- Standardized CLI Target Sigil & Argument Bracketing notation (`CONTEXT.md` and `docs/specs/cli.md`) establishing the Sigil-Outside Invariant (`@<remote>`, `/<project>`, `+<group>`).
 - Multi `-f` Compose Flag Chaining protocol anchoring path resolution to root `compose.yaml` (eliminating `include:`).
 - Zero-Git Direct SSH Streaming deployment pipeline (`oops deploy [/<project>] [@<remote>]`) with tar stream over SSH.
 - 1:1 Mirror Directory Sync Protocol (`oops sync push|pull|env|secret`) syncing between local `/@<remote>/` and remote server root without filename mangling.
-- Canonical remote connection manifest `/@<remote>/remote.yaml` and remote capsule management (`oops remote add|list|remove`).
+- Canonical remote connection manifest `/@<remote>/remote.yaml` and remote capsule management (`oops remote connect|list|remove`).
 - Multi-target routing supporting Group Target (`+<group>` via `x-oops-groups`), Project Stack (`/<project>` via `projects/<name>/compose.yaml`), and Service Template (`<service>` via `services/<name>.yaml`).
 - Auto-tail chaining of machine-local override `compose.local.yaml`.
 - Service Triad architecture in `oopsbox/` blueprint (`services/`, `config/`, `data/`).
 
 ### Changed
+- Renamed `oops remote add` to `oops remote connect @<remote> [remote-path]`.
+- Standardized `oops remote remove @<remote>` to use canonical `@<remote>` syntax across CLI and documentation.
 - Ecosystem-wide strict `.yaml` enforcement across `compose.yaml`, `oops.yaml`, `oopsbox.yaml`, `remote.yaml`, and `services/*.yaml`.
 - Renamed `oops storage` command to `oops volume` and migrated `internal/storage` to `internal/volume`.
 - Enforced strict requirement of `Authorization: Bearer <TOKEN>` in webhook headers, removing `X-Oops-Token` and the environment variable `OOPS_SECRET` fallback.

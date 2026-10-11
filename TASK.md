@@ -3,13 +3,11 @@
 This file tracks the active focus, immediate next actions, and backlog deliverables for the repository.
 
 ## Active Focus
-- Completed Compose Taxonomy, Routing Protocol & Zero-Git Direct SSH Deploy (`feat/compose-taxonomy-routing`).
-  - Milestone 1: Living Specs & Domain Dictionary co-evolution (`CONTEXT.md`, `docs/specs/*`).
-  - Milestone 2: Docker Resolver & Multi `-f` Chaining Engine (`internal/docker/`, `internal/orchestrator/`).
-  - Milestone 3: 1:1 Mirror Directory Sync Protocol (`internal/sync/`, `cmd/sync.go`).
-  - Milestone 4: Zero-Git Direct SSH Streaming & Remote Capsules (`internal/remote/`, `cmd/remote.go`, `cmd/deploy.go`).
-  - Milestone 5: Canonical `.yaml` and Service Triad blueprint migration (`oopsbox/`, `internal/box/`).
-  - Milestone 6: GATE 3 Audit & Pre-Merge Verification.
+- Completed Remote Connect Lifecycle & Target Sigil Standards (`feat/remote-connect-lifecycle`).
+  - Milestone 1: Renamed `oops remote add` to `oops remote connect @<remote> [remote-path]`.
+  - Milestone 2: 5-step detection & smart sync state machine (Both Sides -> prompt, Server Only -> pull, Local Only -> push, Neither -> init).
+  - Milestone 3: Standardized CLI Target Sigil & Argument Bracketing notation (`CONTEXT.md`, `docs/specs/cli.md`, `docs/specs/remote.md`).
+  - Milestone 4: Unit tests & GATE 3 Pre-Merge Audit.
 
 ## Immediate Next Actions
-- Final Pre-Merge user confirmation before merging `feat/compose-taxonomy-routing` into `main`.
+- Ready for next development milestone on `main`.
