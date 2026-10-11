@@ -44,7 +44,7 @@ Scope:
 
 ### Configuration
 ```yaml
-storage:
+volume:
   mount_prefixes: [/mnt, /media, /Volumes]   # default when omitted
 priority:
   - /edge
@@ -80,7 +80,7 @@ priority:
 
 ## Interface & Data Contracts
 
-- **Config Contract**: `OopsConfig.Storage.MountPrefixes []string`, `OopsConfig.Priority []string`, loaded by `LoadOopsConfig`. CLI: `oops volume check`, `oops volume link <target> [--name] [--force]`.
+- **Config Contract**: `OopsConfig.Volume.MountPrefixes []string`, `OopsConfig.Priority []string`, loaded by `LoadOopsConfig`. CLI: `oops volume check`, `oops volume link <target> [--name] [--force]`.
 - **Package**: `internal/volume` provides path inspection, prefix matching, root-device comparison, and link creation. Filesystem and device lookups are injectable for tests.
 - **Error Contract**: Message names the Bad Path, its target, the reason (dead or on OS disk), and the list of Blocked Services.
 

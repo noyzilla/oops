@@ -130,13 +130,18 @@ func planGuard(targets []docker.ResolvedTarget, check func(source string) *volum
 	return allowed, blocked
 }
 
-// StoragePrefixes returns the configured mount prefixes or the defaults when unset
-func StoragePrefixes(workDir string) []string {
+// VolumePrefixes returns the configured mount prefixes or the defaults when unset
+func VolumePrefixes(workDir string) []string {
 	cfg, err := docker.LoadOopsConfig(workDir)
-	if err != nil || cfg.Storage.MountPrefixes == nil {
+	if err != nil || cfg.Volume.MountPrefixes == nil {
 		return volume.DefaultMountPrefixes
 	}
-	return cfg.Storage.MountPrefixes
+	return cfg.Volume.MountPrefixes
+}
+
+// StoragePrefixes is an alias for VolumePrefixes
+func StoragePrefixes(workDir string) []string {
+	return VolumePrefixes(workDir)
 }
 
 // CheckBackupDir refuses a backup directory that is a dead link or sits on the OS disk under a mount prefix.
