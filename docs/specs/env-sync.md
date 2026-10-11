@@ -1,7 +1,7 @@
 ---
 title: Environment Variable & Secrets Synchronization
 status: active
-tags: [cli, ssh, env, secrets, deployment, docker]
+tags: [cli, ssh, env, secrets, deployment, docker, overlay]
 synapses: ["ARCHITECTURE.md", "docs/specs/remote.md", "docs/specs/cli.md"]
 ---
 
@@ -10,45 +10,48 @@ synapses: ["ARCHITECTURE.md", "docs/specs/remote.md", "docs/specs/cli.md"]
 - **Status**: Active
 - **Target Audience**: Developers, Operators, and AI Coding Agents
 - **Parent Architecture**: [ARCHITECTURE.md](../../ARCHITECTURE.md)
-- **Companion Spec**: [docs/specs/remote.md](remote.md)
+- **Companion Spec**: [docs/specs/remote.md](remote.md), [docs/specs/cli.md](cli.md)
 
 ## Overview & Scope
 
-Oops provides an isolated mechanism for synchronizing configuration (`.env` files) and sensitive data (`secrets`) between the local developer workstation and remote servers via Native SSH.
+Oops provides an isolated, out-of-band mechanism for synchronizing configuration (`.env` files) and sensitive data (`config/secrets/`) between the local developer workstation and remote servers via Native SSH.
 
-Based on [Docker's Best Practices](https://docs.docker.com/compose/how-tos/environment-variables/best-practices/), sensitive information (passwords, API keys) **MUST NOT** be stored in environment variables. Instead, they must be managed via Docker Secrets. The Oops CLI supports both configurations by enforcing a strict **Suffix Mapping Protocol** during data transfer, and strictly separating the CLI commands (`oops env` vs `oops secret`) to prevent accidental exposure of sensitive data.
+Under the **1:1 Mirror Directory Sync Protocol**, environment configurations are encapsulated cleanly inside `/@<remote>/` (e.g. `/@prod/.env`). Filenames are never mangled, sliced, or suffixed with dot notations (`stripRemoteSuffix` is deprecated). Files mirror directly 1:1 with their remote destination paths.
 
 ## Domain Context & Ubiquitous Language
 
-- **ENV Sync**: The process of pushing or pulling environment variable configuration files via SSH/SCP.
-- **Secrets Sync**: The process of pushing or pulling sensitive credential files via SSH/SCP.
-- **Prefix/Suffix Mapping**: The bidirectional translation of file names during transfer to preserve `compose.yml` environment targeting without branching logic.
-- **Root Config**: The global default environment variables located at `<oopsbox>/.env`.
-- **Service Config**: The service-scoped environment variables located at `<oopsbox>/config/env/*.env`.
-- **Service Secrets**: The service-scoped sensitive data located at `<oopsbox>/config/secrets/*`.
+Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
+- **Remote Overlay Capsule (`/@<remote>/`)**: The self-contained directory encapsulating all specialization files for a designated remote target.
+- **Root Environment (`.env`)**: The machine-level environment variable file located at `/@<remote>/.env` locally and `.env` on the remote server.
+- **Service Secrets**: Sensitive credential files located at `/@<remote>/config/secrets/*` locally and `config/secrets/*` on the remote server.
+- **Out-of-Band Sync**: Secure transfer of credentials via SSH/SCP that bypasses version control entirely.
 
 ## Business Rules & Logic Invariants
 
-### 1. The Suffix Mapping Protocol (Stateless Translation)
+### 1. The 1:1 Mirror Directory Sync Protocol
+Filenames remain completely identical across local and remote environments:
 
-To ensure that the `compose.yml` file remains identical across all environments, the CLI translates filenames on the fly during transfer:
+| Target Resource | Local Path (Inside `/@<remote>/`) | Direction | Remote Path (Target Server Root) |
+| :--- | :--- | :---: | :--- |
+| **Root Environment** | `/@<remote>/.env` | ➡️ Push / ⬅️ Pull | `.env` |
+| **Service Envs** | `/@<remote>/config/env/<service>.env` | ➡️ Push / ⬅️ Pull | `config/env/<service>.env` |
+| **Service Secrets**| `/@<remote>/config/secrets/*` | ➡️ Push / ⬅️ Pull | `config/secrets/*` |
+| **Service Configs**| `/@<remote>/config/<service>/*` | ➡️ Push / ⬅️ Pull | `config/<service>/*` |
 
-| Target | Local File Pattern (Git-Ignored) | Direction | Remote File Pattern (On Server) | Docker Native Usage |
-| :--- | :--- | :---: | :--- | :--- |
-| **Root Config** | `.env.<remote>` | ➡️ Push / ⬅️ Pull | `.env` | Compose auto-interpolation |
-| **Service Config** | `config/env/<name>.<remote>.env` | ➡️ Push / ⬅️ Pull | `config/env/<name>.env` | `env_file: config/env/<name>.env` |
-| **Service Secrets**| `config/secrets/<name>.<remote>.*` | ➡️ Push / ⬅️ Pull | `config/secrets/<name>.*` | `secrets: file: config/secrets/...` |
+- **Push Transformation**: Transfers files from `/@<remote>/` directly onto the remote target root without modifying filenames.
+- **Pull Transformation**: Downloads files from the remote server directly into `/@<remote>/` with identical filenames.
+- **Target Resolution**: Reads target SSH host and remote working directory from `/@<remote>/remote.yaml`.
 
-- **Push Transformation**: The `.<remote>` suffix is stripped from the filename when saving to the remote server.
-- **Pull Transformation**: The `.<remote>` suffix is appended to the filename when saving to the local workstation.
-- **1:1 Parity Invariant**: Because of suffix stripping, the remote `compose.yml` can statically mount configs and secrets without environment-specific conditional logic.
+### 2. Security & Git Hygiene Invariants
 
-### 2. Best Practices & Security Invariants
+- **Zero Secrets in Git**: All `.env` files (including root `.env`, `compose.local.yaml`, and `/@<remote>/.env`) MUST be strictly Git-ignored.
+- **Exclusion of `remote.yaml`**: The target connection manifest `/@<remote>/remote.yaml` is used exclusively for local orchestration and is strictly excluded from remote uploads.
+- **Command Isolation**:
+  - `oops sync env`: Synchronizes ONLY `.env` and `config/env/` files.
+  - `oops sync secret`: Synchronizes ONLY `config/secrets/` files.
+  - `oops sync`: Synchronizes both configurations and secrets.
 
-- **Command Isolation**: `oops sync env` handles ONLY `.env` files. `oops sync secret` handles ONLY files in `config/secrets/`. This prevents developers from accidentally pushing secrets when they only intended to update a port mapping.
-- **Separation of Concerns**: Non-sensitive configs (e.g., `PORT=8080`, `DEBUG=true`) are stored in `.env` files. Sensitive data (e.g., `DB_PASSWORD=supersecret`) are stored in raw text files inside `config/secrets/`.
-- **Git Ignored**: All files matching `.<remote>` (e.g. `.env.prod`, `mysql.prod.env`, `db_pass.prod.txt`) MUST NOT be committed to Git.
-- **Strict Matching**: Only exact string matches of the target remote name are synchronized. If a file is named `.env.staging` and the target is `prod`, it is strictly ignored during `oops sync push -r prod`.
+---
 
 ## Interface & Data Contracts
 
@@ -56,26 +59,30 @@ To ensure that the `compose.yml` file remains identical across all environments,
 
 | Command | Arguments / Flags | Description |
 | :--- | :--- | :--- |
-| `oops sync push` | `[-r <remote>]` | Scans and uploads BOTH Configs (`.env`) and Secrets (`config/secrets/`) via SCP/SSH, stripping the suffix. |
-| `oops sync pull` | `[-r <remote>]` | Downloads BOTH Configs (`.env`) and Secrets (`config/secrets/`) via SCP/SSH, appending the suffix locally. |
-| `oops sync env push` | `[-r <remote>]` | Uploads ONLY Configs (`.env.<remote>` and `config/env/*.<remote>.env`). |
-| `oops sync env pull` | `[-r <remote>]` | Downloads ONLY Configs. |
-| `oops sync secret push` | `[-r <remote>]` | Uploads ONLY Secrets (`config/secrets/*.<remote>.*`). |
-| `oops sync secret pull` | `[-r <remote>]` | Downloads ONLY Secrets. |
+| `oops sync push` | `[-r <remote>]` | Uploads both environment files and secrets from `/@<remote>/` to remote server |
+| `oops sync pull` | `[-r <remote>]` | Downloads remote `.env` and secrets into local `/@<remote>/` |
+| `oops sync env push` | `[-r <remote>]` | Uploads ONLY environment files (`.env` and `config/env/`) |
+| `oops sync env pull` | `[-r <remote>]` | Downloads ONLY remote environment files |
+| `oops sync secret push` | `[-r <remote>]` | Uploads ONLY secret files (`config/secrets/`) |
+| `oops sync secret pull` | `[-r <remote>]` | Downloads ONLY secret files |
+
+---
 
 ## Dependency & Blast-Radius Matrix
 
-- **Upstream Callers**: Developer terminal.
-- **Downstream Dependencies**: Native SSH/SCP binary or Go SSH Client, remote filesystem permissions.
+- **Upstream Callers**: Developer terminal (`oops sync`), deployment pipeline.
+- **Downstream Dependencies**: Native SSH / SCP, remote filesystem permissions.
 - **Bounded Blast Radius**:
-  - `cmd/sync.go`: CLI root for `oops sync push|pull|env|secret`.
-  - `internal/ssh/`: SSH client extensions for SCP file transfer.
-  - `internal/sync/`: Shared logic for suffix mapping and transfer orchestration.
+  - `cmd/sync.go`: Cobra CLI commands for sync operations.
+  - `internal/sync/`: 1:1 Mirror directory transfer orchestration.
+  - `internal/remote/`: Resolution of target SSH connection from `/@<remote>/remote.yaml`.
+
+---
 
 ## Verification & Acceptance Criteria
 
-- **Targeted Test Command**: `go test -v -race ./cmd/... ./internal/ssh/... ./internal/sync/...`
+- **Targeted Test Command**: `go test -v -race ./internal/sync/... ./cmd/...`
 - **Acceptance Scenarios**:
-  - Given a local file `config/env/api.prod.env`, executing `oops sync env push -r prod` places the file at `config/env/api.env`.
-  - Given a local file `config/secrets/db.prod.txt`, executing `oops sync secret push -r prod` places the file at `config/secrets/db.txt`.
-  - Given a local file `config/secrets/db.prod.txt`, executing `oops sync env push -r prod` MUST ignore the secret file.
+  - Given local file `/@prod/.env`, running `oops sync push -r prod` copies the file to `.env` on remote host.
+  - Given remote file `config/secrets/db_pass.txt`, running `oops sync pull -r prod` saves it to `/@prod/config/secrets/db_pass.txt`.
+  - Non-matching remotes (e.g. running `-r staging` when only `/@prod/` exists) produce actionable errors.

@@ -14,56 +14,53 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ### Entity: Oopsbox
 - **Canonical Term**: `Oopsbox`
-- **Definition**: The complete host deployment environment encapsulating all stacks (`stacks/`), live data storage (`data/`), backup dumps (`backups/`), and environment configuration (`.env`).
+- **Definition**: The complete host deployment environment encapsulating base compose manifests (`compose.yaml`), service templates (`services/`), configuration overlays (`config/`), live data storage (`data/`), backup dumps (`backups/`), and environment configuration (`.env`).
 - **Standard Default Locations**: `~/oopsbox` (Local Dev) and `/opt/oopsbox` (Production Server).
 
 ### Entity: Group
 - **Canonical Term**: `Group`
-- **Definition**: A distinct functional category and compose setup residing in `stacks/<group>/` containing a dedicated `compose.yml` file.
-- **Permitted Canonical Values**:
-  - `edge`: Ingress reverse proxy, SSL termination, and embedded Oops DNS daemon.
-  - `db`: Persistence and cache databases (e.g. MySQL, PostgreSQL, Redis).
-  - `tool`: Developer tooling, mock, and inspection services (e.g. `httpbin`, `mailpit`).
-  - `apps`: Core application services and web backends.
-  - `[custom]`: Dynamic custom groups (e.g. `monitoring`, `analytics`, `lab`).
-- **CLI Notation**: `/<group>` (e.g. `/edge`, `/db`, `/tool`, `/apps`).
-- **Dependency Startup Order**: `edge` -> `db` -> `tool` -> `apps` -> `[custom...]`
+- **Definition**: A logical aggregation of service templates declared within `compose.yaml` under `x-groups:` (e.g. `db: [mysql, redis]`).
+- **CLI Notation**: `+<group>` (e.g. `+db`, `+monitoring`).
 - **Avoid**: `bundle`, `cluster`, `environment`, `pod`
 
-### Entity: Profile
-- **Canonical Term**: `Profile`
-- **Definition**: A named composition defined in `oops.yml` under `profiles:` (e.g. `@default`, `@lab`) bundling groups and services for developer workflows and runtime context switching (`oops switch @<profile>`).
-- **CLI Notation**: `@<profile>` (e.g. `@default`, `@lab`).
-- **Permitted Synonyms**: `stack_profile`
-- **Avoid**: `preset`, `flavor`
+### Entity: Project
+- **Canonical Term**: `Project`
+- **Definition**: An application or stack composition defined in `compose.<project>.yaml` at the project root, optionally paired with machine override `compose.<project>.local.yaml`.
+- **CLI Notation**: `/<project>` (e.g. `/myapp`, `/api`).
+
+### Entity: Service Template
+- **Canonical Term**: `Service Template`
+- **Definition**: Pure, atomic service definitions residing in `services/<service>.yaml` (e.g. `services/mysql.yaml`, `services/redis.yaml`).
+- **Permitted Synonyms**: `service_module`
+- **Avoid**: `microservice`, `app_instance`
+
+### Entity: Remote & Environment Overlay
+- **Canonical Term**: `Remote` / `Environment Overlay`
+- **Definition**: A self-contained target capsule residing at `/@<remote>/` (e.g. `/@prod/`, `/@staging/`) containing destination connection metadata (`remote.yaml`), untracked secrets (`.env`), and environment-specific compose/configuration overlays.
+- **CLI Notation**: `@<remote>` (e.g. `@prod`, `@staging`).
 
 ### Entity: Config
 - **Canonical Term**: `Config`
-- **Definition**: Version-controlled service configurations residing modularly inside each group (`stacks/<group>/<service>/`, e.g. `stacks/edge/caddy/Caddyfile`, `stacks/db/mysql/my.cnf`). Tracked in Git and separate from raw binary database storage (`data/`).
+- **Definition**: Version-controlled service configurations residing modularly inside `config/<service>/` (e.g. `config/mysql/my.cnf`, `config/caddy/Caddyfile`). Tracked in Git and separate from raw binary storage (`data/`).
 
 ### Entity: Storage
 - **Canonical Term**: `Storage`
 - **Definition**: Physical host storage partitioned into two distinct persistence tiers:
-  - `data/`: High-IOPS live realtime container data (NVMe / SSD persistent volumes).
+  - `data/`: High-IOPS live realtime container data (`data/<service>/`).
   - `backups/`: Secondary backup storage (Cold storage / database dumps).
-
-### Entity: Service
-- **Canonical Term**: `Service`
-- **Definition**: A named workload definition inside a `compose.yml` file (e.g. `caddy-proxy`, `mysql`, `web-app`).
-- **Permitted Synonyms**: `compose_service`
-- **Avoid**: `module`, `microservice`, `app_instance`
 
 ### Entity: Target
 - **Canonical Term**: `Target`
-- **Definition**: The user-supplied identifier passed to CLI commands or Webhook payloads, resolving to groups via slash prefix (`/<group>`, e.g. `/edge`, `/db`), scoped services via path (`/<group>/<service>`, e.g. `/db/mysql`), profiles via at prefix (`@<profile>`, e.g. `@default`, `@lab`), exact service names (`mysql`), or Double Dot wildcards (e.g. `app..`, `..worker`, `..api..`).
+- **Definition**: The user-supplied identifier passed to CLI commands, resolving to:
+  - Exact service: `<service>` (e.g. `mysql`) -> auto-detects `services/<service>.yaml`.
+  - Service group: `+<group>` (e.g. `+db`) -> resolves member templates from `x-groups:`.
+  - Project stack: `/<project>` (e.g. `/myapp`) -> executes `compose.<project>.yaml`.
+  - Remote overlay: `@<remote>` (e.g. `@prod`) -> targets `/@<remote>/`.
 - **Permitted Synonyms**: `target_pattern`, `target_selector`
-- **Avoid**: `regex_pattern`, `filter_query`
 
 ### Concept: Rolling Update
 - **Canonical Term**: `Rolling Update`
 - **Definition**: Sequential zero-downtime deployment process where each matching service is pulled, recreated with `--no-deps`, and polled until its container health status is `healthy` before proceeding to the next service.
-- **Permitted Synonyms**: `sequential_update`, `rolling_upgrade`
-- **Avoid**: `blue_green`, `hot_swap`, `batch_restart`
 
 ### Concept: Database Action
 - **Canonical Term**: `Database Action`
@@ -73,13 +70,10 @@ This document establishes the official domain glossary and ubiquitous language f
   - `passwd` (alias: `password`): Change or rotate password for an existing user (auto-generates 20-character password if omitted).
   - `list`: Inspect active databases and role grants.
   - `drop`: Safely remove database and associated user.
-- **Avoid**: `add_db`, `remove_db`, `grant_user`, `change_pass`
 
 ### Concept: Backup & Retention
 - **Canonical Term**: `Backup`
 - **Definition**: Operations managed by `oops db-backup [targets...] [-r <retention>]` to create compressed database dump archives (`.sql.gz` or `.rdb.gz`) saved under `BACKUP_DIR` with automated cleanup based on retention policy (`-r`, `--retention`).
-- **Permitted Synonyms**: `snapshot`, `dump`
-- **Avoid**: `export`, `replica`
 
 ---
 
@@ -88,7 +82,7 @@ This document establishes the official domain glossary and ubiquitous language f
 All Oops-managed container metadata is configured via Docker labels under the `oops.` namespace:
 
 | Label Name | Type | Canonical Purpose |
-| :--- | :---: | :--- |
+| :--- | :--- | :--- |
 | `oops.enable` | `bool` | Authorizes Oops to orchestrate, stop, and update this container (`"true"` / `"false"`). |
 | `oops.secret` | `string` | Secret authentication token required for webhook deployments of this specific target. |
 | `oops.health.url` | `string` | HTTP endpoint URL polled for 200 OK when native Docker healthcheck is absent. |
@@ -100,12 +94,12 @@ All Oops-managed container metadata is configured via Docker labels under the `o
 All environment variables follow the **[Topic] -> [Modifier] -> [Unit]** standard from `jarn-naming.md`:
 
 | Environment Variable | Internal Config Path | Type | Default | Description |
-| :--- | :--- | :---: | :---: | :--- |
+| :--- | :--- | :--- | :--- | :--- |
 | `OOPSBOX_DIR` | `CONFIG.CLI.WORK_DIR` | `string` | `""` | Target oopsbox directory (auto-probes `~/.oops/active_box`, `~/oopsbox`, `/opt/oopsbox`) |
 | `OOPS_DOMAIN` | `CONFIG.SERVER.DOMAIN` | `string` | `""` | Optional ingress FQDN for webhook daemon |
 | `OOPS_PORT` | `CONFIG.SERVER.PORT` | `int / string` | `80` | Webhook HTTP daemon listening port |
 | `OOPS_SECRET` | `CONFIG.WEBHOOK.SECRET` | `string` | `""` | Global webhook secret token |
-| `OOPS_DNS_UPSTREAM` | `CONFIG.DNS.UPSTREAM` | `string` | `1.1.1.1:53,8.8.8.8:53` | Upstream DNS relays (override via `oops.yml` `dns.upstreams`) |
+| `OOPS_DNS_UPSTREAM` | `CONFIG.DNS.UPSTREAM` | `string` | `1.1.1.1:53,8.8.8.8:53` | Upstream DNS relays (override via `oops.yaml` `dns.upstreams`) |
 | `OOPS_HEALTHCHECK_TIMEOUT` | `CONFIG.HEALTHCHECK.TIMEOUT` | `duration` | `10m` | Maximum wait time for container to become healthy |
 | `OOPS_HEALTHCHECK_INTERVAL`| `CONFIG.HEALTHCHECK.INTERVAL`| `duration` | `3s` | Polling interval between health checks |
 | `OOPS_STOP_TIMEOUT` | `CONFIG.CONTAINER.STOP_TIMEOUT`| `duration` | `30s` | Default timeout for graceful container stop |

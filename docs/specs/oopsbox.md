@@ -22,7 +22,7 @@ synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/cli.md", "docs/specs/dns
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Oops Box Manager (`oops box`)**: Native Go CLI command group for creating, activating, starting, switching, and securing Oopsbox workspaces.
 - **Active Box State (`~/.oops/active_box`)**: System file recording the absolute path of the currently active Oopsbox workspace on the machine.
-- **Release Blueprint (`oopsbox.tar.gz`)**: Tarball release asset containing the clean Oopsbox workspace structure (`stacks/`, `data/`, `oopsbox.yml.example`).
+- **Release Blueprint (`oopsbox.tar.gz`)**: Tarball release asset containing the clean Oopsbox workspace structure (`compose.yaml`, `services/`, `config/`, `data/`, `oopsbox.yaml.example`).
 - **VM / Container Engine**: The underlying virtualization and container engine (`orbstack`, `colima`, or `docker`).
 - **Local TLD Resolver**: macOS `/etc/resolver/<domain>` entry forwarding local domain resolution to the Oops embedded DNS watcher.
 - **Local Root CA**: Caddy-generated internal root certificate installed into the host OS trust store or macOS Keychain.
@@ -37,44 +37,40 @@ When provisioning a new workspace via `oops box init [path]`:
   - Automatically generates a 48-character cryptographic string for `OOPS_SECRET`.
   - Automatically generates a single shared 32-character secure password for `MYSQL_ROOT_PASSWORD`, `POSTGRES_PASSWORD`, and `REDIS_PASSWORD`.
   - Generates `.env` from template if not present.
-- **Default Config Initialization**: Copies `oopsbox.yml.example` to `oopsbox.yml` if `oopsbox.yml` does not exist.
+- **Default Config Initialization**: Copies `oopsbox.yaml.example` to `oopsbox.yaml` if `oopsbox.yaml` does not exist.
 - **Automatic Active Box Registration**: Automatically writes the new workspace canonical path to `~/.oops/active_box`.
 
-### Persistent Volumes & Configuration Mapping
+### Persistent Volumes & Configuration Mapping (The Service Triad)
 To maintain a clean and standardized workspace structure, Oopsbox enforces strict conventions for mapping container data volumes and configurations onto the host filesystem:
 
-- **Default Convention (Standard Environments)**:
-  - Configurations MUST be mapped to `./config/<service>/`
-  - Persistent data MUST be mapped to `./data/<service>/`
-  - Example: `./data/mysql/` or `./config/mysql/`
+- **The Canonical Service Triad**:
+  - Service container manifests MUST reside in `./services/<service>.yaml`
+  - Service configurations MUST be mapped to `./config/<service>/`
+  - Persistent runtime data MUST be mapped to `./data/<service>/`
+  - Example: `./services/mysql.yaml`, `./config/mysql/my.cnf`, `./data/mysql/`
 
 - **Global / Shared Volumes (Cross-Project Data)**:
-  - For data or configuration that is explicitly shared across multiple projects or stacks, prepend the directory name with an underscore (`_`).
+  - For data or configuration that is explicitly shared across multiple projects, prepend the directory name with an underscore (`_`).
   - Format: `./{config,data}/_<dirname>/`
   - Example: `./data/_assets/` or `./config/_certs/`
   - *Rationale*: The leading underscore forces the directory to sort at the very top of alphabetical file listings, providing an immediate visual cue that this directory spans across the entire ecosystem.
-
-- **Multi-Stack / Multi-Tenant Convention (Advanced Environments)**:
-  - When operating multiple organizations, profiles, or highly complex environments where service names might conflict across stacks, volumes MUST be prefixed with the stack name:
-  - Format: `./{config,data}/<stack>_<service>/`
-  - Example: `./data/lab_mysql/` or `./data/lab_redis/`
 
 This convention ensures zero collision between services while preventing the root directory from becoming polluted with unorganized volume folders.
 
 ### Active Box Management (`oops box active [path]`)
 - **Display Active Box**: Running `oops box active` without arguments prints the current active workspace path and its validation status.
-- **Set Active Box**: Running `oops box active <path>` validates that the target path contains valid compose stacks (`stacks/`) and writes the path to `~/.oops/active_box`.
+- **Set Active Box**: Running `oops box active <path>` validates that the target path contains valid compose manifests (`compose.yaml`) and writes the path to `~/.oops/active_box`.
 
 ### Engine Runtime & Boot Lifecycle (`oops box start`)
 - **Engine Auto-Detection & Boot (`engine.type`)**:
-  - Checks `engine.type` in `oopsbox.yml` or `OOPS_ENGINE_TYPE` env var (default: `auto`).
+  - Checks `engine.type` in `oopsbox.yaml` or `OOPS_ENGINE_TYPE` env var (default: `auto`).
   - `auto`: Prioritizes `orbstack` -> `colima` -> `docker`.
   - `orbstack`: Ensures OrbStack is running (`orb start` on macOS).
   - `colima`: Ensures Colima is running with configured CPU/Memory/Disk specs.
   - `docker`: Verifies Docker daemon connectivity (`docker info`).
 - **Static DNS Mapping (`data/oops/dns.records`)**: Generates and updates `data/oops/dns.records` mapping `host.<tld>` to host gateway IP and `vm.<tld>` to container engine IP.
 - **macOS Local DNS Resolver**: Configures `/etc/resolver/<tld>` pointing to local DNS listener (`127.0.0.1:53` or VM IP).
-- **Default Profile Boot**: Automatically delegates to `oops up` to boot default services (`caddy-proxy`, `oops`, etc.).
+- **Default Stack Boot**: Automatically delegates to `oops up` to boot default services declared in `compose.yaml`.
 
 ### Multi-Box Switching (`oops box switch <path>`)
 When switching between isolated organization workspaces:
@@ -83,14 +79,14 @@ When switching between isolated organization workspaces:
 - **State Handover**: Sets `~/.oops/active_box` to the target path and invokes `oops box start` on the target workspace.
 
 ### CA Certificate Trust (`oops box cert`)
-- Exports Caddy root CA (`root.crt`) from the Caddy container volume (`caddy_data` or `stacks/edge/data/caddy/pki/authorities/local/root.crt`).
+- Exports Caddy root CA (`root.crt`) from the Caddy container volume (`caddy_data` or `data/caddy/pki/authorities/local/root.crt`).
 - Installs root CA into macOS System Keychain (`security add-trusted-cert -d -r trustRoot`) or Linux system trust store (`/usr/local/share/ca-certificates/` and `update-ca-certificates`).
 
 ## Interface & Subcommands Specification
 
 | Subcommand | Arguments | Description |
 | :--- | :--- | :--- |
-| `oops box init` | `[path]` | Downloads latest release blueprint, generates secure credentials in `.env`, initializes `oopsbox.yml`, and sets active box |
+| `oops box init` | `[path]` | Downloads latest release blueprint, generates secure credentials in `.env`, initializes `oopsbox.yaml`, and sets active box |
 | `oops box active` | `[path]` | Displays or sets the currently active Oopsbox workspace in `~/.oops/active_box` |
 | `oops box list` | *(none)* | Lists known and active Oopsbox workspaces |
 | `oops box start` | *(none)* | Boots container engine (OrbStack/Colima/Docker), configures resolver, syncs DNS records, and starts default stack \(`oops up`\) |
@@ -113,8 +109,8 @@ When switching between isolated organization workspaces:
 - **Unit Tests**:
   - `go test -v -race ./internal/box/... ./cmd/...` exits with Code 0.
   - Random credential generator produces 48-char alphanumeric secrets and 32-char passwords.
-  - Active box resolution and validation functions handle non-existent, invalid, and valid directories.
+  - Active box resolution and validation functions handle non-existent, invalid, and valid directories with `compose.yaml`.
 - **CLI Behavior**:
   - `oops box --help` displays all subcommands cleanly.
   - `oops box active` displays active box and validation status.
-  - Tab completion correctly suggests `oops box` and all subcommands (`create`, `active`, `list`, `start`, `stop`, `switch`, `cert`).
+  - Tab completion correctly suggests `oops box` and all subcommands (`init`, `active`, `list`, `start`, `stop`, `switch`, `cert`).
