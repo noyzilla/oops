@@ -184,6 +184,12 @@ func hasComposeContent(dir string) bool {
 	if _, err := os.Stat(filepath.Join(dir, "compose.yaml")); err == nil {
 		return true
 	}
+	if fi, err := os.Stat(filepath.Join(dir, "services")); err == nil && fi.IsDir() {
+		return true
+	}
+	if fi, err := os.Stat(filepath.Join(dir, "stacks")); err == nil && fi.IsDir() {
+		return true
+	}
 	return false
 }
 

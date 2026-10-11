@@ -1,47 +1,57 @@
 package sync
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
 
-func TestStripRemoteSuffix(t *testing.T) {
-	tests := []struct {
-		input      string
-		remoteName string
-		expected   string
-	}{
-		{".env.prod", "prod", ".env"},
-		{"config/env/api.prod.env", "prod", "config/env/api.env"},
-		{"config/secrets/db.prod.txt", "prod", "config/secrets/db.txt"},
-		{"config/secrets/mysql.prod.password", "prod", "config/secrets/mysql.password"},
-		{".env.staging", "prod", ".env.staging"}, // Should not strip mismatched remote
+func TestCollectSyncFiles(t *testing.T) {
+	tempDir := t.TempDir()
+	capsuleDir := filepath.Join(tempDir, "@prod")
+	if err := os.MkdirAll(filepath.Join(capsuleDir, "config", "env"), 0755); err != nil {
+		t.Fatalf("failed creating env dir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(capsuleDir, "config", "secrets"), 0755); err != nil {
+		t.Fatalf("failed creating secrets dir: %v", err)
 	}
 
-	for _, tc := range tests {
-		actual := stripRemoteSuffix(tc.input, tc.remoteName)
-		if actual != tc.expected {
-			t.Errorf("stripRemoteSuffix(%q, %q) = %q; want %q", tc.input, tc.remoteName, actual, tc.expected)
+	// Create test files
+	_ = os.WriteFile(filepath.Join(capsuleDir, "remote.yaml"), []byte("host: test\npath: ~/box\n"), 0644)
+	_ = os.WriteFile(filepath.Join(capsuleDir, ".env"), []byte("APP_ENV=production\n"), 0644)
+	_ = os.WriteFile(filepath.Join(capsuleDir, "config", "env", "db.env"), []byte("DB_HOST=127.0.0.1\n"), 0644)
+	_ = os.WriteFile(filepath.Join(capsuleDir, "config", "secrets", "api_key.txt"), []byte("secret123\n"), 0644)
+
+	// 1. Test SyncAll
+	filesAll, err := CollectSyncFiles(capsuleDir, Options{SyncAll: true})
+	if err != nil {
+		t.Fatalf("CollectSyncFiles failed: %v", err)
+	}
+	// remote.yaml must NOT be included!
+	for _, f := range filesAll {
+		if f == "remote.yaml" {
+			t.Errorf("remote.yaml must never be included in sync files")
 		}
 	}
-}
-
-func TestAppendRemoteSuffix(t *testing.T) {
-	tests := []struct {
-		input      string
-		remoteName string
-		expected   string
-	}{
-		{".env", "prod", ".env.prod"},
-		{"config/env/api.env", "prod", filepath.Join("config", "env", "api.prod.env")},
-		{"config/secrets/db.txt", "prod", filepath.Join("config", "secrets", "db.prod.txt")},
-		{"config/secrets/mysql.password", "prod", filepath.Join("config", "secrets", "mysql.prod.password")},
+	if len(filesAll) != 3 {
+		t.Fatalf("expected 3 files (.env, config/env/db.env, config/secrets/api_key.txt), got %d: %v", len(filesAll), filesAll)
 	}
 
-	for _, tc := range tests {
-		actual := appendRemoteSuffix(tc.input, tc.remoteName)
-		if actual != tc.expected {
-			t.Errorf("appendRemoteSuffix(%q, %q) = %q; want %q", tc.input, tc.remoteName, actual, tc.expected)
-		}
+	// 2. Test SyncEnv only
+	filesEnv, err := CollectSyncFiles(capsuleDir, Options{SyncEnv: true})
+	if err != nil {
+		t.Fatalf("CollectSyncFiles failed: %v", err)
+	}
+	if len(filesEnv) != 2 {
+		t.Fatalf("expected 2 env files, got %d: %v", len(filesEnv), filesEnv)
+	}
+
+	// 3. Test SyncSecret only
+	filesSecret, err := CollectSyncFiles(capsuleDir, Options{SyncSecret: true})
+	if err != nil {
+		t.Fatalf("CollectSyncFiles failed: %v", err)
+	}
+	if len(filesSecret) != 1 || filesSecret[0] != filepath.Join("config", "secrets", "api_key.txt") {
+		t.Fatalf("expected 1 secret file, got: %v", filesSecret)
 	}
 }

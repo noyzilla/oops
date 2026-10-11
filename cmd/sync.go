@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/noyzilla/oops/internal/remote"
 	"github.com/noyzilla/oops/internal/sync"
 	"github.com/spf13/cobra"
 )
@@ -80,40 +81,43 @@ func newSyncCmd() *cobra.Command {
 }
 
 func runSync(isPush, doEnv, doSecret bool) error {
-	workDirAbs, err := RequireGitOopsboxWorkspace(targetDir)
+	workDirAbs, err := RequireOopsboxWorkspace(targetDir)
 	if err != nil {
 		return err
 	}
 
 	remoteName := syncRemoteFlag
 	if remoteName == "" {
-		remoteName = resolveDefaultServer(workDirAbs)
+		remotes, _ := remote.ListRemotes(workDirAbs)
+		for _, r := range remotes {
+			if r == "prod" {
+				remoteName = "prod"
+				break
+			}
+		}
+		if remoteName == "" && len(remotes) > 0 {
+			remoteName = remotes[0]
+		}
+		if remoteName == "" {
+			remoteName = resolveDefaultServer(workDirAbs)
+		}
 	}
 
 	if remoteName == "" {
-		return fmt.Errorf("no remote specified and no default remote found")
-	}
-
-	sshTarget := resolveSSHTarget(workDirAbs, remoteName)
-	if sshTarget == "" || sshTarget == remoteName {
-		// If fallback triggers and just returns the name, it might be correct or it might just be unresolved.
-		// For safety, we can just use the returned sshTarget but print what we resolved.
-		// sshTarget = extractSSHTarget(serverName) which returns remoteName if it cannot find git remote
+		return fmt.Errorf("no remote specified and no registered remote found")
 	}
 
 	opts := sync.Options{
 		WorkDir:    workDirAbs,
 		RemoteName: remoteName,
-		SSHTarget:  sshTarget,
 		SyncEnv:    doEnv,
 		SyncSecret: doSecret,
+		SyncAll:    doEnv && doSecret,
 	}
 
 	if isPush {
-		fmt.Printf("Pushing to remote %s (target: %s)...\n", remoteName, sshTarget)
 		return sync.Push(opts)
 	}
 
-	fmt.Printf("Pulling from remote %s (target: %s)...\n", remoteName, sshTarget)
 	return sync.Pull(opts)
 }
