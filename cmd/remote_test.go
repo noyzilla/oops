@@ -91,3 +91,28 @@ func TestRequireGitOopsboxWorkspace(t *testing.T) {
 		t.Errorf("RequireGitOopsboxWorkspace(%q) returned empty string", tmpDir)
 	}
 }
+
+func TestRemoteCapsuleAddAndList(t *testing.T) {
+	tmpDir := t.TempDir()
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yaml"), []byte("services:\n  app:\n    image: test\n"), 0644)
+
+	// Add remote capsule @prod
+	prodCapsule := filepath.Join(tmpDir, "@prod")
+	if err := os.MkdirAll(prodCapsule, 0755); err != nil {
+		t.Fatalf("failed creating @prod dir: %v", err)
+	}
+	_ = os.WriteFile(filepath.Join(prodCapsule, "remote.yaml"), []byte("host: user@1.2.3.4\npath: ~/box\n"), 0644)
+
+	// Test resolveDefaultServer finds prod
+	defServer := resolveDefaultServer(tmpDir)
+	if defServer != "prod" {
+		t.Errorf("expected default server 'prod', got %s", defServer)
+	}
+
+	// Test resolveSSHTarget resolves host from remote.yaml
+	target := resolveSSHTarget(tmpDir, "prod")
+	if target != "user@1.2.3.4" {
+		t.Errorf("expected ssh target 'user@1.2.3.4', got %s", target)
+	}
+}
+

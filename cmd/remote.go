@@ -14,12 +14,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var remoteAddNameFlag string
+var (
+	remoteAddNameFlag string
+	remoteAddPathFlag string
+)
 
 func newRemoteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "remote",
-		Short: "Manages remote server environments and Git Bare synchronization",
+		Short: "Manages remote server environments and overlay capsules",
 		Long:  "Commands for registering remote servers, syncing/deploying workspace versions, and executing remote commands over SSH.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
@@ -91,15 +94,18 @@ func gitRemoteExists(workDir, gitRemoteName string) bool {
 
 func deriveRemoteName(workDir, sshTarget, explicitFlag string) (string, error) {
 	if explicitFlag != "" {
+		explicitFlag = strings.TrimPrefix(explicitFlag, "@")
+		capsule := remote.CapsuleDir(workDir, explicitFlag)
 		gitName := toGitRemoteName(explicitFlag)
-		if gitRemoteExists(workDir, gitName) || gitRemoteExists(workDir, explicitFlag) {
+		if _, err := os.Stat(capsule); err == nil || gitRemoteExists(workDir, gitName) || gitRemoteExists(workDir, explicitFlag) {
 			return "", fmt.Errorf("remote '%s' already exists in this workspace", explicitFlag)
 		}
 		return explicitFlag, nil
 	}
 
 	// 1. Check if prod is available
-	if !gitRemoteExists(workDir, "oops-prod") && !gitRemoteExists(workDir, "prod") {
+	capsuleProd := remote.CapsuleDir(workDir, "prod")
+	if _, err := os.Stat(capsuleProd); os.IsNotExist(err) && !gitRemoteExists(workDir, "oops-prod") && !gitRemoteExists(workDir, "prod") {
 		return "prod", nil
 	}
 
@@ -124,7 +130,8 @@ func deriveRemoteName(workDir, sshTarget, explicitFlag string) (string, error) {
 		host = "remote"
 	}
 
-	if !gitRemoteExists(workDir, toGitRemoteName(host)) && !gitRemoteExists(workDir, host) {
+	capsuleHost := remote.CapsuleDir(workDir, host)
+	if _, err := os.Stat(capsuleHost); os.IsNotExist(err) && !gitRemoteExists(workDir, toGitRemoteName(host)) && !gitRemoteExists(workDir, host) {
 		return host, nil
 	}
 
@@ -148,7 +155,8 @@ func deriveRemoteName(workDir, sshTarget, explicitFlag string) (string, error) {
 		}
 	}
 
-	if gitRemoteExists(workDir, toGitRemoteName(fallback)) || gitRemoteExists(workDir, fallback) {
+	fallbackCapsule := remote.CapsuleDir(workDir, fallback)
+	if _, err := os.Stat(fallbackCapsule); err == nil || gitRemoteExists(workDir, toGitRemoteName(fallback)) || gitRemoteExists(workDir, fallback) {
 		return "", fmt.Errorf("remote '%s' already exists in this workspace. Use -r <name> to specify a unique remote name", fallback)
 	}
 
@@ -157,62 +165,61 @@ func deriveRemoteName(workDir, sshTarget, explicitFlag string) (string, error) {
 
 func newRemoteAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <ssh-target> [-r <remote-name>]",
-		Short: "Registers and bootstraps a remote server via SSH",
-		Long:  "Connects to remote server via SSH, verifies/installs oops & docker compose, initializes bare repo at ~/.oops/oopsbox.git, and sets up local Git remote.",
+		Use:   "add <ssh-target> [-r <remote-name>] [--path <remote-path>]",
+		Short: "Registers a remote server and provisions /@<name>/remote.yaml",
+		Long:  "Creates local remote capsule /@<name>/ with remote.yaml manifest and verifies connectivity over SSH.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			workDirAbs, err := RequireGitOopsboxWorkspace(targetDir)
+			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
 			if err != nil {
 				return err
 			}
 
 			sshTarget := args[0]
-			name, err := deriveRemoteName(workDirAbs, sshTarget, remoteAddNameFlag)
-			if err != nil {
+			name := remoteAddNameFlag
+			if name == "" {
+				name, err = deriveRemoteName(workDirAbs, sshTarget, "")
+				if err != nil {
+					return err
+				}
+			}
+			name = strings.TrimPrefix(name, "@")
+
+			remotePath := remoteAddPathFlag
+			if remotePath == "" {
+				remotePath = "~/oopsbox"
+			}
+
+			cmd.Printf("==> Registering remote server '@%s' (%s)...\n", name, sshTarget)
+
+			// 1. Verify remote SSH connectivity & Docker availability
+			pingCmd := "docker info >/dev/null 2>&1 || true"
+			if out, err := remote.ExecuteRemoteSSH(sshTarget, pingCmd); err != nil {
+				cmd.Printf("Notice: could not verify remote docker daemon on %s: %v (%s)\n", sshTarget, err, out)
+			}
+
+			// 2. Save remote.yaml in /@<name>/
+			cfg := &remote.Config{
+				Host: sshTarget,
+				Path: remotePath,
+			}
+			if err := remote.SaveConfig(workDirAbs, name, cfg); err != nil {
 				return err
 			}
 
-			gitRemoteName := toGitRemoteName(name)
-			bareRepoPath := "~/.oops/oopsbox.git"
-			remoteBoxPath := "~/oopsbox"
-
-			cmd.Printf("==> Bootstrapping remote server '%s' (%s)...\n", name, sshTarget)
-
-			// 1. Generate remote script and execute via SSH
-			script := remote.GenerateBootstrapRemoteScript(bareRepoPath, remoteBoxPath)
-			out, err := remote.ExecuteRemoteSSH(sshTarget, script)
-			if err != nil {
-				cmd.Printf("Output: %s\n", out)
-				return fmt.Errorf("remote bootstrapping failed: %w", err)
-			}
-			if strings.TrimSpace(out) != "" {
-				cmd.Println(out)
-			}
-
-			// 2. Configure local Git remote with oops- prefix
-			cleanTarget := strings.TrimPrefix(sshTarget, "ssh://")
-			if idx := strings.Index(cleanTarget, "/"); idx != -1 {
-				cleanTarget = cleanTarget[:idx]
-			}
-			remoteURL := fmt.Sprintf("%s:.oops/oopsbox.git", cleanTarget)
-			gitRemoteCmd := exec.Command("git", "-C", workDirAbs, "remote", "add", gitRemoteName, remoteURL)
-			if err := gitRemoteCmd.Run(); err != nil {
-				// If remote exists, update URL
-				_ = exec.Command("git", "-C", workDirAbs, "remote", "set-url", gitRemoteName, remoteURL).Run()
-			}
-
-			cmd.Printf("\n✓ Successfully registered remote '%s' (%s)\n", name, remoteURL)
-			cmd.Printf("  Bare Repository : %s\n", bareRepoPath)
-			cmd.Printf("  Workspace Directory: %s\n", remoteBoxPath)
+			cmd.Printf("\n✓ Successfully registered remote '@%s'\n", name)
+			cmd.Printf("  Host             : %s\n", cfg.Host)
+			cmd.Printf("  Remote Path      : %s\n", cfg.Path)
+			cmd.Printf("  Manifest         : /@%s/remote.yaml\n", name)
 			cmd.Println()
-			cmd.Printf("To deploy your workspace to '%s', run:\n", name)
-			cmd.Printf("  oops deploy -r %s\n", name)
+			cmd.Printf("To deploy your workspace to '@%s', run:\n", name)
+			cmd.Printf("  oops deploy @%s\n", name)
 			return nil
 		},
 	}
 
 	cmd.Flags().StringVarP(&remoteAddNameFlag, "remote", "r", "", "Specify logical remote server name")
+	cmd.Flags().StringVar(&remoteAddPathFlag, "path", "~/oopsbox", "Remote working directory path")
 	return cmd
 }
 
@@ -231,20 +238,38 @@ func newRemoteListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "Lists registered remote servers for current workspace",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			workDirAbs, err := RequireGitOopsboxWorkspace(targetDir)
+			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
 			if err != nil {
 				return err
 			}
-			remotes := listOopsGitRemoteDetails(workDirAbs)
+
+			remotes, err := remote.ListRemotes(workDirAbs)
+			if err != nil {
+				return err
+			}
+
 			if len(remotes) == 0 {
-				fmt.Println("No remote servers registered for this workspace.")
-				fmt.Println("Add a remote server using: oops remote add <ssh-target> [-r <name>]")
+				gitRemotes := listOopsGitRemoteDetails(workDirAbs)
+				if len(gitRemotes) == 0 {
+					cmd.Println("No remote servers registered for this workspace.")
+					cmd.Println("Add a remote server using: oops remote add <ssh-target> [-r <name>]")
+					return nil
+				}
+				cmd.Println("Registered Remote Servers (Legacy Git Remotes):")
+				for _, r := range gitRemotes {
+					cmd.Printf("  %-15s (%s)\n", r.LogicalName, r.URL)
+				}
 				return nil
 			}
 
-			fmt.Println("Registered Remote Servers:")
-			for _, r := range remotes {
-				fmt.Printf("  %-15s (%s)\n", r.LogicalName, r.URL)
+			cmd.Println("Registered Remote Servers:")
+			for _, rName := range remotes {
+				cfg, err := remote.LoadConfig(workDirAbs, rName)
+				if err != nil {
+					cmd.Printf("  @%-14s (error: %v)\n", rName, err)
+					continue
+				}
+				cmd.Printf("  @%-14s Host: %-25s Path: %s\n", rName, cfg.Host, cfg.Path)
 			}
 			return nil
 		},
@@ -294,22 +319,26 @@ func listOopsGitRemoteDetails(workDir string) []RemoteDetail {
 func newRemoteRemoveCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "remove <name>",
-		Short: "Removes a registered remote server configuration from current workspace",
+		Short: "Removes a registered remote server capsule from current workspace",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			name := args[0]
-			workDirAbs, err := RequireGitOopsboxWorkspace(targetDir)
+			name := strings.TrimPrefix(args[0], "@")
+			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
 			if err != nil {
 				return err
 			}
+
+			capsuleErr := remote.RemoveRemote(workDirAbs, name)
 			gitName := toGitRemoteName(name)
-			if err := exec.Command("git", "-C", workDirAbs, "remote", "remove", gitName).Run(); err != nil {
-				// Fallback to un-prefixed name
-				if errLegacy := exec.Command("git", "-C", workDirAbs, "remote", "remove", name).Run(); errLegacy != nil {
-					return fmt.Errorf("failed removing remote '%s': %w", name, err)
-				}
+			gitErr := exec.Command("git", "-C", workDirAbs, "remote", "remove", gitName).Run()
+			if gitErr != nil {
+				_ = exec.Command("git", "-C", workDirAbs, "remote", "remove", name).Run()
 			}
-			fmt.Printf("✓ Removed remote '%s' from workspace\n", name)
+
+			if capsuleErr != nil && gitErr != nil {
+				return fmt.Errorf("failed removing remote '@%s': %v", name, capsuleErr)
+			}
+			cmd.Printf("✓ Removed remote '@%s' from workspace\n", name)
 			return nil
 		},
 	}
@@ -321,13 +350,28 @@ func newRemoteRenameCmd() *cobra.Command {
 		Short: "Renames a registered remote server configuration",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			oldName := args[0]
-			newName := args[1]
-			workDirAbs, err := RequireGitOopsboxWorkspace(targetDir)
+			oldName := strings.TrimPrefix(args[0], "@")
+			newName := strings.TrimPrefix(args[1], "@")
+			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
 			if err != nil {
 				return err
 			}
 
+			oldCapsule := remote.CapsuleDir(workDirAbs, oldName)
+			newCapsule := remote.CapsuleDir(workDirAbs, newName)
+
+			if _, err := os.Stat(oldCapsule); err == nil {
+				if _, err := os.Stat(newCapsule); err == nil {
+					return fmt.Errorf("remote '@%s' already exists", newName)
+				}
+				if err := os.Rename(oldCapsule, newCapsule); err != nil {
+					return fmt.Errorf("failed renaming remote '@%s' to '@%s': %w", oldName, newName, err)
+				}
+				cmd.Printf("✓ Renamed remote '@%s' to '@%s'\n", oldName, newName)
+				return nil
+			}
+
+			// Fallback to git remote rename
 			oldGit := toGitRemoteName(oldName)
 			newGit := toGitRemoteName(newName)
 
@@ -360,8 +404,15 @@ func isKnownRemoteOrHost(workDir, candidate string) bool {
 	if strings.Contains(candidate, "@") || strings.Contains(candidate, ":") || strings.HasPrefix(candidate, "ssh://") {
 		return true
 	}
-	remotes := listGitRemotes(workDir)
+	candidateName := strings.TrimPrefix(candidate, "@")
+	remotes, _ := remote.ListRemotes(workDir)
 	for _, r := range remotes {
+		if r == candidateName {
+			return true
+		}
+	}
+	gitRemotes := listGitRemotes(workDir)
+	for _, r := range gitRemotes {
 		if r == candidate || toLogicalRemoteName(r) == candidate {
 			return true
 		}
@@ -370,14 +421,24 @@ func isKnownRemoteOrHost(workDir, candidate string) bool {
 }
 
 func resolveDefaultServer(workDir string) string {
-	remotes := listOopsGitRemoteDetails(workDir)
+	remotes, _ := remote.ListRemotes(workDir)
 	for _, r := range remotes {
+		if r == "prod" {
+			return "prod"
+		}
+	}
+	if len(remotes) > 0 {
+		return remotes[0]
+	}
+
+	remoteDetails := listOopsGitRemoteDetails(workDir)
+	for _, r := range remoteDetails {
 		if r.LogicalName == "prod" {
 			return "prod"
 		}
 	}
-	if len(remotes) == 1 {
-		return remotes[0].LogicalName
+	if len(remoteDetails) == 1 {
+		return remoteDetails[0].LogicalName
 	}
 	return "prod"
 }
@@ -400,6 +461,12 @@ func listGitRemotes(workDir string) []string {
 }
 
 func resolveSSHTarget(workDir, serverName string) string {
+	cleanName := strings.TrimPrefix(serverName, "@")
+	cfg, err := remote.LoadConfig(workDir, cleanName)
+	if err == nil && cfg.Host != "" {
+		return cfg.Host
+	}
+
 	gitRemoteName := toGitRemoteName(serverName)
 	remoteURLCmd := exec.Command("git", "-C", workDir, "remote", "get-url", gitRemoteName)
 	out, err := remoteURLCmd.Output()

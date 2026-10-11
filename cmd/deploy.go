@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
+	"github.com/noyzilla/oops/internal/remote"
 	"github.com/spf13/cobra"
 )
 
@@ -15,96 +15,114 @@ var (
 
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "deploy [-r <remote>] [ref]",
+		Use:   "deploy [/<project>] [@<remote>]",
 		Short: "Deploys workspace updates to a remote server over SSH",
-		Long:  "Pushes Git history to remote bare repo and executes remote checkout and container orchestration (oops up). Use -r <remote> to specify target remote.",
-		Args:  cobra.MaximumNArgs(1),
+		Long:  "Streams base manifests and remote overlays directly via SSH and executes remote docker compose up.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			workDirAbs, err := RequireGitOopsboxWorkspace(targetDir)
+			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
 			if err != nil {
 				return err
 			}
 
-			remoteName := deployRemoteFlag
-			if remoteName == "" {
-				remoteName = resolveDefaultServer(workDirAbs)
+			var projectTarget string
+			var remoteTarget string
+
+			for _, arg := range args {
+				if strings.HasPrefix(arg, "/") {
+					projectTarget = strings.TrimPrefix(arg, "/")
+				} else if strings.HasPrefix(arg, "@") {
+					remoteTarget = strings.TrimPrefix(arg, "@")
+				} else {
+					if remoteTarget == "" {
+						remoteTarget = arg
+					}
+				}
 			}
 
-			ref := getCurrentGitBranch(workDirAbs)
-			if ref == "" {
-				ref = "main"
+			if deployRemoteFlag != "" {
+				remoteTarget = strings.TrimPrefix(deployRemoteFlag, "@")
 			}
 
-			if len(args) == 1 {
-				ref = args[0]
+			if remoteTarget == "" {
+				remoteTarget = resolveDefaultServer(workDirAbs)
 			}
 
-			return executeDeploy(workDirAbs, remoteName, ref)
+			if remoteTarget == "" {
+				return fmt.Errorf("no remote server specified and no registered remote found. Run 'oops remote add <ssh-target> [-r <name>]' first")
+			}
+
+			return executeDeploy(workDirAbs, remoteTarget, projectTarget)
 		},
 	}
 
-	cmd.Flags().StringVarP(&deployRemoteFlag, "remote", "r", "", "Target remote server name (default: oopsbox or first registered remote)")
+	cmd.Flags().StringVarP(&deployRemoteFlag, "remote", "r", "", "Target remote server name (default: @prod or first registered remote)")
 	return cmd
 }
 
-func executeDeploy(workDirAbs, remoteName, ref string) error {
-	gitRemoteName := toGitRemoteName(remoteName)
-	remoteURLCmd := exec.Command("git", "-C", workDirAbs, "remote", "get-url", gitRemoteName)
-	out, err := remoteURLCmd.Output()
+func executeDeploy(workDirAbs, remoteName, projectTarget string) error {
+	remoteName = strings.TrimPrefix(remoteName, "@")
+
+	// 1. Load remote config from /@<name>/remote.yaml
+	cfg, err := remote.LoadConfig(workDirAbs, remoteName)
 	if err != nil {
-		// Fallback to un-prefixed name
-		gitRemoteName = remoteName
-		remoteURLCmd = exec.Command("git", "-C", workDirAbs, "remote", "get-url", gitRemoteName)
-		out, err = remoteURLCmd.Output()
-	}
-	if err != nil {
-		return fmt.Errorf("remote '%s' not registered. Run 'oops remote add <ssh-target> -r %s' first", remoteName, remoteName)
-	}
-
-	rawURL := strings.TrimSpace(string(out))
-	sshTarget := extractSSHTarget(rawURL)
-
-	fmt.Printf("==> Deploying workspace to remote '%s' (%s, ref: %s)...\n", remoteName, sshTarget, ref)
-
-	gitPushCmd := exec.Command("git", "-C", workDirAbs, "push", gitRemoteName, ref)
-	gitPushCmd.Stdout = os.Stdout
-	gitPushCmd.Stderr = os.Stderr
-	if err := gitPushCmd.Run(); err != nil {
-		return fmt.Errorf("failed pushing git commits to remote '%s': %w", remoteName, err)
+		// Fallback check if it's a legacy git remote
+		sshTarget := resolveSSHTarget(workDirAbs, remoteName)
+		if sshTarget == "" || sshTarget == remoteName {
+			return fmt.Errorf("remote '@%s' not registered. Run 'oops remote add <ssh-target> -r %s' first", remoteName, remoteName)
+		}
+		cfg = &remote.Config{
+			Host: sshTarget,
+			Path: "~/oopsbox",
+		}
 	}
 
-	remoteDeployScript := fmt.Sprintf(
-		"git --git-dir=$HOME/.oops/oopsbox.git --work-tree=$HOME/oopsbox checkout -f %s && "+
-			"(command -v oops >/dev/null 2>&1 && oops up -C $HOME/oopsbox || /var/lib/google/bin/oops up -C $HOME/oopsbox)",
-		ref,
-	)
+	fmt.Printf("==> Deploying workspace to remote '@%s' (%s, target path: %s)...\n", remoteName, cfg.Host, cfg.Path)
 
-	sshArgs := []string{
-		"-o", "StrictHostKeyChecking=accept-new",
-		sshTarget,
-		remoteDeployScript,
+	// Step 1: Base Manifest Streaming
+	// Stream base files (compose.yaml, services/, config/, etc.) excluding *.local.yaml, @*, .git, .scratch, data
+	fmt.Println("==> [1/3] Streaming base manifests...")
+	excludes := []string{
+		"*.local.yaml",
+		"@*",
+		".git",
+		".scratch",
+		"data",
+	}
+	if err := remote.StreamTarSSH(workDirAbs, excludes, cfg.Host, cfg.Path); err != nil {
+		return fmt.Errorf("base manifest streaming failed: %w", err)
 	}
 
-	sshCmd := exec.Command("ssh", sshArgs...)
-	sshCmd.Stdout = os.Stdout
-	sshCmd.Stderr = os.Stderr
-	if err := sshCmd.Run(); err != nil {
-		return fmt.Errorf("remote deployment execution failed: %w", err)
+	// Step 2: Overlay Application
+	// Stream overlay from /@<remote>/ excluding remote.yaml
+	capsuleDir := remote.CapsuleDir(workDirAbs, remoteName)
+	if fi, err := os.Stat(capsuleDir); err == nil && fi.IsDir() {
+		fmt.Printf("==> [2/3] Applying remote overlay manifests from /@%s/...\n", remoteName)
+		overlayExcludes := []string{
+			"remote.yaml",
+		}
+		if err := remote.StreamTarSSH(capsuleDir, overlayExcludes, cfg.Host, cfg.Path); err != nil {
+			return fmt.Errorf("overlay manifest streaming failed: %w", err)
+		}
+	} else {
+		fmt.Println("==> [2/3] No overlay directory found, skipping overlay...")
 	}
 
-	fmt.Printf("\n✓ Successfully deployed workspace to remote '%s' (%s)\n", remoteName, sshTarget)
+	// Step 3: Container Execution
+	fmt.Println("==> [3/3] Orchestrating remote containers (docker compose up -d)...")
+	var composeCmd string
+	if projectTarget != "" {
+		composeCmd = fmt.Sprintf(
+			"cd %s && (if [ -f projects/%s/compose.yaml ]; then docker compose -f compose.yaml -f projects/%s/compose.yaml up -d; else docker compose up -d; fi)",
+			cfg.Path, projectTarget, projectTarget,
+		)
+	} else {
+		composeCmd = fmt.Sprintf("cd %s && docker compose up -d", cfg.Path)
+	}
+
+	if err := remote.ExecuteSSH(cfg.Host, composeCmd, os.Stdout, os.Stderr); err != nil {
+		return fmt.Errorf("remote docker compose up failed: %w", err)
+	}
+
+	fmt.Printf("\n✓ Successfully deployed workspace to remote '@%s' (%s)\n", remoteName, cfg.Host)
 	return nil
-}
-
-func isRegisteredRemote(workDir, remoteName string) bool {
-	err := exec.Command("git", "-C",workDir, "remote", "get-url", remoteName).Run()
-	return err == nil
-}
-
-func getCurrentGitBranch(workDir string) string {
-	out, err := exec.Command("git", "-C", workDir, "branch", "--show-current").Output()
-	if err == nil {
-		return strings.TrimSpace(string(out))
-	}
-	return ""
 }
