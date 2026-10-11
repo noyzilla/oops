@@ -18,8 +18,7 @@ The following actions require prior explicit human confirmation:
 - **Direct Edits & Commits to Main (Step 0 Invariant)**: Modifying or committing directly on `main` is structurally forbidden. You MUST empirically verify the active branch via terminal before invoking any edit tool. If on `main`, branch out (`git checkout -b <type>/<slug>`) immediately. **Exception**: `chore(release): vX.Y.Z` post-merge commits via `jarn-release`.
 - **Credential Exposure**: Adding, modifying, reading, or printing production secrets, private keys, API keys, or `.env` files.
 - **Uncontrolled Dependencies**: Adding new third-party libraries without architectural approval.
-- **Unbounded Deletion**: Recursively deleting directories or bulk deleting files outside build or scratch folders.
-- **Root Pollution**: Creating scratch files, payloads, scripts, or logs in project root. Place artifacts in `.scratch/<task-slug>/tmp/`.
+- **Root Pollution & Scratch Hygiene**: Creating scratch files, payloads, scripts, or logs in project root or loose within `.scratch/`. All transient artifacts must strictly reside in a `tmp/` directory. When working within an active branch/task, artifacts must be placed in `.scratch/<task-slug>/tmp/`; task-agnostic artifacts belong in `.scratch/tmp/`.
 
 ## Stop and Ask Escalation Gates
 

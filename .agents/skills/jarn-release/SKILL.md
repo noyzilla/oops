@@ -147,7 +147,7 @@ Release publication behavior is governed by the `Release Mode` declared in the p
   - **Trigger Level 2**: Halt if the mode cannot be inferred unambiguously. Never fall back to tag-only silently.
 
 #### Host Release Commands (`host-release`)
-Use the CLI matching the remote host, with notes extracted from the matching version section of `CHANGELOG.md` (write to a temporary file under `.scratch/`):
+Use the CLI matching the remote host, with notes extracted from the matching version section of `CHANGELOG.md` (write to a temporary file under `.scratch/tmp/` or `.scratch/<task-slug>/tmp/`):
 - **GitHub**: `gh release create vX.Y.Z --title "Release vX.Y.Z" --notes-file <notes>` (attach built `dist/` or `bin/` assets if applicable).
 - **GitLab**: `glab release create vX.Y.Z --notes-file <notes>`
 - **Gitea / Forgejo**: `tea releases create --tag vX.Y.Z --title "Release vX.Y.Z" --note-file <notes>`
