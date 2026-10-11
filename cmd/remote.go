@@ -2,14 +2,11 @@ package cmd
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"github.com/noyzilla/oops/internal/box"
 	"github.com/noyzilla/oops/internal/remote"
 	"github.com/spf13/cobra"
 )
@@ -52,32 +49,6 @@ func RequireOopsboxWorkspace(customDir string) (string, error) {
 	return abs, nil
 }
 
-func RequireGitOopsboxWorkspace(customDir string) (string, error) {
-	workDirAbs, err := RequireOopsboxWorkspace(customDir)
-	if err != nil {
-		return "", err
-	}
-	cmd := exec.Command("git", "-C", workDirAbs, "rev-parse", "--show-toplevel")
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("not inside a valid git project workspace (must be inside a git project repository with .git)")
-	}
-	return workDirAbs, nil
-}
-
-func toGitRemoteName(logicalName string) string {
-	if strings.HasPrefix(logicalName, "oops-") {
-		return logicalName
-	}
-	return "oops-" + logicalName
-}
-
-func toLogicalRemoteName(gitRemoteName string) string {
-	if strings.HasPrefix(gitRemoteName, "oops-") {
-		return strings.TrimPrefix(gitRemoteName, "oops-")
-	}
-	return gitRemoteName
-}
-
 func isTerminal() bool {
 	fi, err := os.Stdin.Stat()
 	if err != nil {
@@ -86,25 +57,19 @@ func isTerminal() bool {
 	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
-func gitRemoteExists(workDir, gitRemoteName string) bool {
-	err := exec.Command("git", "-C", workDir, "remote", "get-url", gitRemoteName).Run()
-	return err == nil
-}
-
 func deriveRemoteName(workDir, sshTarget, explicitFlag string) (string, error) {
 	if explicitFlag != "" {
 		explicitFlag = strings.TrimPrefix(explicitFlag, "@")
 		capsule := remote.CapsuleDir(workDir, explicitFlag)
-		gitName := toGitRemoteName(explicitFlag)
-		if _, err := os.Stat(capsule); err == nil || gitRemoteExists(workDir, gitName) || gitRemoteExists(workDir, explicitFlag) {
-			return "", fmt.Errorf("remote '%s' already exists in this workspace", explicitFlag)
+		if _, err := os.Stat(capsule); err == nil {
+			return "", fmt.Errorf("remote '@%s' already exists in this workspace", explicitFlag)
 		}
 		return explicitFlag, nil
 	}
 
 	// 1. Check if prod is available
 	capsuleProd := remote.CapsuleDir(workDir, "prod")
-	if _, err := os.Stat(capsuleProd); os.IsNotExist(err) && !gitRemoteExists(workDir, "oops-prod") && !gitRemoteExists(workDir, "prod") {
+	if _, err := os.Stat(capsuleProd); os.IsNotExist(err) {
 		return "prod", nil
 	}
 
@@ -130,7 +95,7 @@ func deriveRemoteName(workDir, sshTarget, explicitFlag string) (string, error) {
 	}
 
 	capsuleHost := remote.CapsuleDir(workDir, host)
-	if _, err := os.Stat(capsuleHost); os.IsNotExist(err) && !gitRemoteExists(workDir, toGitRemoteName(host)) && !gitRemoteExists(workDir, host) {
+	if _, err := os.Stat(capsuleHost); os.IsNotExist(err) {
 		return host, nil
 	}
 
@@ -143,7 +108,7 @@ func deriveRemoteName(workDir, sshTarget, explicitFlag string) (string, error) {
 	}
 
 	if isTerminal() {
-		fmt.Printf("Warning: remote name '%s' already exists.\n", host)
+		fmt.Printf("Warning: remote name '@%s' already exists.\n", host)
 		fmt.Printf("Enter remote name [%s]: ", fallback)
 		scanner := bufio.NewScanner(os.Stdin)
 		if scanner.Scan() {
@@ -155,8 +120,8 @@ func deriveRemoteName(workDir, sshTarget, explicitFlag string) (string, error) {
 	}
 
 	fallbackCapsule := remote.CapsuleDir(workDir, fallback)
-	if _, err := os.Stat(fallbackCapsule); err == nil || gitRemoteExists(workDir, toGitRemoteName(fallback)) || gitRemoteExists(workDir, fallback) {
-		return "", fmt.Errorf("remote '%s' already exists in this workspace. Specify '@<name>' to choose a unique remote name", fallback)
+	if _, err := os.Stat(fallbackCapsule); err == nil {
+		return "", fmt.Errorf("remote '@%s' already exists in this workspace. Specify '@<name>' to choose a unique remote name", fallback)
 	}
 
 	return fallback, nil
@@ -236,16 +201,6 @@ func newRemoteAddCmd() *cobra.Command {
 	return cmd
 }
 
-func ResolveGitWorkDir(customDir string) string {
-	if customDir != "" {
-		return box.CanonicalPath(customDir)
-	}
-	if _, err := os.Stat(".git"); err == nil {
-		return "."
-	}
-	return ResolveWorkDir("")
-}
-
 func newRemoteListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
@@ -262,16 +217,8 @@ func newRemoteListCmd() *cobra.Command {
 			}
 
 			if len(remotes) == 0 {
-				gitRemotes := listOopsGitRemoteDetails(workDirAbs)
-				if len(gitRemotes) == 0 {
-					cmd.Println("No remote servers registered for this workspace.")
-					cmd.Println("Add a remote server using: oops remote add <ssh-target> [@<name>]")
-					return nil
-				}
-				cmd.Println("Registered Remote Servers (Legacy Git Remotes):")
-				for _, r := range gitRemotes {
-					cmd.Printf("  %-15s (%s)\n", r.LogicalName, r.URL)
-				}
+				cmd.Println("No remote servers registered for this workspace.")
+				cmd.Println("Add a remote server using: oops remote add <ssh-target> [@<name>]")
 				return nil
 			}
 
@@ -289,46 +236,6 @@ func newRemoteListCmd() *cobra.Command {
 	}
 }
 
-type RemoteDetail struct {
-	LogicalName string
-	GitName     string
-	URL         string
-}
-
-func listOopsGitRemoteDetails(workDir string) []RemoteDetail {
-	cmd := exec.Command("git", "-C", workDir, "remote", "-v")
-	out, err := cmd.Output()
-	if err != nil || len(out) == 0 {
-		return nil
-	}
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	seen := make(map[string]bool)
-	var result []RemoteDetail
-
-	for _, l := range lines {
-		fields := strings.Fields(l)
-		if len(fields) >= 2 {
-			gitName := fields[0]
-			url := fields[1]
-
-			if strings.HasSuffix(fields[len(fields)-1], "(fetch)") {
-				if strings.HasPrefix(gitName, "oops-") || gitName == "oopsbox" || gitName == "prod" {
-					logical := toLogicalRemoteName(gitName)
-					if !seen[logical] {
-						seen[logical] = true
-						result = append(result, RemoteDetail{
-							LogicalName: logical,
-							GitName:     gitName,
-							URL:         url,
-						})
-					}
-				}
-			}
-		}
-	}
-	return result
-}
-
 func newRemoteRemoveCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "remove <name>",
@@ -341,15 +248,8 @@ func newRemoteRemoveCmd() *cobra.Command {
 				return err
 			}
 
-			capsuleErr := remote.RemoveRemote(workDirAbs, name)
-			gitName := toGitRemoteName(name)
-			gitErr := exec.Command("git", "-C", workDirAbs, "remote", "remove", gitName).Run()
-			if gitErr != nil {
-				_ = exec.Command("git", "-C", workDirAbs, "remote", "remove", name).Run()
-			}
-
-			if capsuleErr != nil && gitErr != nil {
-				return fmt.Errorf("failed removing remote '@%s': %v", name, capsuleErr)
+			if err := remote.RemoveRemote(workDirAbs, name); err != nil {
+				return fmt.Errorf("failed removing remote '@%s': %w", name, err)
 			}
 			cmd.Printf("✓ Removed remote '@%s' from workspace\n", name)
 			return nil
@@ -373,38 +273,16 @@ func newRemoteRenameCmd() *cobra.Command {
 			oldCapsule := remote.CapsuleDir(workDirAbs, oldName)
 			newCapsule := remote.CapsuleDir(workDirAbs, newName)
 
-			if _, err := os.Stat(oldCapsule); err == nil {
-				if _, err := os.Stat(newCapsule); err == nil {
-					return fmt.Errorf("remote '@%s' already exists", newName)
-				}
-				if err := os.Rename(oldCapsule, newCapsule); err != nil {
-					return fmt.Errorf("failed renaming remote '@%s' to '@%s': %w", oldName, newName, err)
-				}
-				cmd.Printf("✓ Renamed remote '@%s' to '@%s'\n", oldName, newName)
-				return nil
+			if _, err := os.Stat(oldCapsule); os.IsNotExist(err) {
+				return fmt.Errorf("remote '@%s' not found", oldName)
 			}
-
-			// Fallback to git remote rename
-			oldGit := toGitRemoteName(oldName)
-			newGit := toGitRemoteName(newName)
-
-			if !gitRemoteExists(workDirAbs, oldGit) {
-				if gitRemoteExists(workDirAbs, oldName) {
-					oldGit = oldName
-				} else {
-					return fmt.Errorf("remote '%s' not found", oldName)
-				}
+			if _, err := os.Stat(newCapsule); err == nil {
+				return fmt.Errorf("remote '@%s' already exists", newName)
 			}
-
-			if gitRemoteExists(workDirAbs, newGit) || gitRemoteExists(workDirAbs, newName) {
-				return fmt.Errorf("remote '%s' already exists", newName)
+			if err := os.Rename(oldCapsule, newCapsule); err != nil {
+				return fmt.Errorf("failed renaming remote '@%s' to '@%s': %w", oldName, newName, err)
 			}
-
-			gitCmd := exec.Command("git", "-C", workDirAbs, "remote", "rename", oldGit, newGit)
-			if err := gitCmd.Run(); err != nil {
-				return fmt.Errorf("failed renaming remote '%s' to '%s': %w", oldName, newName, err)
-			}
-			cmd.Printf("✓ Renamed remote '%s' to '%s'\n", oldName, newName)
+			cmd.Printf("✓ Renamed remote '@%s' to '@%s'\n", oldName, newName)
 			return nil
 		},
 	}
@@ -424,12 +302,6 @@ func isKnownRemoteOrHost(workDir, candidate string) bool {
 			return true
 		}
 	}
-	gitRemotes := listGitRemotes(workDir)
-	for _, r := range gitRemotes {
-		if r == candidate || toLogicalRemoteName(r) == candidate {
-			return true
-		}
-	}
 	return false
 }
 
@@ -443,34 +315,7 @@ func resolveDefaultServer(workDir string) string {
 	if len(remotes) > 0 {
 		return remotes[0]
 	}
-
-	remoteDetails := listOopsGitRemoteDetails(workDir)
-	for _, r := range remoteDetails {
-		if r.LogicalName == "prod" {
-			return "prod"
-		}
-	}
-	if len(remoteDetails) == 1 {
-		return remoteDetails[0].LogicalName
-	}
 	return "prod"
-}
-
-func listGitRemotes(workDir string) []string {
-	cmd := exec.Command("git", "-C", workDir, "remote")
-	out, err := cmd.Output()
-	if err != nil {
-		return nil
-	}
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	var result []string
-	for _, l := range lines {
-		trimmed := strings.TrimSpace(l)
-		if trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
-	return result
 }
 
 func resolveSSHTarget(workDir, serverName string) string {
@@ -478,17 +323,6 @@ func resolveSSHTarget(workDir, serverName string) string {
 	cfg, err := remote.LoadConfig(workDir, cleanName)
 	if err == nil && cfg.Host != "" {
 		return cfg.Host
-	}
-
-	gitRemoteName := toGitRemoteName(serverName)
-	remoteURLCmd := exec.Command("git", "-C", workDir, "remote", "get-url", gitRemoteName)
-	out, err := remoteURLCmd.Output()
-	if err != nil {
-		remoteURLCmd = exec.Command("git", "-C", workDir, "remote", "get-url", serverName)
-		out, err = remoteURLCmd.Output()
-	}
-	if err == nil && len(out) > 0 {
-		return extractSSHTarget(string(out))
 	}
 	return extractSSHTarget(serverName)
 }
@@ -504,8 +338,4 @@ func extractSSHTarget(remoteURL string) string {
 		return remoteURL[:idx]
 	}
 	return remoteURL
-}
-
-func init() {
-	_ = bytes.Buffer{}
 }

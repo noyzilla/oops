@@ -435,3 +435,10 @@ func executeBoxClone(sshTarget, remoteFlag, targetPathArg string) error {
 
 	return nil
 }
+
+func toGitRemoteName(logicalName string) string {
+	if strings.HasPrefix(logicalName, "oops-") {
+		return logicalName
+	}
+	return "oops-" + logicalName
+}

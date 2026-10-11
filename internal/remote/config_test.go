@@ -11,7 +11,7 @@ func TestRemoteConfigManagement(t *testing.T) {
 
 	// 1. Test SaveConfig
 	cfg := &Config{
-		Host: "oops-prod",
+		Host: "prod.example.com",
 		Path: "~/oopsbox",
 	}
 	if err := SaveConfig(tempDir, "prod", cfg); err != nil {
@@ -34,7 +34,7 @@ func TestRemoteConfigManagement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
-	if loaded.Host != "oops-prod" || loaded.Path != "~/oopsbox" {
+	if loaded.Host != "prod.example.com" || loaded.Path != "~/oopsbox" {
 		t.Fatalf("unexpected loaded config: %+v", loaded)
 	}
 
@@ -43,12 +43,12 @@ func TestRemoteConfigManagement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadConfig with @ failed: %v", err)
 	}
-	if loadedWithAt.Host != "oops-prod" {
+	if loadedWithAt.Host != "prod.example.com" {
 		t.Fatalf("unexpected loaded host: %s", loadedWithAt.Host)
 	}
 
 	// 3. Test ListRemotes
-	_ = SaveConfig(tempDir, "staging", &Config{Host: "oops-staging", Path: "~/staging"})
+	_ = SaveConfig(tempDir, "staging", &Config{Host: "staging.example.com", Path: "~/staging"})
 	remotes, err := ListRemotes(tempDir)
 	if err != nil {
 		t.Fatalf("ListRemotes failed: %v", err)

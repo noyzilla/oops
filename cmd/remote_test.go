@@ -2,23 +2,29 @@ package cmd
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 )
 
-func TestToGitRemoteNameAndLogical(t *testing.T) {
-	if got := toGitRemoteName("prod"); got != "oops-prod" {
-		t.Errorf("toGitRemoteName('prod') = %q, want 'oops-prod'", got)
+func TestIsKnownRemoteOrHost(t *testing.T) {
+	tmpDir := t.TempDir()
+	prodCapsule := filepath.Join(tmpDir, "@prod")
+	if err := os.MkdirAll(prodCapsule, 0755); err != nil {
+		t.Fatalf("failed creating @prod dir: %v", err)
 	}
-	if got := toGitRemoteName("oops-prod"); got != "oops-prod" {
-		t.Errorf("toGitRemoteName('oops-prod') = %q, want 'oops-prod'", got)
+	_ = os.WriteFile(filepath.Join(prodCapsule, "remote.yaml"), []byte("host: user@1.2.3.4\npath: ~/box\n"), 0644)
+
+	if !isKnownRemoteOrHost(tmpDir, "@prod") {
+		t.Errorf("expected @prod to be known remote")
 	}
-	if got := toLogicalRemoteName("oops-prod"); got != "prod" {
-		t.Errorf("toLogicalRemoteName('oops-prod') = %q, want 'prod'", got)
+	if !isKnownRemoteOrHost(tmpDir, "prod") {
+		t.Errorf("expected prod to be known remote")
 	}
-	if got := toLogicalRemoteName("prod"); got != "prod" {
-		t.Errorf("toLogicalRemoteName('prod') = %q, want 'prod'", got)
+	if !isKnownRemoteOrHost(tmpDir, "user@server.com") {
+		t.Errorf("expected user@server.com to be recognized as SSH target")
+	}
+	if isKnownRemoteOrHost(tmpDir, "unknown") {
+		t.Errorf("expected unknown to not be known remote")
 	}
 }
 
@@ -64,31 +70,6 @@ func TestRequireOopsboxWorkspace_ValidWorkspace(t *testing.T) {
 	}
 	if got == "" {
 		t.Errorf("RequireOopsboxWorkspace(%q) returned empty string", tmpDir)
-	}
-}
-
-func TestRequireGitOopsboxWorkspace(t *testing.T) {
-	tmpDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(tmpDir, "services"), 0755); err != nil {
-		t.Fatalf("failed creating services dir: %v", err)
-	}
-
-	// 1. Valid compose stacks BUT no .git -> Expect error
-	_, err := RequireGitOopsboxWorkspace(tmpDir)
-	if err == nil {
-		t.Errorf("RequireGitOopsboxWorkspace(%q) expected error when missing .git, got nil", tmpDir)
-	}
-
-	// 2. Add valid git repo via git init -> Expect success
-	if out, err := exec.Command("git", "-C", tmpDir, "init").CombinedOutput(); err != nil {
-		t.Fatalf("failed git init: %s (%v)", string(out), err)
-	}
-	got, err := RequireGitOopsboxWorkspace(tmpDir)
-	if err != nil {
-		t.Errorf("RequireGitOopsboxWorkspace(%q) unexpected error with .git: %v", tmpDir, err)
-	}
-	if got == "" {
-		t.Errorf("RequireGitOopsboxWorkspace(%q) returned empty string", tmpDir)
 	}
 }
 

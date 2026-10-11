@@ -18,7 +18,7 @@ func HandleDynamicRxCommands(args []string) (bool, error) {
 		return false, nil
 	}
 
-	workDir := ResolveGitWorkDir(targetDir)
+	workDir := ResolveWorkDir(targetDir)
 	serverName, commandArgs := parseRxInvocation(args, workDir)
 
 	if len(commandArgs) == 0 || commandArgs[0] == "--help" || commandArgs[0] == "-h" || commandArgs[0] == "help" {

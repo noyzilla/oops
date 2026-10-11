@@ -30,11 +30,12 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 ### 1. Zero-Git Server Architecture
 - **No Git on Server**: Remote hosts require only `ssh` and `docker`. No Git installation, Git Bare repository, or Git push hook is required on the server.
 - **No Git Remote Configuration**: The CLI does not register Git remotes in `.git/config`. Remote targets are discovered dynamically by scanning `/@*/remote.yaml`.
+- **Pure Logical Naming (No `oops-` Prefix)**: Remote targets use clean logical identifiers directly (e.g. `@prod`, `@staging`, `@vps-1`) without legacy Git namespace prefixes.
 
 ### 2. Remote Target Registration (`oops remote add <ssh-alias> [@<name>]`)
 - **Connection Manifest (`/@<name>/remote.yaml`)**:
   ```yaml
-  host: oops-prod       # SSH host alias declared in ~/.ssh/config or user@ip
+  host: prod-server     # SSH host alias declared in ~/.ssh/config or user@ip
   path: ~/oopsbox       # Remote working directory
   ```
 - **Automatic Directory Provisioning**: Running `oops remote add <ssh-alias> @<name>` creates `/@<name>/` and writes `remote.yaml`.
