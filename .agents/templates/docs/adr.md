@@ -1,14 +1,19 @@
 ---
+id: "adr-0000"
 title: [Decision Title]
 status: proposed
+# superseded_by: "adr-XXXX" # Set when status transitions to superseded
 tags: [architecture, template]
 synapses: ["ARCHITECTURE.md"]
 ---
 
-# ADR 0000: [Decision Title]
+# adr-0000: [Decision Title]
 
 - **Date**: [YYYY-MM-DD]
-- **Status**: Proposed | Accepted | Deprecated | Superseded by ADR-[XXXX]
+<!-- If superseded, uncomment and point to replacement:
+> [!WARNING]
+> This decision has been superseded by [adr-XXXX](XXXX-slug.md).
+-->
 
 ## Context & Problem Statement
 Describe the architectural context, business drivers, performance requirements, and technical forces necessitating this decision.

@@ -7,7 +7,6 @@ synapses: ["DESIGN.md"]
 
 # Design Spec: [Component Name]
 
-- **Status**: Active | Experimental | Deprecated
 - **Target Platform**: Web | Mobile | Desktop | CLI
 
 ## Overview & Usage Intent

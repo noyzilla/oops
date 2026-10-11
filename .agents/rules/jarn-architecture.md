@@ -68,9 +68,9 @@ Always organize documentation under `docs/` according to the system documentatio
 - Subsystem and feature living specifications go into `docs/specs/<feature>.md` (vertical slices combining domain rules, APIs, and database impacts)
 - Macro topologies and architectural deep-dives go into `docs/architecture/<topic>.md` (mirroring `ARCHITECTURE.md`)
 - Global design tokens and UI component guides go into `docs/design/<topic>.md` (mirroring `DESIGN.md`)
-- Developer onboarding, runbooks, and operational workflows go into `docs/development/<id>-<slug>.md` (mirroring `CONTRIBUTING.md`)
+- Developer onboarding, runbooks, and operational workflows go into `docs/howto/<slug>.md` (mirroring `CONTRIBUTING.md` and `README.md`)
 - Macro architectural decision records go into `docs/adr/<id>-<slug>.md` (with explicit lifecycle naming conforming to the Status Dictionary in `jarn-naming.md` for zero-token AI filtering)
-- Unclassified working knowledge, brainstorming, and pending decisions go into `docs/drafts/<slug>.md`. Once finalized, the formal document (Spec/ADR) is generated in its respective folder. The draft itself MUST NOT be destroyed if it contains valuable reasoning; instead, move it to `docs/archived/<slug>.md` to permanently preserve the historical "why".
+- Technical explorations, architectural discovery, and pending trade-offs go into `docs/exp/<yymm>-<seq>-<slug>.md` (following the Exploration Lifecycle). Once finalized, the formal document (Spec/ADR) is generated in its respective folder. The exploration record itself MUST NOT be destroyed if it contains valuable reasoning; instead, move it to `docs/archived/<slug>.md` to permanently preserve the historical "why".
 
 ### Two-Way Linking Requirement
 Whenever a sub-document is created under `docs/<name>/`:

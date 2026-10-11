@@ -7,7 +7,6 @@ synapses: ["CONTEXT.md"]
 
 # Specification: [Subsystem Name]
 
-- **Status**: Active | Draft
 - **Last Verified**: [YYYY-MM-DD or Git Commit Hash]
 - **Target Audience**: Developers and AI Coding Agents
 

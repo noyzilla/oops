@@ -47,7 +47,27 @@ This document defines the naming conventions for configurations, variables, slug
 ### Slug Formatting Invariants
 - **Lowercase & Hyphens Only**: Strictly lowercase `a-z`, digits `0-9`, and single hyphens `-`. No uppercase, spaces, or underscores.
 - **Concise Scope**: 2–5 words focusing on domain intent. Omit conversational filler words (`the`, `a`, `and`, `how-to`).
-- **Numeric Prefixes**: When sequential order or identifier tracking is required (ADRs in `docs/adr/` and runbooks in `docs/development/`), use a 4-digit zero-padded prefix: `XXXX-<slug>.md` (e.g., `0001-project-identity.md`). **Drafts do NOT receive a numeric prefix** (e.g., `docs/drafts/project-identity.md`). A number is permanently assigned only upon finalization (when moved to its permanent directory) to prevent unused gaps and preserve historical records.
+- **Numeric & Timestamp Prefixes**: When sequential order or identifier tracking is required (ADRs in `docs/adr/`), use a 4-digit zero-padded prefix: `XXXX-<slug>.md` (e.g., `0001-project-identity.md`). **Explorations in `docs/exp/`** use a lightweight timestamped sequence prefix: `YYMM-<seq>-<slug>.md` (e.g., `2610-1-shadow-merge.md`) with a corresponding YAML `id` (`exp-2610-1`) to track age and prevent long-term WIP stagnation. A permanent 4-digit sequence is assigned only upon finalization/crystallization into `docs/adr/`.
+- **Exploration Sequence Invariants (Uniqueness & Immutability)**:
+  - **Monthly Reset**: Sequence index `<seq>` resets to `1` at the beginning of each calendar month (e.g., `2610-1`, `2610-2`, then `2611-1` next month).
+  - **Never Reused (Monotonic)**: An issued ID within the month is never reused or recycled under any circumstances, even if the exploration is cancelled, rejected, or deleted. Always allocate `max(seq) + 1`.
+  - **Slug Decoupling (ID Immutability)**: Slugs may be updated or refined over time without altering the assigned numeric prefix or YAML `id`.
+  - **Permanent Retirement**: When an exploration is crystallized (into an ADR/Spec) or archived, its ID is permanently retired and never reassigned to subsequent topics.
+- **Directory-Scoped Filename Hygiene (DRY)**: Filenames do NOT repeat the directory name prefix (e.g., use `docs/exp/2610-1-shadow-merge.md`, not `docs/exp/exp-2610-1-...`). The directory establishes the domain boundary; the YAML `id` carries the full global unique identifier.
+
+### Document ID & Taxonomy Dictionary Table
+
+All documents and transient issues must follow this centralized identifier convention:
+
+| Domain | Directory | Filename Format | YAML `id` | Markdown / Chat Reference |
+| :--- | :--- | :--- | :--- | :--- |
+| **Architectural Decisions** | `docs/adr/` | `XXXX-<slug>.md` | `adr-XXXX` (e.g., `adr-0001`) | `adr-0001` or `[adr-0001](docs/adr/0001-*.md)` |
+| **Explorations** | `docs/exp/` | `YYMM-<seq>-<slug>.md` | `exp-YYMM-<seq>` (e.g., `exp-2610-1`) | `exp-2610-1` or `[exp-2610-1](docs/exp/2610-1-*.md)` |
+| **How-to Guides & Wiki** | `docs/howto/` | `<slug>.md` | `<slug>` (e.g., `local-setup`) | `howto/local-setup` |
+| **Transient Issues** | `.scratch/<task>/issues/` | `XXXX-<slug>.md` | `issue-XXXX` (e.g., `issue-0001`) | `issue-0001` or `depends_on: ["issue-0001"]` |
+| **Living Specifications** | `docs/specs/` | `<feature>.md` | `<feature>` (e.g., `auth`) | `spec/auth` |
+| **Architecture Deep-Dives** | `docs/architecture/` | `<topic>.md` | `<topic>` (e.g., `topology`) | `arch/topology` |
+| **Design Specifications** | `docs/design/` | `<topic>.md` | `<topic>` (e.g., `buttons`) | `design/buttons` |
 
 ## Domain & Intent-Based Naming
 
@@ -60,7 +80,7 @@ This document defines the naming conventions for configurations, variables, slug
 ## The Status Dictionary (Zero-Token Status Filtering)
 
 - **Rule**: Filename extensions may include a lifecycle postfix immediately preceding `.md` (`XXXX-<slug>.<postfix>.md`) to communicate document and task state for instant zero-token filtering via `ls` or globbing without reading file contents.
-- **Stable Numeric Prefix**: The leading `XXXX-` sequence identifier MUST NOT change when a status postfix is transitioned (e.g., active to `.superseded.md`). Note: Drafts do not possess numeric prefixes.
+- **Stable Numeric Prefix**: The leading `XXXX-` sequence identifier MUST NOT change when a status postfix is transitioned (e.g., active to `.superseded.md`). Note: Explorations use `exp-YYMM-<seq>-<slug>.md`.
 
 ### Status Dictionary Table
 
@@ -74,4 +94,4 @@ This document defines the naming conventions for configurations, variables, slug
 | `.superseded.md` | ADRs | The decision was active but is replaced by a newer ADR. |
 | `.deprecated.md` | ADRs | The decision is retired without a direct replacement. |
 | `.rejected.md` | ADRs | The proposal was evaluated but formally rejected. Kept for historical record. |
-| *(Archive)* | Drafts | Active brainstorming drafts (`docs/drafts/<slug>.md`) that finalize with significant reasoning are moved to `docs/archived/<slug>.md` to freeze as a knowledge system. |
+| *(Archive)* | Explorations | Active exploration records (`docs/exp/exp-YYMM-<seq>-<slug>.md`) that finalize with significant reasoning are moved to `docs/archived/<slug>.md` to freeze as a knowledge system. |

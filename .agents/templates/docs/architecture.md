@@ -7,7 +7,6 @@ synapses: ["ARCHITECTURE.md"]
 
 # Architecture Deep-Dive: [Topic Name]
 
-- **Status**: Active | Draft | Deprecated
 - **Target Audience**: System Architects, Lead Engineers, and AI Coding Agents
 
 ## Overview & Scope

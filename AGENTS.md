@@ -73,7 +73,7 @@ When modifying specific layers or subsystems, update the designated locations an
 | **CLI Output & Logging** | `DESIGN.md`, `docs/design/` | `git diff --check` and verify log formatting rules |
 | **Living Specifications** | `docs/specs/` | `git diff --check` and verify spec contract alignment |
 | **Architectural Decisions (ADR)** | `docs/adr/` | `git diff --check` and verify filename status lifecycle |
-| **Development & Runbooks** | `docs/development/` | `git diff --check` and test script execution |
+| **How-to Guides & Operations** | `docs/howto/` | `git diff --check` and verify Markdown links |
 | **Automation & Shell Scripts** | `*.sh`, `scripts/*.sh`, `.agents/scripts/*.sh` | `sh -n <touched_script>` and dry-run execution |
 | **Universal Standards & Rules** | `.agents/rules/jarn-*.md`, `AGENTS.md` | `git diff --check` and verify rule frontmatter/links |
 | **Jarn Skills** | `.agents/skills/jarn-*` | `git diff --check` and verify skill frontmatter/links |

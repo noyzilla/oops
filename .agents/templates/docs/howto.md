@@ -1,18 +1,17 @@
 ---
-title: [Runbook / Development Workflow Title]
-status: draft
-tags: [development, runbook, template]
-synapses: ["CONTRIBUTING.md"]
+title: [How-to Guide / Workflow Title]
+status: active
+tags: [howto, workflow, template]
+synapses: ["README.md"]
 ---
 
-# Development Guide: [Runbook / Workflow Title]
+# How-to: [Guide / Workflow Title]
 
-- **Status**: Active | Draft
-- **Type**: Setup Guide | Migration Runbook | Operational Playbook | Incident Guide
+- **Type**: Setup Guide | Migration Runbook | Operational Playbook | Incident Guide | Troubleshooting Guide | Maintenance Procedure
 - **Target Audience**: Developers, Operators, and AI Coding Agents
 
 ## Overview & Objective
-Concise summary of what this runbook accomplishes, the problem it addresses, and the conditions under which it should be executed.
+Concise summary of what this procedure accomplishes, the problem it addresses, and the conditions under which it should be executed.
 
 ## Prerequisites & Dependencies
 Mandatory toolchains, runtime versions, access permissions, or services required before execution:
@@ -40,3 +39,6 @@ Concrete evidence and verification commands to confirm successful execution (Exi
 Deterministic procedures to recover system stability upon failure:
 - **Rollback Procedure**: Sequence of steps or scripts to revert mutations safely.
 - **Common Failure Modes**: Known edge cases, error codes, and corresponding diagnostic steps.
+
+---
+[← Back to How-to Index](README.md)
