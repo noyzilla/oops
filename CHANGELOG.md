@@ -7,14 +7,24 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
-- Native `depends_on` topological resolution across multiple `compose.*.yml` files, ensuring target dependencies are started automatically before the requested target without explicitly declaring them in the command.
-- Implemented `oops sync` CLI suite (`oops sync push|pull|env|secret`) for synchronized file transfer of environment variables and sensitive configuration over SSH.
-- Added Suffix Mapping Protocol (`.<remote>`) to translate remote-specific `.env` names back to standard `.env` formats seamlessly during synchronization.
+- Multi `-f` Compose Flag Chaining protocol anchoring path resolution to root `compose.yaml` (eliminating `include:`).
+- Zero-Git Direct SSH Streaming deployment pipeline (`oops deploy [/<project>] [@<remote>]`) with tar stream over SSH.
+- 1:1 Mirror Directory Sync Protocol (`oops sync push|pull|env|secret`) syncing between local `/@<remote>/` and remote server root without filename mangling.
+- Canonical remote connection manifest `/@<remote>/remote.yaml` and remote capsule management (`oops remote add|list|remove`).
+- Multi-target routing supporting Group Target (`+<group>` via `x-oops-groups`), Project Stack (`/<project>` via `projects/<name>/compose.yaml`), and Service Template (`<service>` via `services/<name>.yaml`).
+- Auto-tail chaining of machine-local override `compose.local.yaml`.
+- Service Triad architecture in `oopsbox/` blueprint (`services/`, `config/`, `data/`).
 
+### Changed
+- Ecosystem-wide strict `.yaml` enforcement across `compose.yaml`, `oops.yaml`, `oopsbox.yaml`, `remote.yaml`, and `services/*.yaml`.
 - Renamed `oops storage` command to `oops volume` and migrated `internal/storage` to `internal/volume`.
 - Enforced strict requirement of `Authorization: Bearer <TOKEN>` in webhook headers, removing `X-Oops-Token` and the environment variable `OOPS_SECRET` fallback.
-- `oops up` execution now strictly respects the topological dependency tree (DFS) rather than simple alphabetical stack sorting.
-- Deprecated custom `x-oops-depends_on` topological resolution in favor of native Docker Compose `include` directive. `oops` now relies on Compose's built-in dependency management.
+- `oops up` execution now strictly respects the topological dependency tree (DFS) across templates and project stacks.
+
+### Deprecated
+- Deprecated and dropped server-side Git Bare repositories, Git push hooks (`post-receive`), and Git remotes (`oops-*`) in favor of Zero-Git Direct SSH Streaming.
+- Deprecated and dropped filename suffix mangling (`.env.prod`, `stripRemoteSuffix`).
+- Formally dropped all support for `docker-compose.*`, `compose.yml`, `oops.yml`, `oopsbox.yml`, and `*.yml` file extensions.
 
 ### Removed
 - Removed custom `oops.stop.cmd` and `oops.stop.timeout` pre-stop lifecycle hooks to align with native Docker Compose shutdown behavior.
