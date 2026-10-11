@@ -128,11 +128,11 @@ For each matched service in target order:
 | `oops box switch` | `<path>` | Tears down current box and switches to target box |
 | `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store |
 | `oops deploy` | `[/<project>] [@<remote>]` | Deploys stack to remote server via Direct SSH Tar Streaming |
-| `oops sync` | `[push\|pull] [-r <remote>]` | 1:1 Mirror Directory sync between `/@<remote>/` and remote server |
-| `oops remote add` | `<ssh-alias> [-r <name>]` | Registers remote server creating `/@<name>/remote.yaml` |
+| `oops sync` | `[push\|pull] [@<remote>]` | 1:1 Mirror Directory sync between `/@<remote>/` and remote server |
+| `oops remote add` | `<ssh-alias> [@<name>]` | Registers remote server creating `/@<name>/remote.yaml` |
 | `oops remote list` | *(none)* | Lists registered remotes discovered in `/@*/remote.yaml` |
 | `oops remote remove` | `<name>` | Removes registered remote directory `/@<name>/` |
-| `oops rx` | `[-r <remote>] <cmd> [args...]` | Remote Execute: Forwards command over SSH to remote target |
+| `oops rx` | `[@<remote>] <cmd> [args...]` | Remote Execute: Forwards command over SSH to remote target |
 | `oops version` | `[-v, --version]` | Displays Oops version and build information |
 | `oops selfupdate` | `[-c, --check] [-f, --force]` | Self-updates binary from GitHub release |
 | `oops server` | `[-p, --port 8080] [-c <path>]` | Starts webhook deployment and DNS discovery daemon |

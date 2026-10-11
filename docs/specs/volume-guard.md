@@ -28,7 +28,7 @@ Scope:
 - **Storage Path**: A host path used as a bind-mount source or as the backup directory.
 - **Mount Prefix**: A directory prefix under which persistent disks are expected to be mounted. Matching respects directory boundaries and covers all depths.
 - **Bad Path**: A Storage Path with a dead symlink anywhere along it, or that resolves under a Mount Prefix while on the same device as `/`.
-- **Priority List**: Ordered `priority` entries in `oops.yml`. Earlier entries have higher priority; unlisted targets have the lowest priority.
+- **Priority List**: Ordered `priority` entries in `oops.yaml`. Earlier entries have higher priority; unlisted targets have the lowest priority.
 - **Blocked Service**: A service the guard refuses to start in the current operation.
 
 ## Business Rules & Logic Invariants
@@ -46,12 +46,6 @@ Scope:
 ```yaml
 volume:
   mount_prefixes: [/mnt, /media, /Volumes]   # default when omitted
-priority:
-  - /edge
-  - httpbin
-  - /db
-  - "@core"
-  - /apps
 ```
 - Setting `mount_prefixes` replaces the default list. An empty list disables the mount check but dead-link detection stays on.
 - `priority` entries are `/stack`, `service`, or `@group`. The first matching entry decides the priority of a target.

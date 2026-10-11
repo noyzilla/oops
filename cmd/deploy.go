@@ -48,7 +48,7 @@ func newDeployCmd() *cobra.Command {
 			}
 
 			if remoteTarget == "" {
-				return fmt.Errorf("no remote server specified and no registered remote found. Run 'oops remote add <ssh-target> [-r <name>]' first")
+				return fmt.Errorf("no remote server specified and no registered remote found. Run 'oops remote add <ssh-target> [@<name>]' first")
 			}
 
 			return executeDeploy(workDirAbs, remoteTarget, projectTarget)
@@ -68,7 +68,7 @@ func executeDeploy(workDirAbs, remoteName, projectTarget string) error {
 		// Fallback check if it's a legacy git remote
 		sshTarget := resolveSSHTarget(workDirAbs, remoteName)
 		if sshTarget == "" || sshTarget == remoteName {
-			return fmt.Errorf("remote '@%s' not registered. Run 'oops remote add <ssh-target> -r %s' first", remoteName, remoteName)
+			return fmt.Errorf("remote '@%s' not registered. Run 'oops remote add <ssh-target> @%s' first", remoteName, remoteName)
 		}
 		cfg = &remote.Config{
 			Host: sshTarget,

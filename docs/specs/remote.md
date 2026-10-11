@@ -31,19 +31,19 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **No Git on Server**: Remote hosts require only `ssh` and `docker`. No Git installation, Git Bare repository, or Git push hook is required on the server.
 - **No Git Remote Configuration**: The CLI does not register Git remotes in `.git/config`. Remote targets are discovered dynamically by scanning `/@*/remote.yaml`.
 
-### 2. Remote Target Registration (`oops remote add <ssh-alias> [-r <name>]`)
+### 2. Remote Target Registration (`oops remote add <ssh-alias> [@<name>]`)
 - **Connection Manifest (`/@<name>/remote.yaml`)**:
   ```yaml
   host: oops-prod       # SSH host alias declared in ~/.ssh/config or user@ip
   path: ~/oopsbox       # Remote working directory
   ```
-- **Automatic Directory Provisioning**: Running `oops remote add <ssh-alias> -r <name>` creates `/@<name>/` and writes `remote.yaml`.
+- **Automatic Directory Provisioning**: Running `oops remote add <ssh-alias> @<name>` creates `/@<name>/` and writes `remote.yaml`.
 - **Target Verification**: Pings remote host over SSH (`ssh <host> docker info`) to verify connectivity and Docker availability.
 
 ### 3. Remote Server Management Commands
 - **List Remotes (`oops remote list`)**: Discovers and prints all registered environments by reading `/@*/remote.yaml`.
 - **Remove Remote (`oops remote remove <name>`)**: Deletes the local `/@<name>/` directory.
-- **Remote Execute (`oops rx [-r <name>] <cmd>`)**: Executes commands on the remote server inside the target directory via SSH.
+- **Remote Execute (`oops rx [@<name>] <cmd>`)**: Executes commands on the remote server inside the target directory via SSH.
 
 ### 4. 2-Step Direct SSH Streaming Pipeline (`oops deploy`)
 When executing `oops deploy [/<project>] [@<remote>]`:
@@ -59,11 +59,11 @@ When executing `oops deploy [/<project>] [@<remote>]`:
 
 | Command | Arguments / Flags | Description |
 | :--- | :--- | :--- |
-| `oops remote add` | `<ssh-alias> [-r <name>]` | Registers a remote server creating `/@<name>/remote.yaml` |
+| `oops remote add` | `<ssh-alias> [@<name>]` | Registers a remote server creating `/@<name>/remote.yaml` |
 | `oops remote list` | *(none)* | Discovers and lists all registered remotes |
 | `oops remote remove` | `<name>` | Removes registered remote capsule directory `/@<name>/` |
 | `oops deploy` | `[/<project>] [@<remote>]` | Deploys stack to remote server via Direct SSH Tar Streaming |
-| `oops rx` | `[-r <remote>] <command>` | Forwards command execution to remote server over SSH |
+| `oops rx` | `[@<remote>] <command>` | Forwards command execution to remote server over SSH |
 
 ---
 
@@ -82,6 +82,6 @@ When executing `oops deploy [/<project>] [@<remote>]`:
 
 - **Targeted Test Command**: `go test -v -race ./cmd/... ./internal/remote/...`
 - **Acceptance Scenarios**:
-  - `oops remote add prod-box -r prod` creates `/@prod/remote.yaml` with valid YAML formatting.
+  - `oops remote add prod-box @prod` creates `/@prod/remote.yaml` with valid YAML formatting.
   - `oops remote list` accurately lists all directories matching `/@*/remote.yaml`.
   - `oops deploy @prod` accurately identifies the remote target and streams base + overlay manifests excluding `remote.yaml`.

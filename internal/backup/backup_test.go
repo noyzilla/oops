@@ -72,14 +72,14 @@ func TestExecuteDataBackup(t *testing.T) {
 	workDir := filepath.Join(tmpDir, "workspace")
 	backupDir := filepath.Join(tmpDir, "backups")
 
-	_ = os.MkdirAll(filepath.Join(workDir, "stacks"), 0755)
+	_ = os.MkdirAll(filepath.Join(workDir, "services"), 0755)
 	_ = os.MkdirAll(filepath.Join(workDir, "data", "uploads"), 0755)
 	_ = os.MkdirAll(filepath.Join(workDir, "data", "caddy"), 0755)
 
 	_ = os.WriteFile(filepath.Join(workDir, "data", "uploads", "sample.png"), []byte("png image data"), 0644)
 	_ = os.WriteFile(filepath.Join(workDir, "data", "caddy", "root.crt"), []byte("cert data"), 0644)
 
-	// Write oops.yml config
+	// Write oops.yaml config
 	oopsYaml := `
 backups:
   retention: 7d
@@ -90,7 +90,7 @@ backups:
     - name: certs
       path: data/caddy
 `
-	_ = os.WriteFile(filepath.Join(workDir, "oops.yml"), []byte(oopsYaml), 0644)
+	_ = os.WriteFile(filepath.Join(workDir, "oops.yaml"), []byte(oopsYaml), 0644)
 
 	// Execute data backup
 	err := backup.ExecuteDataBackup(t.Context(), workDir, backupDir, nil, 7*24*time.Hour)

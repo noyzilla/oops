@@ -11,8 +11,8 @@ import (
 
 // HandleDynamicRxCommands handles invocations like:
 //   oops rx status
-//   oops rx -r lima-debian logs app
-//   oops rx -r prod up /db
+//   oops rx @lima-debian logs app
+//   oops rx @prod up /db
 func HandleDynamicRxCommands(args []string) (bool, error) {
 	if len(args) < 2 || args[0] != "rx" {
 		return false, nil
@@ -49,15 +49,8 @@ func HandleDynamicRxCommands(args []string) (bool, error) {
 func parseRxInvocation(args []string, workDir string) (serverName string, commandArgs []string) {
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
-		if arg == "-r" || arg == "--remote" {
-			if i+1 < len(args) {
-				serverName = args[i+1]
-				i++
-			}
-			continue
-		}
-		if strings.HasPrefix(arg, "--remote=") {
-			serverName = strings.TrimPrefix(arg, "--remote=")
+		if strings.HasPrefix(arg, "@") && serverName == "" {
+			serverName = strings.TrimPrefix(arg, "@")
 			continue
 		}
 		commandArgs = append(commandArgs, arg)
@@ -74,31 +67,23 @@ func printRxHelp() {
 	fmt.Println("Oops Remote Execution (rx)")
 	fmt.Println()
 	fmt.Println("Usage:")
-	fmt.Println("  oops rx [-r <remote>] <command> [args...]")
-	fmt.Println()
-	fmt.Println("Flags:")
-	fmt.Println("  -r, --remote string   Target remote server name (default: oopsbox or active workspace remote)")
+	fmt.Println("  oops rx [@<remote>] <command> [args...]")
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  oops rx status                     Check container status on default remote server")
 	fmt.Println("  oops rx logs app -f                Follow app container logs on default remote server")
-	fmt.Println("  oops rx -r lima-debian status      Check container status on 'lima-debian'")
-	fmt.Println("  oops rx -r prod up /db             Start /db stack on 'prod'")
+	fmt.Println("  oops rx @lima-debian status        Check container status on '@lima-debian'")
+	fmt.Println("  oops rx @prod up /db               Start /db stack on '@prod'")
 }
 
 func newRxCmd() *cobra.Command {
-	var remoteName string
-
-	cmd := &cobra.Command{
-		Use:   "rx [-r <remote>] <command> [args...]",
+	return &cobra.Command{
+		Use:   "rx [@<remote>] <command> [args...]",
 		Short: "Executes commands directly on a remote server over SSH",
-		Long:  "Executes any oops operational command (status, logs, up, down, db, backup, etc.) on a remote server over SSH using -r <remote> or default server.",
+		Long:  "Executes any oops operational command (status, logs, up, down, db, backup, etc.) on a remote server over SSH using [@<remote>] or default server.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			printRxHelp()
 			return nil
 		},
 	}
-
-	cmd.Flags().StringVarP(&remoteName, "remote", "r", "", "Target remote server name (default: oopsbox or active workspace remote)")
-	return cmd
 }

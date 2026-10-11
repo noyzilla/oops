@@ -62,10 +62,10 @@ func TestFindEnvFile(t *testing.T) {
 	envPath := tmpDir + "/.env"
 	_ = os.WriteFile(envPath, []byte("OOPS_SECRET=test-secret"), 0644)
 
-	// Compose file in sub-directory stacks/edge/compose.yml
-	stacksEdgeDir := tmpDir + "/stacks/edge"
-	_ = os.MkdirAll(stacksEdgeDir, 0755)
-	composeFile := stacksEdgeDir + "/compose.yml"
+	// Compose file in sub-directory services/edge/compose.yaml
+	servicesEdgeDir := tmpDir + "/services/edge"
+	_ = os.MkdirAll(servicesEdgeDir, 0755)
+	composeFile := servicesEdgeDir + "/compose.yaml"
 	_ = os.WriteFile(composeFile, []byte("services: {}"), 0644)
 
 	found := orchestrator.FindEnvFile(composeFile)

@@ -139,15 +139,10 @@ func VolumePrefixes(workDir string) []string {
 	return cfg.Volume.MountPrefixes
 }
 
-// StoragePrefixes is an alias for VolumePrefixes
-func StoragePrefixes(workDir string) []string {
-	return VolumePrefixes(workDir)
-}
-
 // CheckBackupDir refuses a backup directory that is a dead link or sits on the OS disk under a mount prefix.
 // It is deliberately independent of container management.
 func CheckBackupDir(workDir, backupDir string) error {
-	if p := volume.NewChecker().CheckPath(backupDir, StoragePrefixes(workDir), true); p != nil {
+	if p := volume.NewChecker().CheckPath(backupDir, VolumePrefixes(workDir), true); p != nil {
 		return fmt.Errorf("backup directory %s is unhealthy: %s -> %s: %s", backupDir, p.Path, p.Target, p.Reason)
 	}
 	return nil
@@ -167,7 +162,7 @@ func InspectBox(workDir, backupDir string) ([]Finding, error) {
 		return nil, err
 	}
 	checker := volume.NewChecker()
-	prefixes := StoragePrefixes(workDir)
+	prefixes := VolumePrefixes(workDir)
 
 	var stacks []string
 	for name := range composeMap {
@@ -214,18 +209,18 @@ func (o *Orchestrator) applyGuard(targets []docker.ResolvedTarget) ([]docker.Res
 
 	_, err := docker.LoadOopsConfig(o.WorkDir)
 	if err != nil {
-		log.Printf("Warning: storage guard skipped, cannot load oops.yml: %v", err)
+		log.Printf("Warning: volume guard skipped, cannot load oops.yaml: %v", err)
 		return targets, nil
 	}
 
 	checker := volume.NewChecker()
-	prefixes := StoragePrefixes(o.WorkDir)
+	prefixes := VolumePrefixes(o.WorkDir)
 	logged := make(map[string]bool)
 	check := func(source string) *volume.Problem {
 		p := checker.CheckPath(source, prefixes, false)
 		if p != nil && !logged[p.Path] {
 			logged[p.Path] = true
-			log.Printf("ERROR: storage path %s -> %s is unhealthy: %s", p.Path, p.Target, p.Reason)
+			log.Printf("ERROR: volume path %s -> %s is unhealthy: %s", p.Path, p.Target, p.Reason)
 		}
 		return p
 	}

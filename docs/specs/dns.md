@@ -13,7 +13,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Native DNS Engine**: High-performance, lightweight UDP/TCP DNS server running embedded inside `oops server` (listening on `:53`).
 - **Wildcard Hostname**: Container hostname prefixed with a dot `.` (e.g. `hostname: .web.oops`), matching both apex and all subdomains (`web.oops` and `*.web.oops`).
 - **Exact Hostname**: Container hostname without leading dot (e.g. `hostname: mail.test`), matching only that exact domain.
-- **Upstream Forwarder**: Stateless relay to external DNS servers (configured in `oops.yml` under `dns.upstreams`) for unresolved public domains.
+- **Upstream Forwarder**: Stateless relay to external DNS servers (configured in `oops.yaml` under `dns.upstreams`) for unresolved public domains.
 
 ---
 
@@ -35,9 +35,9 @@ DNS `A` record queries are matched against active container hostnames in the fol
   - Action: Return `A` record with IPv4 address of the matching container (TTL: 5s).
   - Example: `hostname: mail.test` matches `mail.test`.
 
-- **Custom Static & Infra DNS Records (`data/oops/dns.records`, `oops.yml`, `OOPS_DNS_RECORDS`)**:
+- **Custom Static & Infra DNS Records (`data/oops/dns.records`, `oops.yaml`, `OOPS_DNS_RECORDS`)**:
   - Local Node Data: Static mappings defined in `data/oops/dns.records` (Format: `<domain> <ip>`, 1 row = 1 domain, supports `.wildcard`).
-  - Shared Infra Records: Defined under `dns.records` in `oops.yml` (e.g. `- api.internal 10.0.0.5`).
+  - Shared Infra Records: Defined under `dns.records` in `oops.yaml` (e.g. `- api.internal 10.0.0.5`).
   - Environment Overrides: `OOPS_DNS_RECORDS` env var.
   - Matching: Exact hostnames (e.g. `host.oops`, `vm.oops`, `hostmac`) or wildcard prefixes (e.g. `.local.dev`, `.web.oops`).
   - Action: Return static mapped IPv4 address.
@@ -50,7 +50,7 @@ DNS `A` record queries are matched against active container hostnames in the fol
 
 ### Upstream DNS Relay Protocol
 - If query does not match any local container hostname or custom static record:
-  - Relay the query to upstream DNS servers defined in `oops.yml` (`dns.upstreams: [...]`) or `OOPS_DNS_UPSTREAM` (default: `1.1.1.1:53,8.8.8.8:53`).
+  - Relay the query to upstream DNS servers defined in `oops.yaml` (`dns.upstreams: [...]`) or `OOPS_DNS_UPSTREAM` (default: `1.1.1.1:53,8.8.8.8:53`).
   - Return the upstream response directly to the client.
   - If upstream resolution fails or times out, return `NXDOMAIN` (Rcode 3) or `SERVFAIL`.
 
@@ -63,7 +63,7 @@ The DNS resolver table is maintained dynamically via the Docker Engine API and s
 ```
 [Daemon Startup] ──> Full Container List Scan ──> Register Running Container Hostnames
        │
-       ├──> Load data/oops/dns.records + oops.yml ──> Atomic Register Static & Wildcard Records
+       ├──> Load data/oops/dns.records + oops.yaml ──> Atomic Register Static & Wildcard Records
        │
        ▼
 [Event Watchers Loop]
@@ -88,7 +88,7 @@ The DNS resolver table is maintained dynamically via the Docker Engine API and s
 
 | Environment Variable / Config Key | Internal Config Path | Type | Default | Description |
 | :--- | :--- | :---: | :---: | :--- |
-| `dns.upstreams` (`oops.yml`) / `OOPS_DNS_UPSTREAM` | `CONFIG.DNS.UPSTREAM` | `[]string` / `string` | `1.1.1.1:53,8.8.8.8:53` | Upstream DNS servers for public relay |
+| `dns.upstreams` (`oops.yaml`) / `OOPS_DNS_UPSTREAM` | `CONFIG.DNS.UPSTREAM` | `[]string` / `string` | `1.1.1.1:53,8.8.8.8:53` | Upstream DNS servers for public relay |
 | `OOPS_DNS_TLD` | `CONFIG.DNS.TLD` | `string` | `oops` | Node top-level domain for local resolver and static records |
 
 ---

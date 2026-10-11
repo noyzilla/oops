@@ -43,7 +43,7 @@ type DNSReport struct {
 	DynamicRecords []DNSRecord `json:"dynamic_records"`
 }
 
-// CollectStaticRecords parses all static DNS records from file, oops.yml, and environment variables
+// CollectStaticRecords parses all static DNS records from file, oops.yaml, and environment variables
 func CollectStaticRecords(workDir string) []DNSRecord {
 	var records []DNSRecord
 	seen := make(map[string]bool)
@@ -76,7 +76,7 @@ func CollectStaticRecords(workDir string) []DNSRecord {
 		}
 	}
 
-	// Also load shared infra DNS records from oops.yml
+	// Also load shared infra DNS records from oops.yaml
 	if oopsCfg, err := docker.LoadOopsConfig(workDir); err == nil && oopsCfg != nil {
 		for _, rawRecord := range oopsCfg.DNS.Records {
 			rawRecord = strings.TrimSpace(rawRecord)
@@ -99,7 +99,7 @@ func CollectStaticRecords(workDir string) []DNSRecord {
 							Hostname: domain,
 							IP:       rawIP,
 							Type:     recType,
-							Source:   "oops.yml (infra)",
+							Source:   "oops.yaml (infra)",
 						})
 					}
 				}
@@ -354,7 +354,7 @@ func RenderDNSTable(report *DNSReport) string {
 	buf.WriteString("\n")
 
 	// Custom & Infra DNS Records
-	buf.WriteString("CUSTOM & INFRA DNS RECORDS (data/oops/dns.records & oops.yml)\n")
+	buf.WriteString("CUSTOM & INFRA DNS RECORDS (data/oops/dns.records & oops.yaml)\n")
 	if len(report.StaticRecords) == 0 {
 		buf.WriteString("  (No custom records registered)\n\n")
 	} else {

@@ -34,13 +34,13 @@ func TestDeriveRemoteName(t *testing.T) {
 		t.Errorf("deriveRemoteName first time = %q, want 'prod'", name)
 	}
 
-	// 2. Explicit flag -r staging
-	name, err = deriveRemoteName(tmpDir, "user@1.2.3.4", "staging")
+	// 2. Explicit remote @staging
+	name, err = deriveRemoteName(tmpDir, "user@1.2.3.4", "@staging")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if name != "staging" {
-		t.Errorf("deriveRemoteName with explicit flag = %q, want 'staging'", name)
+		t.Errorf("deriveRemoteName with explicit @staging = %q, want 'staging'", name)
 	}
 }
 
@@ -54,8 +54,8 @@ func TestRequireOopsboxWorkspace_OutsideWorkspace(t *testing.T) {
 
 func TestRequireOopsboxWorkspace_ValidWorkspace(t *testing.T) {
 	tmpDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(tmpDir, "stacks"), 0755); err != nil {
-		t.Fatalf("failed creating stacks dir: %v", err)
+	if err := os.MkdirAll(filepath.Join(tmpDir, "services"), 0755); err != nil {
+		t.Fatalf("failed creating services dir: %v", err)
 	}
 
 	got, err := RequireOopsboxWorkspace(tmpDir)
@@ -69,8 +69,8 @@ func TestRequireOopsboxWorkspace_ValidWorkspace(t *testing.T) {
 
 func TestRequireGitOopsboxWorkspace(t *testing.T) {
 	tmpDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(tmpDir, "stacks"), 0755); err != nil {
-		t.Fatalf("failed creating stacks dir: %v", err)
+	if err := os.MkdirAll(filepath.Join(tmpDir, "services"), 0755); err != nil {
+		t.Fatalf("failed creating services dir: %v", err)
 	}
 
 	// 1. Valid compose stacks BUT no .git -> Expect error

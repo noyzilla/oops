@@ -8,7 +8,7 @@ import (
 )
 
 func tgt(stack, svc string) docker.ResolvedTarget {
-	return docker.ResolvedTarget{StackName: stack, ServiceName: svc, ComposePath: "/box/stacks/" + stack + "/compose.yml"}
+	return docker.ResolvedTarget{StackName: stack, ServiceName: svc, ComposePath: "/box/services/" + stack + "/compose.yaml"}
 }
 
 func badUnder(prefix string) func(string) *volume.Problem {

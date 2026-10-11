@@ -59,12 +59,12 @@ Filenames remain completely identical across local and remote environments:
 
 | Command | Arguments / Flags | Description |
 | :--- | :--- | :--- |
-| `oops sync push` | `[-r <remote>]` | Uploads both environment files and secrets from `/@<remote>/` to remote server |
-| `oops sync pull` | `[-r <remote>]` | Downloads remote `.env` and secrets into local `/@<remote>/` |
-| `oops sync env push` | `[-r <remote>]` | Uploads ONLY environment files (`.env` and `config/env/`) |
-| `oops sync env pull` | `[-r <remote>]` | Downloads ONLY remote environment files |
-| `oops sync secret push` | `[-r <remote>]` | Uploads ONLY secret files (`config/secrets/`) |
-| `oops sync secret pull` | `[-r <remote>]` | Downloads ONLY secret files |
+| `oops sync push` | `[@<remote>]` | Uploads both environment files and secrets from `/@<remote>/` to remote server |
+| `oops sync pull` | `[@<remote>]` | Downloads remote `.env` and secrets into local `/@<remote>/` |
+| `oops sync env push` | `[@<remote>]` | Uploads ONLY environment files (`.env` and `config/env/`) |
+| `oops sync env pull` | `[@<remote>]` | Downloads ONLY remote environment files |
+| `oops sync secret push` | `[@<remote>]` | Uploads ONLY secret files (`config/secrets/`) |
+| `oops sync secret pull` | `[@<remote>]` | Downloads ONLY secret files |
 
 ---
 
@@ -83,6 +83,6 @@ Filenames remain completely identical across local and remote environments:
 
 - **Targeted Test Command**: `go test -v -race ./internal/sync/... ./cmd/...`
 - **Acceptance Scenarios**:
-  - Given local file `/@prod/.env`, running `oops sync push -r prod` copies the file to `.env` on remote host.
-  - Given remote file `config/secrets/db_pass.txt`, running `oops sync pull -r prod` saves it to `/@prod/config/secrets/db_pass.txt`.
-  - Non-matching remotes (e.g. running `-r staging` when only `/@prod/` exists) produce actionable errors.
+  - Given local file `/@prod/.env`, running `oops sync push @prod` copies the file to `.env` on remote host.
+  - Given remote file `config/secrets/db_pass.txt`, running `oops sync pull @prod` saves it to `/@prod/config/secrets/db_pass.txt`.
+  - Non-matching remotes (e.g. running `@staging` when only `/@prod/` exists) produce actionable errors.

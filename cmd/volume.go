@@ -66,7 +66,7 @@ func newVolumeLinkCmd() *cobra.Command {
 				return err
 			}
 
-			linkPath, err := volume.NewChecker().Link(workDir, name, args[0], orchestrator.StoragePrefixes(workDir), force)
+			linkPath, err := volume.NewChecker().Link(workDir, name, args[0], orchestrator.VolumePrefixes(workDir), force)
 			if err != nil {
 				return err
 			}

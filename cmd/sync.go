@@ -2,37 +2,46 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/noyzilla/oops/internal/remote"
 	"github.com/noyzilla/oops/internal/sync"
 	"github.com/spf13/cobra"
 )
 
-var syncRemoteFlag string
+func parseSyncRemote(args []string) string {
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "@") {
+			return strings.TrimPrefix(arg, "@")
+		}
+		if arg != "" && !strings.HasPrefix(arg, "-") {
+			return arg
+		}
+	}
+	return ""
+}
 
 func newSyncCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sync",
 		Short: "Synchronizes configurations (.env) and sensitive data (config/secrets/) with remote server",
-		Long:  "Synchronizes configurations and sensitive data using the Suffix Mapping Protocol (.<remote>).",
+		Long:  "Synchronizes configurations and sensitive data using the 1:1 Mirror Directory Protocol (/@<remote>/).",
 	}
-
-	cmd.PersistentFlags().StringVarP(&syncRemoteFlag, "remote", "r", "", "Target remote server (e.g., prod)")
 
 	// Root sync push/pull (syncs BOTH)
 	pushCmd := &cobra.Command{
-		Use:   "push",
+		Use:   "push [@<remote>]",
 		Short: "Push both env and secret files to remote",
 		RunE: func(c *cobra.Command, args []string) error {
-			return runSync(true, true, true)
+			return runSync(parseSyncRemote(args), true, true, true)
 		},
 	}
 
 	pullCmd := &cobra.Command{
-		Use:   "pull",
+		Use:   "pull [@<remote>]",
 		Short: "Pull both env and secret files from remote",
 		RunE: func(c *cobra.Command, args []string) error {
-			return runSync(false, true, true)
+			return runSync(parseSyncRemote(args), false, true, true)
 		},
 	}
 
@@ -42,17 +51,17 @@ func newSyncCmd() *cobra.Command {
 		Short: "Sync only environment configurations (.env)",
 	}
 	envCmd.AddCommand(&cobra.Command{
-		Use:   "push",
+		Use:   "push [@<remote>]",
 		Short: "Push env files to remote",
 		RunE: func(c *cobra.Command, args []string) error {
-			return runSync(true, true, false)
+			return runSync(parseSyncRemote(args), true, true, false)
 		},
 	})
 	envCmd.AddCommand(&cobra.Command{
-		Use:   "pull",
+		Use:   "pull [@<remote>]",
 		Short: "Pull env files from remote",
 		RunE: func(c *cobra.Command, args []string) error {
-			return runSync(false, true, false)
+			return runSync(parseSyncRemote(args), false, true, false)
 		},
 	})
 
@@ -62,17 +71,17 @@ func newSyncCmd() *cobra.Command {
 		Short: "Sync only secret files (config/secrets/)",
 	}
 	secretCmd.AddCommand(&cobra.Command{
-		Use:   "push",
+		Use:   "push [@<remote>]",
 		Short: "Push secret files to remote",
 		RunE: func(c *cobra.Command, args []string) error {
-			return runSync(true, false, true)
+			return runSync(parseSyncRemote(args), true, false, true)
 		},
 	})
 	secretCmd.AddCommand(&cobra.Command{
-		Use:   "pull",
+		Use:   "pull [@<remote>]",
 		Short: "Pull secret files from remote",
 		RunE: func(c *cobra.Command, args []string) error {
-			return runSync(false, false, true)
+			return runSync(parseSyncRemote(args), false, false, true)
 		},
 	})
 
@@ -80,13 +89,13 @@ func newSyncCmd() *cobra.Command {
 	return cmd
 }
 
-func runSync(isPush, doEnv, doSecret bool) error {
+func runSync(remoteTarget string, isPush, doEnv, doSecret bool) error {
 	workDirAbs, err := RequireOopsboxWorkspace(targetDir)
 	if err != nil {
 		return err
 	}
 
-	remoteName := syncRemoteFlag
+	remoteName := strings.TrimPrefix(remoteTarget, "@")
 	if remoteName == "" {
 		remotes, _ := remote.ListRemotes(workDirAbs)
 		for _, r := range remotes {

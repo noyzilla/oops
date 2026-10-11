@@ -30,7 +30,7 @@ func TestInitBareRepo(t *testing.T) {
 	if err := os.MkdirAll(boxPath, 0755); err != nil {
 		t.Fatalf("failed creating temp box path: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(boxPath, "oopsbox.yml"), []byte("engine: docker"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(boxPath, "oopsbox.yaml"), []byte("engine: docker"), 0644); err != nil {
 		t.Fatalf("failed writing test file: %v", err)
 	}
 

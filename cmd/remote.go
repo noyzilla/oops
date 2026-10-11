@@ -15,7 +15,6 @@ import (
 )
 
 var (
-	remoteAddNameFlag string
 	remoteAddPathFlag string
 )
 
@@ -44,7 +43,7 @@ func RequireOopsboxWorkspace(customDir string) (string, error) {
 	}
 	expanded := expandHome(dir)
 	if !hasComposeContent(expanded) {
-		return "", fmt.Errorf("not inside a valid oopsbox workspace directory (must contain 'stacks/' or compose file)")
+		return "", fmt.Errorf("not inside a valid oopsbox workspace directory (must contain 'services/' or compose.yaml)")
 	}
 	abs, err := filepath.Abs(expanded)
 	if err != nil {
@@ -157,7 +156,7 @@ func deriveRemoteName(workDir, sshTarget, explicitFlag string) (string, error) {
 
 	fallbackCapsule := remote.CapsuleDir(workDir, fallback)
 	if _, err := os.Stat(fallbackCapsule); err == nil || gitRemoteExists(workDir, toGitRemoteName(fallback)) || gitRemoteExists(workDir, fallback) {
-		return "", fmt.Errorf("remote '%s' already exists in this workspace. Use -r <name> to specify a unique remote name", fallback)
+		return "", fmt.Errorf("remote '%s' already exists in this workspace. Specify '@<name>' to choose a unique remote name", fallback)
 	}
 
 	return fallback, nil
@@ -165,19 +164,34 @@ func deriveRemoteName(workDir, sshTarget, explicitFlag string) (string, error) {
 
 func newRemoteAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <ssh-target> [-r <remote-name>] [--path <remote-path>]",
+		Use:   "add <ssh-target> [@<name>] [--path <remote-path>]",
 		Short: "Registers a remote server and provisions /@<name>/remote.yaml",
 		Long:  "Creates local remote capsule /@<name>/ with remote.yaml manifest and verifies connectivity over SSH.",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
 			if err != nil {
 				return err
 			}
 
-			sshTarget := args[0]
-			name := remoteAddNameFlag
-			if name == "" {
+			sshTarget := ""
+			name := ""
+			for _, arg := range args {
+				if strings.HasPrefix(arg, "@") {
+					name = strings.TrimPrefix(arg, "@")
+				} else if sshTarget == "" {
+					sshTarget = arg
+				} else if name == "" {
+					name = arg
+				}
+			}
+
+			if name != "" {
+				name, err = deriveRemoteName(workDirAbs, sshTarget, name)
+				if err != nil {
+					return err
+				}
+			} else {
 				name, err = deriveRemoteName(workDirAbs, sshTarget, "")
 				if err != nil {
 					return err
@@ -218,7 +232,6 @@ func newRemoteAddCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&remoteAddNameFlag, "remote", "r", "", "Specify logical remote server name")
 	cmd.Flags().StringVar(&remoteAddPathFlag, "path", "~/oopsbox", "Remote working directory path")
 	return cmd
 }
@@ -252,7 +265,7 @@ func newRemoteListCmd() *cobra.Command {
 				gitRemotes := listOopsGitRemoteDetails(workDirAbs)
 				if len(gitRemotes) == 0 {
 					cmd.Println("No remote servers registered for this workspace.")
-					cmd.Println("Add a remote server using: oops remote add <ssh-target> [-r <name>]")
+					cmd.Println("Add a remote server using: oops remote add <ssh-target> [@<name>]")
 					return nil
 				}
 				cmd.Println("Registered Remote Servers (Legacy Git Remotes):")

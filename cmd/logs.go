@@ -72,11 +72,9 @@ func runLogs(cmd *cobra.Command, args []string, tail int, follow bool) error {
 
 		// Find .env file in workspace
 		var envFile string
-		for _, candidate := range []string{filepath.Join(workDir, ".env"), filepath.Join(workDir, "stacks", ".env")} {
-			if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
-				envFile = candidate
-				break
-			}
+		candidate := filepath.Join(workDir, ".env")
+		if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
+			envFile = candidate
 		}
 
 		for composePath, services := range byCompose {

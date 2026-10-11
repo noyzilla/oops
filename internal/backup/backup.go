@@ -264,13 +264,13 @@ func ExecuteDataBackup(ctx context.Context, workDir string, backupDir string, ta
 
 	dataTargets := cfg.Backups.Data
 	if len(dataTargets) == 0 {
-		// Default fallback if not configured in oops.yml: check data/ folder
+		// Default fallback if not configured in oops.yaml: check data/ folder
 		if fi, err := os.Stat(filepath.Join(workDir, "data")); err == nil && fi.IsDir() {
 			dataTargets = []docker.DataBackupTarget{
 				{Name: "data", Path: "data"},
 			}
 		} else {
-			log.Printf("No data backup targets found in oops.yml and no data/ directory exists.")
+			log.Printf("No data backup targets found in oops.yaml and no data/ directory exists.")
 			return nil
 		}
 	}

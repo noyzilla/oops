@@ -102,7 +102,7 @@ func ValidateAndFindTargets(ctx context.Context, action, imageURL, gitURL, conta
 			cPaths := strings.Split(cFiles, ",")
 			cPath = cPaths[0] // just use the first one
 		} else {
-			cPath = filepath.Join(inspect.Config.Labels["com.docker.compose.project.working_dir"], "compose.yml")
+			cPath = filepath.Join(inspect.Config.Labels["com.docker.compose.project.working_dir"], "compose.yaml")
 		}
 
 		targets = append(targets, ResolvedTarget{

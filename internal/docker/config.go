@@ -32,7 +32,7 @@ type BackupConfig struct {
 	Data      []DataBackupTarget `yaml:"data,omitempty"`
 }
 
-// DNSConfig defines upstream DNS relays and shared static DNS records in oops.yml
+// DNSConfig defines upstream DNS relays and shared static DNS records in oops.yaml
 type DNSConfig struct {
 	TLD       string   `yaml:"tld,omitempty"`
 	Upstreams []string `yaml:"upstreams,omitempty"`
@@ -77,7 +77,6 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 
 	candidates := []string{
 		filepath.Join(workDir, "oops.yaml"),
-		filepath.Join(workDir, "oops.yml"),
 	}
 
 	for _, c := range candidates {

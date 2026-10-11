@@ -95,10 +95,6 @@ func CreateWorkspace(targetPath string) (string, error) {
 	cfgPath := filepath.Join(canonical, "oopsbox.yaml")
 	exampleCfg := filepath.Join(canonical, "oopsbox.yaml.example")
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
-		// check legacy example if new one not found
-		if _, err := os.Stat(exampleCfg); os.IsNotExist(err) {
-			exampleCfg = filepath.Join(canonical, "oopsbox.yml.example")
-		}
 		if data, err := os.ReadFile(exampleCfg); err == nil {
 			if err := os.WriteFile(cfgPath, data, 0644); err != nil {
 				return "", fmt.Errorf("failed to create oopsbox.yaml: %w", err)
@@ -180,15 +176,13 @@ REDIS_PASSWORD=%s
 	return os.WriteFile(envFile, []byte(envContent), 0600)
 }
 
-// HasValidStacks checks if a directory contains a stacks/ folder or compose files.
+// HasValidStacks checks if a directory contains a services/ folder or compose.yaml.
 func HasValidStacks(dir string) bool {
-	if fi, err := os.Stat(filepath.Join(dir, "stacks")); err == nil && fi.IsDir() {
+	if fi, err := os.Stat(filepath.Join(dir, "services")); err == nil && fi.IsDir() {
 		return true
 	}
-	for _, name := range []string{"compose.yml", "compose.yaml", "docker-compose.yml", "docker-compose.yaml"} {
-		if fi, err := os.Stat(filepath.Join(dir, name)); err == nil && !fi.IsDir() {
-			return true
-		}
+	if fi, err := os.Stat(filepath.Join(dir, "compose.yaml")); err == nil && !fi.IsDir() {
+		return true
 	}
 	return false
 }

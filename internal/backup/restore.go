@@ -179,7 +179,7 @@ func ExecuteRestoreData(ctx context.Context, workDir string, backupDir string, t
 
 	// 2. Validate workspace root
 	if !isWorkspaceValid(workDir) {
-		return fmt.Errorf("refusing to restore: %s does not appear to be a valid Oopsbox workspace (missing stacks/ or compose.yml)", workDir)
+		return fmt.Errorf("refusing to restore: %s does not appear to be a valid Oopsbox workspace (missing services/ or compose.yaml)", workDir)
 	}
 
 	// 3. Inspect manifest
@@ -207,7 +207,7 @@ func ExecuteRestoreData(ctx context.Context, workDir string, backupDir string, t
 		fmt.Printf("  Created At     : %s\n", manifest.CreatedAt)
 		fmt.Printf("  Source Paths   : %v\n", manifest.SourcePaths)
 
-		// Cross-check with local oops.yml
+		// Cross-check with local oops.yaml
 		if cfg, err := docker.LoadOopsConfig(workDir); err == nil {
 			foundInLocal := false
 			for _, dt := range cfg.Backups.Data {
@@ -217,7 +217,7 @@ func ExecuteRestoreData(ctx context.Context, workDir string, backupDir string, t
 				}
 			}
 			if !foundInLocal && len(cfg.Backups.Data) > 0 {
-				fmt.Printf("  [NOTICE] Target %q not explicitly configured in destination oops.yml.\n", manifest.Name)
+				fmt.Printf("  [NOTICE] Target %q not explicitly configured in destination oops.yaml.\n", manifest.Name)
 			}
 		}
 	} else {
@@ -257,10 +257,10 @@ func ExecuteRestoreData(ctx context.Context, workDir string, backupDir string, t
 }
 
 func isWorkspaceValid(workDir string) bool {
-	if fi, err := os.Stat(filepath.Join(workDir, "stacks")); err == nil && fi.IsDir() {
+	if fi, err := os.Stat(filepath.Join(workDir, "services")); err == nil && fi.IsDir() {
 		return true
 	}
-	for _, c := range []string{"compose.yml", "compose.yaml", "oops.yml", "oops.yaml"} {
+	for _, c := range []string{"compose.yaml", "oops.yaml"} {
 		if _, err := os.Stat(filepath.Join(workDir, c)); err == nil {
 			return true
 		}

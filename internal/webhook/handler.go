@@ -20,7 +20,6 @@ type Payload struct {
 	Image     string `json:"image,omitempty"`     // (Required for image action) The name of the image to update
 	URL       string `json:"url,omitempty"`       // (Required for git action) Git repository URL to match oops.git.url
 	Tag       string `json:"tag,omitempty"`       // (Required for git action) The git tag to checkout, e.g., v1.0.0
-	Container string `json:"container,omitempty"` // Legacy filter
 	Delay     string `json:"delay,omitempty"`     // e.g. "2s"
 }
 
@@ -74,9 +73,6 @@ func HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	selector := payload.Target
-	if selector == "" {
-		selector = payload.Container
-	}
 
 	log.Printf("Received deployment webhook -> Action: %q, Target: %q, Image: %q, URL: %q, Tag: %q, Delay: %q",
 		payload.Action, selector, payload.Image, payload.URL, payload.Tag, payload.Delay)

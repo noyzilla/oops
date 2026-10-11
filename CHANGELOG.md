@@ -28,6 +28,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ### Removed
 - Removed custom `oops.stop.cmd` and `oops.stop.timeout` pre-stop lifecycle hooks to align with native Docker Compose shutdown behavior.
+- Dropped legacy file extension fallbacks (`oops.yml`, `oopsbox.yml`, `oopsbox.yml.example`) and obsolete directory checks (`stacks/`).
+- Dropped configuration and naming fallbacks: `StoragePrefixes` alias (standardized on `VolumePrefixes`), legacy `/etc/hosts` parsing in DNS, and `Container` legacy selector in Webhook payload.
+- Dropped `-r` and `--remote` flags from `oops remote add`, `oops rx`, and `oops sync` in favor of canonical positional `@<remote>` syntax (`oops remote add <ssh-target> [@<name>]`, `oops rx [@<remote>] <cmd>`, and `oops sync [push|pull] [@<remote>]`).
 
 ## [v1.1.0] - 2026-10-09
 

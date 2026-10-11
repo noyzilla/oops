@@ -187,9 +187,6 @@ func hasComposeContent(dir string) bool {
 	if fi, err := os.Stat(filepath.Join(dir, "services")); err == nil && fi.IsDir() {
 		return true
 	}
-	if fi, err := os.Stat(filepath.Join(dir, "stacks")); err == nil && fi.IsDir() {
-		return true
-	}
 	return false
 }
 

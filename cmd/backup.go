@@ -17,7 +17,7 @@ func newBackupCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "backup",
 		Short: "Executes full backup (database dumps + data volumes) and retention prune",
-		Long:  "Executes full system backup for all database containers and filesystem data paths configured in oops.yml.",
+		Long:  "Executes full system backup for all database containers and filesystem data paths configured in oops.yaml.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ret, backupDir, err := resolveBackupConfig(retention)
 			if err != nil {
@@ -118,7 +118,7 @@ func newBackupDataCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "backup-data [targets...]",
 		Short: "Executes data volume and filesystem archives (uploads, storage) and retention prune",
-		Long:  "Executes compressed tar archives for paths defined in oops.yml (backups.data), and prunes old archives.",
+		Long:  "Executes compressed tar archives for paths defined in oops.yaml (backups.data), and prunes old archives.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ret, backupDir, err := resolveBackupConfig(retention)
 			if err != nil {

@@ -24,8 +24,6 @@ func FindDNSFilePath(workDir string) string {
 		filepath.Join(workDir, "data", "oops", "dns.records"),
 		filepath.Join(workDir, "config", "oops.dns"),
 		filepath.Join(workDir, "config", "oops", "dns"),
-		filepath.Join(workDir, "config", "oops", "hosts"),
-		filepath.Join(workDir, "config", "hosts"),
 	}
 
 	for _, p := range candidatePaths {
@@ -37,7 +35,7 @@ func FindDNSFilePath(workDir string) string {
 	return filepath.Join(workDir, "data", "oops", "dns.records")
 }
 
-// ParseDNSFile reads static DNS records from file in "<domain> <ip>" format (or legacy hosts format)
+// ParseDNSFile reads static DNS records from file in "<domain> <ip>" format
 func ParseDNSFile(filePath string) (map[string]net.IP, []string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -50,7 +48,6 @@ func ParseDNSFile(filePath string) (map[string]net.IP, []string, error) {
 
 	scanner := bufio.NewScanner(file)
 	lineNum := 0
-	isLegacyHosts := strings.HasSuffix(filepath.Base(filePath), "hosts")
 
 	for scanner.Scan() {
 		lineNum++
@@ -71,32 +68,16 @@ func ParseDNSFile(filePath string) (map[string]net.IP, []string, error) {
 			continue
 		}
 
-		if isLegacyHosts {
-			// Legacy /etc/hosts format: <ip> <domain1> <domain2>...
-			rawIP := fields[0]
-			ip := net.ParseIP(rawIP)
-			if ip == nil {
-				warnings = append(warnings, fmt.Sprintf("invalid IP address %q on line %d in %s", rawIP, lineNum, filePath))
-				continue
-			}
-			for _, host := range fields[1:] {
-				host = strings.TrimSpace(host)
-				if host != "" {
-					records[host] = ip
-				}
-			}
-		} else {
-			// Oops DNS format: <domain> <ip> (1 row = 1 domain, supports .wildcard)
-			domain := strings.TrimSpace(fields[0])
-			rawIP := strings.TrimSpace(fields[1])
-			ip := net.ParseIP(rawIP)
-			if ip == nil {
-				warnings = append(warnings, fmt.Sprintf("invalid IP address %q for domain %q on line %d in %s", rawIP, domain, lineNum, filePath))
-				continue
-			}
-			if domain != "" {
-				records[domain] = ip
-			}
+		// Oops DNS format: <domain> <ip> (1 row = 1 domain, supports .wildcard)
+		domain := strings.TrimSpace(fields[0])
+		rawIP := strings.TrimSpace(fields[1])
+		ip := net.ParseIP(rawIP)
+		if ip == nil {
+			warnings = append(warnings, fmt.Sprintf("invalid IP address %q for domain %q on line %d in %s", rawIP, domain, lineNum, filePath))
+			continue
+		}
+		if domain != "" {
+			records[domain] = ip
 		}
 	}
 
@@ -134,7 +115,7 @@ func LoadCustomHosts(workDir string) *Resolver {
 		}
 	}
 
-	// Also load shared infra DNS records from oops.yml
+	// Also load shared infra DNS records from oops.yaml
 	if oopsCfg, err := docker.LoadOopsConfig(workDir); err == nil && oopsCfg != nil {
 		infraCount := 0
 		for _, rawRecord := range oopsCfg.DNS.Records {
@@ -153,7 +134,7 @@ func LoadCustomHosts(workDir string) *Resolver {
 			}
 		}
 		if infraCount > 0 {
-			log.Printf("[DNS] Loaded %d shared infra DNS records from oops.yml", infraCount)
+			log.Printf("[DNS] Loaded %d shared infra DNS records from oops.yaml", infraCount)
 		}
 	}
 

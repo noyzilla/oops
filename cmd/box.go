@@ -85,7 +85,7 @@ func newBoxActiveCmd() *cobra.Command {
 				valid := box.HasValidStacks(active)
 				fmt.Printf("Active Box : %s\n", active)
 				if !valid {
-					fmt.Printf("Status     : Warning: Directory does not contain valid compose stacks (stacks/)\n")
+					fmt.Printf("Status     : Warning: Directory does not contain valid compose stacks (services/ or compose.yaml)\n")
 				} else {
 					fmt.Printf("Status     : Ready (Valid stacks discovered)\n")
 				}
@@ -95,7 +95,7 @@ func newBoxActiveCmd() *cobra.Command {
 			targetPath := args[0]
 			canon := box.CanonicalPath(targetPath)
 			if !box.HasValidStacks(canon) {
-				return fmt.Errorf("target directory %s is not a valid Oopsbox workspace (missing stacks/)", canon)
+				return fmt.Errorf("target directory %s is not a valid Oopsbox workspace (missing services/ or compose.yaml)", canon)
 			}
 
 			if err := box.SetActiveBox(canon); err != nil {
