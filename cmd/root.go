@@ -181,13 +181,8 @@ func hasComposeContent(dir string) bool {
 	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
 		return false
 	}
-	if fi, err := os.Stat(filepath.Join(dir, "stacks")); err == nil && fi.IsDir() {
+	if _, err := os.Stat(filepath.Join(dir, "compose.yaml")); err == nil {
 		return true
-	}
-	for _, c := range []string{"compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"} {
-		if _, err := os.Stat(filepath.Join(dir, c)); err == nil {
-			return true
-		}
 	}
 	return false
 }

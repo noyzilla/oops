@@ -90,16 +90,19 @@ func FindEnvFile(composePath string) string {
 	return ""
 }
 
-// RunComposeCommand executes docker compose with specific arguments and auto-detected .env
-func RunComposeCommand(composePath string, args ...string) error {
+// RunComposeFiles executes docker compose with multi -f files and auto-detected .env
+func RunComposeFiles(composeFiles []string, args ...string) error {
 	var cmdArgs []string
 	cmdArgs = append(cmdArgs, "compose")
 
-	if envFile := FindEnvFile(composePath); envFile != "" {
-		cmdArgs = append(cmdArgs, "--env-file", envFile)
+	if len(composeFiles) > 0 {
+		if envFile := FindEnvFile(composeFiles[0]); envFile != "" {
+			cmdArgs = append(cmdArgs, "--env-file", envFile)
+		}
+		for _, f := range composeFiles {
+			cmdArgs = append(cmdArgs, "-f", f)
+		}
 	}
-
-	cmdArgs = append(cmdArgs, "-f", composePath)
 	cmdArgs = append(cmdArgs, args...)
 
 	cmd := exec.Command("docker", cmdArgs...)
@@ -109,6 +112,18 @@ func RunComposeCommand(composePath string, args ...string) error {
 	}
 	log.Printf("%s", string(out))
 	return nil
+}
+
+// RunComposeCommand executes docker compose with specific arguments and auto-detected .env
+func RunComposeCommand(composePath string, args ...string) error {
+	return RunComposeFiles([]string{composePath}, args...)
+}
+
+func (o *Orchestrator) runTargetCompose(target docker.ResolvedTarget, args ...string) error {
+	if len(target.ComposeFiles) > 0 {
+		return RunComposeFiles(target.ComposeFiles, args...)
+	}
+	return RunComposeCommand(target.ComposePath, args...)
 }
 
 // Update executes sequential rolling updates across matched targets
@@ -126,18 +141,17 @@ func (o *Orchestrator) updateAllowed(ctx context.Context, targets []docker.Resol
 
 		// Step 1 - Pull latest image
 		log.Printf("[%s] Pulling image for %s...", target.ServiceName, target.ServiceName)
-		if err := RunComposeCommand(target.ComposePath, "pull", target.ServiceName); err != nil {
+		if err := o.runTargetCompose(target, "pull", target.ServiceName); err != nil {
 			log.Printf("Warning: compose pull failed: %v", err)
 		}
 
-
-		// Step 3 - Recreate service container
+		// Step 2 - Recreate service container
 		log.Printf("[%s] Recreating container with --no-deps...", target.ServiceName)
-		if err := RunComposeCommand(target.ComposePath, "up", "-d", "--no-deps", target.ServiceName); err != nil {
+		if err := o.runTargetCompose(target, "up", "-d", "--no-deps", target.ServiceName); err != nil {
 			return fmt.Errorf("failed to recreate %s: %w", target.ServiceName, err)
 		}
 
-		// Step 4 - Health Polling
+		// Step 3 - Health Polling
 		newCID, err := o.FindContainerID(ctx, target)
 		if err != nil || newCID == "" {
 			log.Printf("[%s] Warning: could not resolve new container ID for healthcheck", target.ServiceName)
@@ -165,7 +179,7 @@ func (o *Orchestrator) Stop(ctx context.Context, targets []docker.ResolvedTarget
 	for i, target := range targets {
 		log.Printf("==> [%d/%d] Stopping service %s (Stack: %s)...", i+1, len(targets), target.ServiceName, target.StackName)
 
-		if err := RunComposeCommand(target.ComposePath, "stop", target.ServiceName); err != nil {
+		if err := o.runTargetCompose(target, "stop", target.ServiceName); err != nil {
 			log.Printf("Warning: failed to stop %s: %v", target.ServiceName, err)
 		}
 
@@ -190,7 +204,7 @@ func (o *Orchestrator) restartAllowed(ctx context.Context, targets []docker.Reso
 	for i, target := range targets {
 		log.Printf("==> [%d/%d] Restarting service %s (Stack: %s)...", i+1, len(targets), target.ServiceName, target.StackName)
 
-		if err := RunComposeCommand(target.ComposePath, "restart", target.ServiceName); err != nil {
+		if err := o.runTargetCompose(target, "restart", target.ServiceName); err != nil {
 			log.Printf("Warning: failed to restart %s: %v", target.ServiceName, err)
 		}
 
@@ -213,20 +227,25 @@ func (o *Orchestrator) Up(ctx context.Context, targets []docker.ResolvedTarget, 
 
 func (o *Orchestrator) upAllowed(targets []docker.ResolvedTarget, delay time.Duration) error {
 	type executionGroup struct {
-		stackName   string
-		composePath string
-		services    []string
+		stackName    string
+		composeFiles []string
+		services     []string
 	}
 
 	var groups []executionGroup
 	for _, t := range targets {
+		cFiles := t.ComposeFiles
+		if len(cFiles) == 0 && t.ComposePath != "" {
+			cFiles = []string{t.ComposePath}
+		}
+
 		if len(groups) > 0 && groups[len(groups)-1].stackName == t.StackName {
 			groups[len(groups)-1].services = append(groups[len(groups)-1].services, t.ServiceName)
 		} else {
 			groups = append(groups, executionGroup{
-				stackName:   t.StackName,
-				composePath: t.ComposePath,
-				services:    []string{t.ServiceName},
+				stackName:    t.StackName,
+				composeFiles: cFiles,
+				services:     []string{t.ServiceName},
 			})
 		}
 	}
@@ -234,7 +253,7 @@ func (o *Orchestrator) upAllowed(targets []docker.ResolvedTarget, delay time.Dur
 	for i, group := range groups {
 		log.Printf("==> Starting stack /%s (Services: %v)...", group.stackName, group.services)
 		cmdArgs := append([]string{"up", "-d"}, group.services...)
-		if err := RunComposeCommand(group.composePath, cmdArgs...); err != nil {
+		if err := RunComposeFiles(group.composeFiles, cmdArgs...); err != nil {
 			return err
 		}
 

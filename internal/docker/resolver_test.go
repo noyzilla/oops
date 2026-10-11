@@ -43,20 +43,16 @@ func TestMatchWildcard(t *testing.T) {
 }
 
 func TestResolveTargetsMultiStack(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "oops-resolver-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
-	// Create flat stacks at root
-	os.WriteFile(filepath.Join(tmpDir, "docker-compose.edge.yml"), []byte(`
+	// Create flat stacks at root strictly using .yaml
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.edge.yaml"), []byte(`
 services:
   caddy:
     image: caddy:latest
 `), 0644)
 
-	os.WriteFile(filepath.Join(tmpDir, "docker-compose.db.yml"), []byte(`
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.db.yaml"), []byte(`
 services:
   mysql:
     image: mysql:8.0
@@ -64,17 +60,15 @@ services:
     image: redis:alpine
 `), 0644)
 
-	os.WriteFile(filepath.Join(tmpDir, "docker-compose.yml"), []byte(`
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yaml"), []byte(`
 services:
   app-web:
     image: myapp:web
-    labels:
-
   app-worker:
     image: myapp:worker
 `), 0644)
 
-	// 1. Resolve all (empty targets) -> dependency order edge -> db -> apps (.)
+	// 1. Resolve all (empty targets) -> targets root compose.yaml (.)
 	all, err := docker.ResolveTargets(tmpDir, nil)
 	if err != nil {
 		t.Fatalf("unexpected error resolving all: %v", err)
@@ -91,7 +85,6 @@ services:
 	if err != nil {
 		t.Fatalf("unexpected error resolving /db: %v", err)
 	}
-	// /db depends on /edge, so edge should be booted first
 	if len(dbTargets) != 2 {
 		t.Fatalf("expected 2 targets for /db, got %d", len(dbTargets))
 	}
@@ -113,23 +106,15 @@ services:
 	if err != nil {
 		t.Fatalf("unexpected error resolving app..: %v", err)
 	}
-	// app.. resolves to app-web and app-worker, which are in stack `.`.
-	// `.` depends on /db which depends on /edge. So we should get 1 (edge) + 2 (db) + 2 (apps) = 5 targets.
 	if len(wildcardTargets) != 2 {
 		t.Fatalf("expected 2 targets for app.., got %d", len(wildcardTargets))
 	}
-
-	// Check labels parsing for app-web
 }
 
 func TestResolveImageAliasesAndRegistryShortcuts(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "oops-img-alias-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
-	os.WriteFile(filepath.Join(tmpDir, "compose.apps.yml"), []byte(`
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.apps.yaml"), []byte(`
 services:
   web-api:
     image: asia-southeast1-docker.pkg.dev/my-project/my-repo/api-service:v2.1.0
@@ -139,14 +124,14 @@ services:
     image: ghcr.io/myorg/frontend:latest
 `), 0644)
 
-	os.WriteFile(filepath.Join(tmpDir, "compose.db.yml"), []byte(`
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.db.yaml"), []byte(`
 services:
   redis:
     image: redis:7-alpine
 `), 0644)
 
-	// Create oops.yml at root
-	os.WriteFile(filepath.Join(tmpDir, "oops.yml"), []byte(`
+	// Create oops.yaml at root
+	_ = os.WriteFile(filepath.Join(tmpDir, "oops.yaml"), []byte(`
 registries:
   gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
   gh: ghcr.io/myorg
@@ -191,13 +176,13 @@ registries:
 
 func TestResolveTargetsWithExceptions(t *testing.T) {
 	tmpDir := t.TempDir()
-	_ = os.WriteFile(filepath.Join(tmpDir, "compose.edge.yml"), []byte(`
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.edge.yaml"), []byte(`
 services:
   caddy:
     image: caddy:alpine
 `), 0644)
 
-	_ = os.WriteFile(filepath.Join(tmpDir, "compose.db.yml"), []byte(`
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.db.yaml"), []byte(`
 services:
   mysql:
     image: mysql:8.0
@@ -205,7 +190,7 @@ services:
     image: redis:7-alpine
 `), 0644)
 
-	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yml"), []byte(`
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yaml"), []byte(`
 services:
   api:
     image: my-api:latest
@@ -213,7 +198,7 @@ services:
     image: my-worker:latest
 `), 0644)
 
-	// 1. Resolve all (which goes to .) with except /edge -> should return only db and apps
+	// 1. Resolve all (which goes to .) with except /edge -> should return only api and worker
 	allExceptEdge, err := docker.ResolveTargetsWithExceptions(tmpDir, nil, []string{"/edge"})
 	if err != nil {
 		t.Fatalf("ResolveTargetsWithExceptions failed: %v", err)
@@ -234,5 +219,99 @@ services:
 	}
 	if len(dbExceptMysql) != 1 || dbExceptMysql[0].ServiceName != "redis" {
 		t.Fatalf("expected only redis, got %+v", dbExceptMysql)
+	}
+}
+
+func TestComposeGroupsAndServiceTemplatesMultiF(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// 1. Root compose.yaml with x-groups
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yaml"), []byte(`
+services:
+  gateway:
+    image: caddy:latest
+
+x-groups:
+  db:
+    - mysql
+    - redis
+`), 0644)
+
+	// 2. Service templates in services/
+	servicesDir := filepath.Join(tmpDir, "services")
+	_ = os.MkdirAll(servicesDir, 0755)
+
+	_ = os.WriteFile(filepath.Join(servicesDir, "mysql.yaml"), []byte(`
+services:
+  mysql:
+    image: mysql:8.4
+`), 0644)
+
+	_ = os.WriteFile(filepath.Join(servicesDir, "redis.yaml"), []byte(`
+services:
+  redis:
+    image: redis:alpine
+`), 0644)
+
+	// 3. Local machine override: compose.local.yaml
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.local.yaml"), []byte(`
+services:
+  mysql:
+    ports:
+      - "3306:3306"
+`), 0644)
+
+	// Test 1: Resolve +db group
+	groupTargets, err := docker.ResolveTargets(tmpDir, []string{"+db"})
+	if err != nil {
+		t.Fatalf("unexpected error resolving +db: %v", err)
+	}
+	if len(groupTargets) != 2 {
+		t.Fatalf("expected 2 targets for +db, got %d", len(groupTargets))
+	}
+
+	// Verify tail-chaining in ComposeFiles:
+	// 1: compose.yaml, 2: services/mysql.yaml, 3: compose.local.yaml
+	for _, gt := range groupTargets {
+		if len(gt.ComposeFiles) < 3 {
+			t.Fatalf("expected at least 3 files in chain, got %+v", gt.ComposeFiles)
+		}
+		// First must be compose.yaml
+		if filepath.Base(gt.ComposeFiles[0]) != "compose.yaml" {
+			t.Errorf("expected first file compose.yaml, got %s", gt.ComposeFiles[0])
+		}
+		// Last must be compose.local.yaml
+		lastFile := filepath.Base(gt.ComposeFiles[len(gt.ComposeFiles)-1])
+		if lastFile != "compose.local.yaml" {
+			t.Errorf("expected tail file compose.local.yaml, got %s", lastFile)
+		}
+	}
+
+	// Test 2: Resolve single service mysql (auto-detects services/mysql.yaml)
+	singleTargets, err := docker.ResolveTargets(tmpDir, []string{"mysql"})
+	if err != nil {
+		t.Fatalf("unexpected error resolving single service mysql: %v", err)
+	}
+	if len(singleTargets) != 1 || singleTargets[0].ServiceName != "mysql" {
+		t.Fatalf("expected 1 mysql target, got %+v", singleTargets)
+	}
+	if filepath.Base(singleTargets[0].ComposeFiles[len(singleTargets[0].ComposeFiles)-1]) != "compose.local.yaml" {
+		t.Errorf("expected tail local override in single target chain")
+	}
+
+	// Test 3: Legacy .yml and docker-compose.* are ignored
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.legacy.yml"), []byte(`
+services:
+  legacy:
+    image: legacy:1.0
+`), 0644)
+	stacks, _, err := docker.DiscoverStacks(tmpDir)
+	if err != nil {
+		t.Fatalf("DiscoverStacks failed: %v", err)
+	}
+	for _, s := range stacks {
+		if s == "legacy" {
+			t.Errorf("legacy .yml file should not be discovered as a stack")
+		}
 	}
 }

@@ -10,8 +10,11 @@ import (
 
 // ComposeConfig represents the root structure of a docker-compose file
 type ComposeConfig struct {
-	Version  string                    `yaml:"version,omitempty"`
-	Services map[string]ComposeService `yaml:"services"`
+	Version   string                    `yaml:"version,omitempty"`
+	Services  map[string]ComposeService `yaml:"services"`
+	XGroups   map[string][]string       `yaml:"x-groups,omitempty"`
+	XServices []string                  `yaml:"x-services,omitempty"`
+	XDepends  []string                  `yaml:"x-depends,omitempty"`
 }
 
 // ComposeService represents a service inside docker-compose.yml
