@@ -21,7 +21,7 @@ All written communication must strictly follow three principles:
   - Bad: "It is important to note that this parameter is optional."
   - Good: "This parameter is optional."
 - **Everyday Technical Verbs**: Use short, common verbs (`use` not `utilize`, `help` not `facilitate`, `run` not `execute`, `move` not `evacuate`).
-- **Exact Codebase Vocabulary**: Use real symbol names, file paths, parameters, flags, or commands matching the codebase directly (`TimeoutSeconds`, `auth.go`, `--verbose`). Never invent abstract metaphors or synonyms.
+- **Exact Codebase Vocabulary**: Use real symbol names, parameters, flags, commands, or project-relative file paths matching the codebase directly (`TimeoutSeconds`, `src/auth.go`, `docs/specs/auth.md`, `--verbose`). Never invent abstract metaphors or leak host environment prefixes (`/home/...`, `/Users/...`).
 
 ## Payload Preservation Invariant
 

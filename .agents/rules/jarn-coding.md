@@ -32,6 +32,12 @@ Never create references based on relative position, sequence numbers, or hardcod
 - Prefer stable, descriptive references and direct links: `Authentication`, `Transaction Processing`, `Retry Policy`, or `[Transaction Processing](docs/specs/0001-tx.md)`.
 - Positional references break and corrupt documentation whenever items are inserted, removed, or reordered; semantic references remain permanently resilient.
 
+### Project-Relative Path Invariant (Internal Project File References)
+All file references, cross-document links, frontmatter synapses, code comments, and documentation within the project must maintain portability and location independence:
+- **Mandatory Project-Relative Paths**: Any reference to an internal project file or directory (including source code, tests, configuration, documentation, scripts, and templates) must strictly use Project-Relative Paths originating from the workspace root (e.g., `src/domain/auth.go`, `docs/specs/auth.md`, `scripts/build.sh`, `.agents/rules/jarn-coding.md`).
+- **No Host Path Leakage**: Never use host-absolute environment paths (e.g., `/home/username/...`, `/Users/...`, `C:\...`) or protocol URIs (`file:///...`) for internal repository files.
+- **Host Filesystem Exception**: Absolute or host-level filesystem paths are permitted exclusively when documenting or configuring operating system concepts, system daemons, container mount points, or global runtime environments (e.g., `/etc/hosts`, `~/.config/`, `/tmp`, `/var/run/docker.sock`).
+
 ### Numbering Invariant: Positional Order vs. Semantic Identity
 Core principle: **Numbers used merely for sequence or reading order are prohibited; numbers that form an integral part of semantic meaning are permitted and required.**
 

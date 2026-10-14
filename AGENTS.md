@@ -40,7 +40,7 @@ Agents MUST strictly comply with every active Jarn rule:
 - **Operational Lifecycle**: [.agents/rules/jarn-lifecycle.md](.agents/rules/jarn-lifecycle.md) (GATE 1 → GATE 2 → GATE 3 operational gates, gate checklists, Definition of Done).
 - **Architecture & Lifecycle**: [.agents/rules/jarn-architecture.md](.agents/rules/jarn-architecture.md) (Ecosystem-native lifecycle, configuration architecture, document splitting, frontmatter).
 - **Naming Conventions**: [.agents/rules/jarn-naming.md](.agents/rules/jarn-naming.md) (Path notation, environment variable parity, domain alignment).
-- **Coding Style & Hygiene**: [.agents/rules/jarn-coding.md](.agents/rules/jarn-coding.md) (Visual hygiene, bilingual annotations, numbering invariants, stable references).
+- **Coding Style & Hygiene**: [.agents/rules/jarn-coding.md](.agents/rules/jarn-coding.md) (Visual hygiene, bilingual annotations, numbering invariants, stable references, project-relative paths).
 - **Git & Commits**: [.agents/rules/jarn-git.md](.agents/rules/jarn-git.md) (Conventional commits, micro-commit strategy).
 - **Quality & Pre-Merge Gates**: [.agents/rules/jarn-quality.md](.agents/rules/jarn-quality.md) (Pre-merge review checklist, universal quality standards, targeted verification).
 - **Technical Communication Standard**: [.agents/rules/jarn-communication.md](.agents/rules/jarn-communication.md) (Diátaxis structure, strict word economy, zero filler, exact codebase vocabulary).
