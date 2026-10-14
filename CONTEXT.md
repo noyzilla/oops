@@ -23,10 +23,11 @@ This document establishes the official domain glossary and ubiquitous language f
 - **CLI Notation**: `+<group>` (e.g. `+db`, `+monitoring`).
 - **Avoid**: `bundle`, `cluster`, `environment`, `pod`
 
-### Entity: Project / Stack
-- **Canonical Term**: `Project` / `Stack`
+### Entity: Stack
+- **Canonical Term**: `Stack`
 - **Definition**: An application or stack composition defined in `compose.<stack>.yaml` at the project root, optionally paired with machine override `compose.<stack>.local.yaml`.
-- **CLI Notation**: `/<stack>` or `/<project>` (e.g. `/myapp`, `/crm`).
+- **CLI Notation**: `/<stack>` (e.g. `/myapp`, `/crm`).
+- **Avoid**: `project`, `project stack`, `bundle`, `app_instance`
 
 ### Entity: Capsule Blueprint
 - **Canonical Term**: `Capsule Blueprint`
@@ -62,7 +63,7 @@ This document establishes the official domain glossary and ubiquitous language f
 - **Definition**: The user-supplied identifier passed to CLI commands, resolving to:
   - Exact service: `<service>` (e.g. `mysql`) -> auto-detects `services/<service>.yaml`.
   - Service group: `+<group>` (e.g. `+db`) -> resolves member templates from `x-groups:`.
-  - Project stack: `/<project>` (e.g. `/myapp`) -> executes `compose.<project>.yaml`.
+  - Application stack: `/<stack>` (e.g. `/myapp`) -> executes `compose.<stack>.yaml`.
   - Remote overlay: `@<remote>` (e.g. `@prod`) -> targets `/@<remote>/`.
 - **Permitted Synonyms**: `target_pattern`, `target_selector`
 
@@ -94,7 +95,7 @@ To ensure complete naming parity across CLI subcommands, developer documentation
 | Sigil | Domain Target | Meaning / Resolves To | Example Syntax |
 | :---: | :--- | :--- | :--- |
 | **`@`** | **Remote Host Capsule** | Target remote server capsule at `/@<remote>/` | `@prod`, `@staging`, `@192.168.1.50` |
-| **`/`** | **Project Stack** | Dedicated application composition at `compose.<project>.yaml` | `/myapp`, `/api`, `/worker` |
+| **`/`** | **Application Stack** | Dedicated application composition at `compose.<stack>.yaml` | `/myapp`, `/api`, `/worker` |
 | **`+`** | **Service Group** | Aggregated service group declared in `compose.yaml` under `x-groups:` | `+db`, `+monitoring` |
 | **`.`** | **Internal Subsystem** | Internal system services (e.g. DNS daemon) | `.dns` |
 | *(none)* | **Service Template** | Atomic reusable service definition at `services/<service>.yaml` | `mysql`, `redis`, `caddy` |
@@ -102,15 +103,15 @@ To ensure complete naming parity across CLI subcommands, developer documentation
 ### 2. Argument Bracketing & Sigil-Outside Invariant [กฎการใช้วงเล็บและ Sigil อยู่นอกวงเล็บ]
 
 - **Required Parameter Standard [พารามิเตอร์บังคับ]**:
-  - Always written as `sigil<placeholder>` or `<placeholder>` (e.g. `@<remote>`, `/<project>`, `<service>`).
+  - Always written as `sigil<placeholder>` or `<placeholder>` (e.g. `@<remote>`, `/<stack>`, `<service>`).
   - Examples: `oops remote connect @<remote>[:<path>]`, `oops remote remove @<remote>`.
 - **Optional Parameter Standard [พารามิเตอร์ทางเลือก]**:
-  - Always wrapped in square brackets as `[sigil<placeholder>]` or `[placeholder]` (e.g. `[@<remote>]`, `[/<stack>]`, `[/<project>]`, `[<service>]`).
+  - Always wrapped in square brackets as `[sigil<placeholder>]` or `[placeholder]` (e.g. `[@<remote>]`, `[/<stack>]`, `[<service>]`).
   - Examples: `oops deploy [/<stack>] [@<remote>]`, `oops remote push [/<stack>] [@<remote>]`, `oops remote pull [/<stack>] [@<remote>]`, `oops rx [@<remote>] <cmd>`.
 - **Sigil-Outside Invariant (Anti-HTML Collision Guard) [กฎ Sigil อยู่นอกวงเล็บแหลม]**:
   - Sigils (`@`, `/`, `+`) MUST strictly reside outside angle brackets `<...>`.
-  - **Correct**: `[@<remote>]`, `[/<stack>]`, `[/<project>]`, `[+<group>]`, `@<remote>`, `/<stack>`, `/<project>`.
-  - **Forbidden**: `[<@remote>]`, `[</project>]`, `</project>`. (Placing `/` inside `<...>` collides with HTML/XML closing tags like `</project>` in Markdown renderers, syntax highlighters, and terminal parsers).
+  - **Correct**: `[@<remote>]`, `[/<stack>]`, `[+<group>]`, `@<remote>`, `/<stack>`.
+  - **Forbidden**: `[<@remote>]`, `[</stack>]`, `</stack>`. (Placing `/` inside `<...>` collides with HTML/XML closing tags like `</stack>` in Markdown renderers, syntax highlighters, and terminal parsers).
 
 ---
 

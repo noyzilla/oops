@@ -83,7 +83,7 @@ func DiscoverStacks(workDir string) ([]string, map[string]string, error) {
 			continue
 		}
 
-		// Match compose.<project>.yaml
+		// Match compose.<stack>.yaml
 		if strings.HasPrefix(name, "compose.") {
 			stack := strings.TrimSuffix(strings.TrimPrefix(name, "compose."), ".yaml")
 			if stack != "" {
@@ -163,7 +163,7 @@ func BuildComposeChain(workDir string, baseFiles []string, project string) []str
 		}
 	}
 
-	// 3. Project-specific local override: compose.<project>.local.yaml
+	// 3. Stack-specific local override: compose.<stack>.local.yaml
 	if project != "" && project != "." {
 		projLocal := filepath.Join(workDir, fmt.Sprintf("compose.%s.local.yaml", project))
 		if _, err := os.Stat(projLocal); err == nil && !seen[projLocal] {
@@ -467,7 +467,7 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 			projectName = ""
 			baseFiles = append(baseFiles, sd.composePath)
 		} else if stackName != "." {
-			// Project stack: prepend any service template dependencies
+			// Stack: prepend any service template dependencies
 			for _, dep := range srv.ParsedDependsOn {
 				if tmplPath, ok := templates[dep]; ok {
 					baseFiles = append(baseFiles, tmplPath)

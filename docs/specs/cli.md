@@ -21,7 +21,7 @@ The `oops` CLI is an ergonomic orchestrator over Docker Compose. It abstracts co
 
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Group (`+<group>`)**: Logical aggregation of service templates defined in root `compose.yaml` under `x-groups:` (e.g. `+db`, `+monitoring`).
-- **Stack / Project (`/<stack>` or `/<project>`)**: Dedicated application stack composition defined in `compose.<stack>.yaml` (e.g. `/myapp`, `/crm`).
+- **Stack (`/<stack>`)**: Dedicated application stack composition defined in `compose.<stack>.yaml` (e.g. `/myapp`, `/crm`).
 - **Service Template**: Reusable atomic service definitions located in `services/<service>.yaml` (e.g. `services/mysql.yaml`, `services/redis.yaml`).
 - **Remote Overlay (`@<remote>`)**: Environment specialization capsule located in `/@<remote>/` (e.g. `/@prod/`).
 - **Config**: Version-controlled service configurations residing modularly inside `config/<service>/` (e.g. `config/caddy/Caddyfile`, `config/mysql/my.cnf`).
@@ -37,23 +37,23 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
 | `(none)` | Base Default | `-f compose.yaml [-f compose.local.yaml] up` |
 | `<service>` | Single Service | Auto-detects `services/<service>.yaml`, executing `-f compose.yaml -f services/<service>.yaml [-f compose.local.yaml] up <service>` |
 | `+<group>` | Service Group | Resolves members from `x-groups.<group>` in `compose.yaml`, chaining member templates + `[-f compose.local.yaml]` |
-| `/<project>` | Project Stack | Resolves dependencies (`depends_on` / `x-services`), chaining `-f compose.yaml [dependencies] -f compose.<project>.yaml [-f compose.<project>.local.yaml] [-f compose.local.yaml] up` |
+| `/<stack>` | Application Stack | Resolves dependencies (`depends_on` / `x-services`), chaining `-f compose.yaml [dependencies] -f compose.<stack>.yaml [-f compose.<stack>.local.yaml] [-f compose.local.yaml] up` |
 | `@<remote>` | Remote Host Capsule | Resolves capsule `/@<remote>/` and deploys via Direct SSH Streaming (`oops deploy`) |
 | `..wildcard..` | Wildcard Pattern | Matches service names matching prefix (`app..`), suffix (`..worker`), or substring (`..api..`). |
 
 #### CLI Argument Bracketing & Sigil-Outside Invariant [มาตรฐานการใช้วงเล็บอาร์กิวเมนต์]
 All command signatures adhere to the ubiquitous language defined in [CONTEXT.md](../../CONTEXT.md):
-- **Required**: `sigil<placeholder>` (e.g. `@<remote>`, `/<project>`, `+<group>`, `<service>`).
-- **Optional**: `[sigil<placeholder>]` (e.g. `[@<remote>]`, `[/<project>]`, `[+<group>]`, `[<service>]`).
-- **Sigil-Outside Invariant**: Sigils (`@`, `/`, `+`) strictly stay outside `<...>` to prevent collision with HTML/XML tags (e.g. `</project>`).
+- **Required**: `sigil<placeholder>` (e.g. `@<remote>`, `/<stack>`, `+<group>`, `<service>`).
+- **Optional**: `[sigil<placeholder>]` (e.g. `[@<remote>]`, `[/<stack>]`, `[+<group>]`, `[<service>]`).
+- **Sigil-Outside Invariant**: Sigils (`@`, `/`, `+`) strictly stay outside `<...>` to prevent collision with HTML/XML tags (e.g. `</stack>`).
 
 ### Tail-Chaining Invariant (Left-to-Right Precedence)
 All machine-specific overrides (`*.local.yaml`) are strictly appended to the tail of the `-f` flag pipeline:
-1. `-f compose.yaml` (Root anchor for working directory)
-2. `-f services/<service>.yaml` (Atomic templates)
-3. `-f compose.<project>.yaml` (Project configuration)
-4. `-f compose.<project>.local.yaml` (Project-specific machine override)
-5. `-f compose.local.yaml` (Global machine override — tailmost position)
+- `-f compose.yaml` (Root anchor for working directory)
+- `-f services/<service>.yaml` (Atomic templates)
+- `-f compose.<stack>.yaml` (Stack configuration)
+- `-f compose.<stack>.local.yaml` (Stack-specific machine override)
+- `-f compose.local.yaml` (Global machine override — tailmost position)
 
 ### Strict `.yaml` Validation & Legacy Deprecation
 - Only manifests ending with `.yaml` are recognized by discovery and execution engines.
@@ -111,7 +111,7 @@ For each matched service in target order:
 | Command | Arguments / Flags | Description |
 | :--- | :--- | :--- |
 | `oops` | `[-C, --dir <path>]` | Displays help menu and available subcommands |
-| `oops up` | `[targets...] [-d 0s]` | Starts services, groups (`+<group>`), or projects (`/<project>`) with optional delay |
+| `oops up` | `[targets...] [-d 0s]` | Starts services, groups (`+<group>`), or stacks (`/<stack>`) with optional delay |
 | `oops stop` | `[targets...] [-x, --except <tgt>] [-d 0s]` | Gracefully stops target services |
 | `oops restart`| `[targets...] [-d 0s] [-i <img/alias>]` | Restarts target services with stop hooks and delay |
 | `oops down` | `[-d 0s] [--wipe-all] [-y]` | Tears down running containers |
