@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.2.0] - 2026-10-14
+
 ### Added
 - Symmetric Git/Remote Model: Introduced `oops remote push [/<stack>] [@<remote>]` and `oops remote pull [/<stack>] [@<remote>]` for bidirectional capsule synchronization.
 - `.oopsallow` default-deny whitelist engine for bidirectional synchronization (`push` and `pull`), protecting local capsules from downloading large database/backup files (`data/`, `backups/`).
@@ -22,6 +24,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Clarified `oops rx [@<remote>] <oops-cmd> [args...]` as forwarding exclusively `oops` subcommands inside the remote Oopsbox workspace.
 - Renamed `oops remote add` to `oops remote connect @<remote> [remote-path]`.
 - Standardized `oops remote remove @<remote>` to use canonical `@<remote>` syntax across CLI and documentation.
+- Standardized CLI stack syntax strictly on `/<stack>` (`compose.<stack>.yaml`) and eliminated `/<project>` notation across the entire project.
 
 ### Removed
 - Removed legacy standalone `oops sync` command hierarchy (`oops sync push|pull|env|secret`) in favor of unified `oops remote push` and `oops remote pull` governed by `.oopsallow`.
