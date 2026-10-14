@@ -4,7 +4,7 @@
 This document provides the high-level architecture, module boundaries, and design principles of the system.
 
 ## Core Architectural Pillars
-- **1:1 Dev-to-Prod Parity**: The identical turnkey infrastructure blueprint (`oopsbox/`) runs across local workstations (macOS / Linux) and production servers, standardizing network isolation (`net-edge`, `net-db`), storage hierarchy (`data/`, `backups/`), and DNS resolution to eliminate environment drift.
+- **1:1 Dev-to-Prod Parity**: The identical turnkey infrastructure blueprint (`oopsbox/`) runs across local workstations (macOS / Linux) and production servers, standardizing network isolation (`oops_edge`, `oops_db`), storage hierarchy (`data/`, `backups/`), and DNS resolution to eliminate environment drift.
 - **Git-Driven Infrastructure as Code (No SSH Snowflakes)**: Git serves as the single authoritative source of truth for all stack definitions and modular service configs (`stacks/<group>/<service>/`). Automated webhook reconciliation eliminates manual in-place server editing over SSH.
 - **Effortless Tech Stack Upgrades**: Decoupled multi-group topologies (`edge`, `db`, `tool`, `apps`) allow independent runtime upgrades with zero blast-radius on adjacent services, backed by safe sequential rolling updates and pre-stop lifecycle hooks.
 

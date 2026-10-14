@@ -8,8 +8,8 @@ services:
     volumes:
       - ./data/storage:/data
     networks:
-      - net-storage
+      - oops_storage
 
 networks:
-  net-storage:
+  oops_storage:
     external: true

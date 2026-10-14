@@ -143,8 +143,8 @@ func GetHostGatewayIP() string {
 		}
 	}
 
-	// 2. Try inspecting gateway from net-edge network
-	netCmd := exec.Command("docker", "network", "inspect", "net-edge", "-f", "{{range .IPAM.Config}}{{.Gateway}}{{break}}{{end}}")
+	// 2. Try inspecting gateway from oops_edge network
+	netCmd := exec.Command("docker", "network", "inspect", "oops_edge", "-f", "{{range .IPAM.Config}}{{.Gateway}}{{break}}{{end}}")
 	if out, err := netCmd.Output(); err == nil {
 		gw := strings.TrimSpace(string(out))
 		if gw != "" && gw != "<no value>" {

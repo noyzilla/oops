@@ -13,8 +13,8 @@ services:
       - ./config/nginx/vhost.d:/etc/nginx/vhost.d
       - ./config/nginx/html:/usr/share/nginx/html
     networks:
-      - net-edge
+      - oops_edge
 
 networks:
-  net-edge:
+  oops_edge:
     external: true

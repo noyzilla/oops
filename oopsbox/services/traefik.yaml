@@ -18,8 +18,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./config/traefik:/etc/traefik
     networks:
-      - net-edge
+      - oops_edge
 
 networks:
-  net-edge:
+  oops_edge:
     external: true

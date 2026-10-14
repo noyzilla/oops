@@ -9,8 +9,8 @@ services:
       caddy: "httpbin.web.oops"
       caddy.reverse_proxy: "{{upstreams 8080}}"
     networks:
-      - net-edge
+      - oops_edge
 
 networks:
-  net-edge:
+  oops_edge:
     external: true

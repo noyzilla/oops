@@ -23,7 +23,7 @@ services:
 
 networks:
   default:
-    name: oops-network
+    name: oops_default
 
 x-oops:
   registries:

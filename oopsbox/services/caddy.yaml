@@ -8,18 +8,18 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      - CADDY_INGRESS_NETWORKS=net-edge
+      - CADDY_INGRESS_NETWORKS=oops_edge
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - net-edge
+      - oops_edge
 
 volumes:
   caddy_data:
   caddy_config:
 
 networks:
-  net-edge:
+  oops_edge:
     external: true

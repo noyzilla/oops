@@ -36,12 +36,12 @@ Oops Stack enforces the **Principle of Least Privilege & Network Isolation**:
 graph TD
     Internet((Internet / Clients)) -->|Ports 80/443| Edge["Edge Group (Caddy + Oops Daemon)"]
     
-    subgraph "net-edge (Ingress Only)"
+    subgraph "oops_edge (Ingress Only)"
         Edge -->|Reverse Proxy| WebApp["apps: web-app"]
         Edge -->|Reverse Proxy| Tools["tool: httpbin / mailpit"]
     end
     
-    subgraph "net-db (Internal & Isolated)"
+    subgraph "oops_db (Internal & Isolated)"
         WebApp -->|SQL / Cache| DB["db: MySQL / Postgres / Redis"]
         Worker["apps: worker (Isolated / NO Internet)"] -->|Queue / DB| DB
     end
@@ -51,9 +51,9 @@ graph TD
     style Worker fill:#f59e0b,stroke:#b45309,color:#fff
 ```
 
-- **`net-edge`**: Public Ingress traffic only. Databases and background workers are **never** joined to this network.
-- **`net-db`**: Internal private network for persistence and cache. Completely isolated from the internet and Reverse Proxy.
-- **Private Services (e.g. `worker`)**: Joined strictly to `net-db`. Cannot be accessed or probed from the external web.
+- **`oops_edge`**: Public Ingress traffic only. Databases and background workers are **never** joined to this network.
+- **`oops_db`**: Internal private network for persistence and cache. Completely isolated from the internet and Reverse Proxy.
+- **Private Services (e.g. `worker`)**: Joined strictly to `oops_db`. Cannot be accessed or probed from the external web.
 
 ---
 

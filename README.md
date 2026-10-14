@@ -14,7 +14,7 @@ Oops and Oopsbox eliminate DevOps complexity through three foundational principl
 
 - **1:1 Dev-to-Prod Parity (Zero "Works on my machine" Surprises)**:
   - The exact same infrastructure blueprint (`oopsbox/`) runs seamlessly on local workstations (macOS / Linux) and production servers.
-  - Standardizes network segmentation (`net-edge`, `net-db`), storage paths (`data/`, `backups/`), and local DNS resolution across all machines.
+  - Standardizes network segmentation (`oops_edge`, `oops_db`), storage paths (`data/`, `backups/`), and local DNS resolution across all machines.
 
 - **Git-Driven Infrastructure (No More SSH Snowflake Configs)**:
   - Git is the single source of truth for all stack definitions and service configurations (`stacks/<group>/<service>/`).
@@ -52,7 +52,7 @@ oopsbox/
 - **1-Command Workstation Setup**: Run `oops box init ~/oopsbox` and `oops box start` to boot the VM, set up host networking, register the macOS/Linux DNS resolver, and trust root SSL certificates.
 - **Automated Local HTTPS**: Caddy Edge Proxy automatically issues and serves valid TLS certificates with green locks for `https://*.web.oops`.
 - **Embedded Zero-Config DNS**: Containers are instantly resolvable by hostname (e.g. `mysql.oops`, `redis.oops`, `host.oops`, `vm.oops`) through the embedded Oops DNS engine.
-- **Strict Network Isolation**: Enforces least privilege across `net-edge` (public ingress) and `net-db` (isolated backend).
+- **Strict Network Isolation**: Enforces least privilege across `oops_edge` (public ingress) and `oops_db` (isolated backend).
 - **Single Source of Truth (`oops.yaml`)**: Configure project profiles, image registry aliases (`registries:`), and automated backups in one clean YAML file.
 
 [Read the Full Oopsbox Blueprint Guide](oopsbox/README.md)

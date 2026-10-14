@@ -13,15 +13,15 @@ name: oops
 
 networks:
   default:
-    name: oops-network
-  net-edge:
-    name: net-edge
+    name: oops_default
+  oops_edge:
+    name: oops_edge
     driver: bridge
-  net-db:
-    name: net-db
+  oops_db:
+    name: oops_db
     driver: bridge
-  net-storage:
-    name: net-storage
+  oops_storage:
+    name: oops_storage
     driver: bridge
 `
 
@@ -47,7 +47,7 @@ services:
 
 networks:
   default:
-    name: oops-network
+    name: oops_default
 
 x-oops:
   registries:

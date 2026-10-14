@@ -9,7 +9,7 @@ services:
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
     networks:
-      - net-db
+      - oops_db
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
@@ -17,5 +17,5 @@ services:
       retries: 5
 
 networks:
-  net-db:
+  oops_db:
     external: true

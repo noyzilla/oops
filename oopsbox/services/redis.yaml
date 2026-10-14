@@ -10,7 +10,7 @@ services:
     volumes:
       - ./data/redis:/data
     networks:
-      - net-db
+      - oops_db
     healthcheck:
       test: [ "CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG; else redis-cli ping | grep PONG; fi" ]
       interval: 5s
@@ -18,5 +18,5 @@ services:
       retries: 5
 
 networks:
-  net-db:
+  oops_db:
     external: true

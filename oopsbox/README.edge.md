@@ -53,7 +53,7 @@ services:
       caddy: "app.web.oops"
       caddy.reverse_proxy: "{{upstreams 80}}"
     networks:
-      - net-edge
+      - oops_edge
 ```
 
 ---
@@ -90,7 +90,7 @@ services:
       traefik.http.routers.myapp.entrypoints: "websecure"
       traefik.http.routers.myapp.tls.certresolver: "letsencrypt"
     networks:
-      - net-edge
+      - oops_edge
 ```
 
 ---
@@ -125,7 +125,7 @@ services:
       - VIRTUAL_HOST=app.web.oops
       - LETSENCRYPT_HOST=app.web.oops
     networks:
-      - net-edge
+      - oops_edge
 ```
 
 ---
