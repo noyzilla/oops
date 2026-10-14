@@ -8,14 +8,14 @@ Oopsbox is the production-ready, turnkey Infrastructure as Code (IaC) blueprint 
 ~/oopsbox/                # Standard Root Directory (or /opt/oopsbox on production)
 ├── .env                  # Environment variables & secrets (copy from .env.example)
 ├── .env.example          # Credentials template (Committed)
-├── oops.yml              # Center Master Config: registries, groups, backups, shared dns (Committed)
-├── oopsbox.yml           # Local Workstation Engine & DNS settings (git-ignored)
-├── oopsbox.yml.example   # Workstation configuration template (Committed)
-├── compose.yml           # Root Stack (/.): Core environment and topology relationships (include)
-├── compose.edge-caddy.yml# Edge Reverse Proxy Stack (Caddy)
-├── compose.db.yml        # Persistence & Cache Stack (MySQL, Postgres, Redis on net-db)
-├── compose.tool.yml      # Dev & Mock Utilities Stack (httpbin, mailpit)
-├── compose.apps.yml      # Application Services Stack (web-app, worker)
+├── oops.yaml             # Center Master Config: registries, backups, volume mount prefixes (Committed)
+├── oops.yaml.example     # Daemon orchestrator blueprint for remote /@<remote>/oops.yaml
+├── oopsbox.yaml          # Local Workstation Engine & DNS settings (git-ignored)
+├── oopsbox.yaml.example  # Workstation configuration template (Committed)
+├── compose.yaml          # Local Root Base Manifest
+├── compose.yaml.example  # Blueprint for remote /@<remote>/compose.yaml
+├── .oopsallow.example    # Whitelist blueprint for capsule sync
+├── services/             # Atomic service definitions (caddy, mysql, postgres, redis, etc.)
 ├── config/               # Version-controlled service configuration (e.g., caddy/Caddyfile)
 ├── data/                 # Live realtime container storage (High-IOPS persistent volume)
 │   ├── mysql/            # MySQL storage
@@ -86,9 +86,9 @@ oops box switch ~/Workspaces/another-org/oopsbox
 
 ---
 
-## Unified Configuration (`oops.yml`)
+## Unified Configuration (`oops.yaml`)
 
-Define custom profiles, registry aliases, and shared DNS in `oops.yml`:
+Define custom profiles, registry aliases, and shared DNS in `oops.yaml`:
 
 ```yaml
 registries:
@@ -105,11 +105,9 @@ dns:
     # - .staging.oops 10.0.0.10
 ```
 
-*Note: In older versions, stack profiles were defined here. They are now defined topologically in `compose.yml` via the native Docker Compose `include` directive.*
-
 Use the `/<stack>` target syntax with any `oops` command:
 ```bash
-oops up                     # Starts the root stack (/. mapped to compose.yml) and its dependencies
+oops up                     # Starts the root base stack and its dependencies
 oops up /edge-caddy         # Starts Edge Perimeter only
 oops up /db                 # Starts Databases
 oops up /storage            # Starts Object Storage (SeaweedFS)
@@ -168,7 +166,7 @@ oops pull /apps
 oops pull gar/my-app:v1.0.0
 
 # Start service groups or stacks
-oops up                     # Starts default root stack (/. mapping to compose.yml)
+oops up                     # Starts default root stack (/. mapping to compose.yaml)
 oops up /edge-caddy         # Starts Edge Perimeter (Caddy + Oops DNS)
 oops up /db                 # Starts Databases (MySQL, Postgres, Redis)
 oops up /storage            # Starts Object Storage (SeaweedFS)
@@ -235,7 +233,7 @@ oops backup-db postgres -r 14d      # Backup with custom 14-day retention
 oops backup-db prune                # Prune expired DB dump archives
 
 # Data Volumes & Filesystem Backup Only (Uploads, Storage, Certs)
-oops backup-data                    # Backup all targets defined in oops.yml
+oops backup-data                    # Backup all targets defined in oops.yaml
 oops backup-data uploads            # Backup specific data target
 oops backup-data prune              # Prune expired data volume archives
 ```

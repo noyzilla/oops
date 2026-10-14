@@ -22,7 +22,7 @@ synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/cli.md", "docs/specs/dns
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Oops Box Manager (`oops box`)**: Native Go CLI command group for creating, activating, starting, switching, and securing Oopsbox workspaces.
 - **Active Box State (`~/.oops/active_box`)**: System file recording the absolute path of the currently active Oopsbox workspace on the machine.
-- **Release Blueprint (`oopsbox.tar.gz`)**: Tarball release asset containing the clean Oopsbox workspace structure (`compose.yaml`, `services/`, `config/`, `data/`, `oopsbox.yaml.example`).
+- **Release Blueprint (`oopsbox.tar.gz`)**: Tarball release asset containing the clean Oopsbox workspace structure (`compose.yaml`, `compose.yaml.example`, `oops.yaml`, `oops.yaml.example`, `oopsbox.yaml.example`, `.oopsallow.example`, `services/`, `config/`, `data/`).
 - **VM / Container Engine**: The underlying virtualization and container engine (`orbstack`, `colima`, or `docker`).
 - **Local TLD Resolver**: macOS `/etc/resolver/<domain>` entry forwarding local domain resolution to the Oops embedded DNS watcher.
 - **Local Root CA**: Caddy-generated internal root certificate installed into the host OS trust store or macOS Keychain.

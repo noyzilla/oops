@@ -2,7 +2,7 @@
 title: Oops CLI Core Architecture & Routing Protocol
 status: active
 tags: [cli, docker, compose, rolling-update, lifecycle-hooks, database, backup]
-synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/oopsbox.md", "docs/specs/dns.md", "docs/specs/volume-guard.md", "docs/specs/env-sync.md", "docs/specs/remote.md"]
+synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/oopsbox.md", "docs/specs/dns.md", "docs/specs/volume-guard.md", "docs/specs/remote.md"]
 ---
 
 # Specification: Oops CLI Core Architecture & Routing Protocol
@@ -11,7 +11,7 @@ synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/oopsbox.md", "docs/specs
 - **Target Audience**: Developers, Operators, and AI Coding Agents
 - **Parent Architecture**: [ARCHITECTURE.md](../../ARCHITECTURE.md)
 - **Ubiquitous Language**: [CONTEXT.md](../../CONTEXT.md)
-- **Companion Specs**: [docs/specs/oopsbox.md](oopsbox.md), [docs/specs/dns.md](dns.md), [docs/specs/volume-guard.md](volume-guard.md), [docs/specs/env-sync.md](env-sync.md), [docs/specs/remote.md](remote.md)
+- **Companion Specs**: [docs/specs/oopsbox.md](oopsbox.md), [docs/specs/dns.md](dns.md), [docs/specs/volume-guard.md](volume-guard.md), [docs/specs/remote.md](remote.md)
 
 ## Overview & Scope
 
@@ -21,7 +21,7 @@ The `oops` CLI is an ergonomic orchestrator over Docker Compose. It abstracts co
 
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Group (`+<group>`)**: Logical aggregation of service templates defined in root `compose.yaml` under `x-groups:` (e.g. `+db`, `+monitoring`).
-- **Project (`/<project>`)**: Dedicated application stack composition defined in `compose.<project>.yaml` (e.g. `/myapp`).
+- **Stack / Project (`/<stack>` or `/<project>`)**: Dedicated application stack composition defined in `compose.<stack>.yaml` (e.g. `/myapp`, `/crm`).
 - **Service Template**: Reusable atomic service definitions located in `services/<service>.yaml` (e.g. `services/mysql.yaml`, `services/redis.yaml`).
 - **Remote Overlay (`@<remote>`)**: Environment specialization capsule located in `/@<remote>/` (e.g. `/@prod/`).
 - **Config**: Version-controlled service configurations residing modularly inside `config/<service>/` (e.g. `config/caddy/Caddyfile`, `config/mysql/my.cnf`).

@@ -32,14 +32,17 @@ Oops and Oopsbox eliminate DevOps complexity through three foundational principl
 
 ```text
 oopsbox/
-├── oops.yml              # Master Config: backups, registry shortcuts, DNS
-├── oopsbox.yml           # Workstation Settings: VM engine (OrbStack/Colima), resources, local DNS
-├── compose.yml           # Root Stack (/.): Core environment and topology relationships (include)
-├── compose.edge-caddy.yml# Edge Reverse Proxy Stack (Caddy)
-├── compose.db.yml        # Persistence & Cache Stack (MySQL, Postgres, Redis)
-├── compose.tool.yml      # Dev & Mock Utilities Stack (httpbin, mailpit)
-├── compose.apps.yml      # Application Services Stack (web-app, worker)
-├── config/               # Version-controlled service configuration (e.g., caddy/Caddyfile)
+├── .env                  # Environment variables & secrets (copy from .env.example)
+├── .env.example          # Credentials template
+├── compose.yaml          # Local Root Base Manifest
+├── compose.yaml.example  # Blueprint for remote /@<remote>/compose.yaml
+├── oops.yaml             # Daemon orchestrator compose manifest
+├── oops.yaml.example     # Blueprint for remote /@<remote>/oops.yaml
+├── oopsbox.yaml          # Workstation VM engine settings (OrbStack/Colima)
+├── oopsbox.yaml.example  # Workstation settings blueprint
+├── .oopsallow.example    # Whitelist blueprint for capsule sync
+├── services/             # Atomic service definitions (caddy, mysql, postgres, redis, etc.)
+├── config/               # Service configurations (e.g. caddy/Caddyfile)
 ├── data/                 # Live container storage (High-IOPS persistent host volumes)
 └── backups/              # Automated database dumps & filesystem data archives
 ```
@@ -50,7 +53,7 @@ oopsbox/
 - **Automated Local HTTPS**: Caddy Edge Proxy automatically issues and serves valid TLS certificates with green locks for `https://*.web.oops`.
 - **Embedded Zero-Config DNS**: Containers are instantly resolvable by hostname (e.g. `mysql.oops`, `redis.oops`, `host.oops`, `vm.oops`) through the embedded Oops DNS engine.
 - **Strict Network Isolation**: Enforces least privilege across `net-edge` (public ingress) and `net-db` (isolated backend).
-- **Single Source of Truth (`oops.yml`)**: Configure project profiles (`profiles:`), image registry aliases (`registries:`), and automated backups in one clean YAML file.
+- **Single Source of Truth (`oops.yaml`)**: Configure project profiles, image registry aliases (`registries:`), and automated backups in one clean YAML file.
 
 [Read the Full Oopsbox Blueprint Guide](oopsbox/README.md)
 
@@ -62,7 +65,7 @@ The `oops` CLI binary manages multi-group containers, performs safe rolling upda
 
 ### Smart Target Selectors
 ```bash
-# Start default root stack (/. mapped to compose.yml) and its dependencies
+# Start default root stack (/. mapped to compose.yaml) and its dependencies
 oops up
 
 # Start specific stack
@@ -149,6 +152,24 @@ oops version
 # Self-update oops binary directly from GitHub releases
 oops selfupdate
 oops selfupdate --check
+```
+
+### Remote Server Management & Symmetric Push/Pull
+```bash
+# Connect and initialize remote host capsule (/@<remote>/)
+oops remote connect @prod:~/oopsbox
+
+# Outgoing delivery: streams manifests & capsule overlay via .oopsallow (pure delivery)
+oops remote push /crm @prod
+# Or exact ergonomic alias:
+oops deploy /crm @prod
+
+# Incoming sync: downloads remote configs into local capsule via .oopsallow
+oops remote pull /crm @prod
+
+# Execute commands remotely over SSH
+oops rx @prod up /crm
+oops rx @prod ps
 ```
 
 ---

@@ -23,10 +23,18 @@ This document establishes the official domain glossary and ubiquitous language f
 - **CLI Notation**: `+<group>` (e.g. `+db`, `+monitoring`).
 - **Avoid**: `bundle`, `cluster`, `environment`, `pod`
 
-### Entity: Project
-- **Canonical Term**: `Project`
-- **Definition**: An application or stack composition defined in `compose.<project>.yaml` at the project root, optionally paired with machine override `compose.<project>.local.yaml`.
-- **CLI Notation**: `/<project>` (e.g. `/myapp`, `/api`).
+### Entity: Project / Stack
+- **Canonical Term**: `Project` / `Stack`
+- **Definition**: An application or stack composition defined in `compose.<stack>.yaml` at the project root, optionally paired with machine override `compose.<stack>.local.yaml`.
+- **CLI Notation**: `/<stack>` or `/<project>` (e.g. `/myapp`, `/crm`).
+
+### Entity: Capsule Blueprint
+- **Canonical Term**: `Capsule Blueprint`
+- **Definition**: Clean infrastructure and orchestrator templates (`compose.yaml.example`, `oops.yaml.example`, `.oopsallow.example`) used during `oops remote connect` to initialize a fresh remote capsule.
+
+### Entity: Synchronization Whitelist
+- **Canonical Term**: `Synchronization Whitelist` / `.oopsallow`
+- **Definition**: A default-deny filter file residing in `/@<remote>/.oopsallow` that specifies the exact file patterns permitted for bidirectional synchronization (`oops remote push` and `oops remote pull`).
 
 ### Entity: Service Template
 - **Canonical Term**: `Service Template`
@@ -97,11 +105,11 @@ To ensure complete naming parity across CLI subcommands, developer documentation
   - Always written as `sigil<placeholder>` or `<placeholder>` (e.g. `@<remote>`, `/<project>`, `<service>`).
   - Examples: `oops remote connect @<remote>[:<path>]`, `oops remote remove @<remote>`.
 - **Optional Parameter Standard [พารามิเตอร์ทางเลือก]**:
-  - Always wrapped in square brackets as `[sigil<placeholder>]` or `[placeholder]` (e.g. `[@<remote>]`, `[/<project>]`, `[<service>]`).
-  - Examples: `oops deploy [/<project>] [@<remote>]`, `oops rx [@<remote>] <cmd>`.
+  - Always wrapped in square brackets as `[sigil<placeholder>]` or `[placeholder]` (e.g. `[@<remote>]`, `[/<stack>]`, `[/<project>]`, `[<service>]`).
+  - Examples: `oops deploy [/<stack>] [@<remote>]`, `oops remote push [/<stack>] [@<remote>]`, `oops remote pull [/<stack>] [@<remote>]`, `oops rx [@<remote>] <cmd>`.
 - **Sigil-Outside Invariant (Anti-HTML Collision Guard) [กฎ Sigil อยู่นอกวงเล็บแหลม]**:
   - Sigils (`@`, `/`, `+`) MUST strictly reside outside angle brackets `<...>`.
-  - **Correct**: `[@<remote>]`, `[/<project>]`, `[+<group>]`, `@<remote>`, `/<project>`.
+  - **Correct**: `[@<remote>]`, `[/<stack>]`, `[/<project>]`, `[+<group>]`, `@<remote>`, `/<stack>`, `/<project>`.
   - **Forbidden**: `[<@remote>]`, `[</project>]`, `</project>`. (Placing `/` inside `<...>` collides with HTML/XML closing tags like `</project>` in Markdown renderers, syntax highlighters, and terminal parsers).
 
 ---

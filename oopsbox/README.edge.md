@@ -36,14 +36,14 @@ Uses `lucaslorentz/caddy-docker-proxy` to dynamically generate Caddy configurati
 
 ### Setup & Usage
 ```bash
-# Start default Caddy edge proxy & oops daemon (if configured in compose.yml)
+# Start default Caddy edge proxy & oops daemon (if configured in compose.yaml)
 oops up
 
 # Or target the edge stack directly
 oops up /edge-caddy
 ```
 
-### Application Container Labels (`compose.apps.yml`)
+### Application Container Labels (`compose.apps.yaml`)
 ```yaml
 services:
   my-app:
@@ -76,10 +76,10 @@ Uses `traefik:v3.1` as a cloud-native dynamic reverse proxy with built-in metric
 # Start Traefik edge proxy
 oops up /edge-traefik
 
-# Note: You can set this as default by updating `include` in compose.yml
+# Note: You can set this as default by updating `include` in compose.yaml
 ```
 
-### Application Container Labels (`compose.apps.yml`)
+### Application Container Labels (`compose.apps.yaml`)
 ```yaml
 services:
   my-app:
@@ -113,10 +113,10 @@ Uses the classic `nginxproxy/nginx-proxy` paired with `nginxproxy/acme-companion
 # Start Nginx edge proxy
 oops up /edge-nginx
 
-# Note: You can set this as default by updating `include` in compose.yml
+# Note: You can set this as default by updating `include` in compose.yaml
 ```
 
-### Application Container Environment (`compose.apps.yml`)
+### Application Container Environment (`compose.apps.yaml`)
 ```yaml
 services:
   my-app:

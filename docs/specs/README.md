@@ -7,7 +7,7 @@ This directory contains the living specifications defining current system truth 
 | Subsystem Spec | Description | Status | Synapses |
 | :--- | :--- | :--- | :--- |
 | [`cli.md`](cli.md) | Oops CLI Command Architecture, Routing & Argument Specifications | Active | `ARCHITECTURE.md`, `docs/specs/remote.md` |
-| [`remote.md`](remote.md) | Oops Remote Server Management, Prefix Namespacing & Bare Sync | Active | `ARCHITECTURE.md`, `docs/specs/cli.md`, `docs/specs/oopsbox.md` |
+| [`remote.md`](remote.md) | Oops Remote Server Management, Symmetric Push/Pull & SSH Streaming | Active | `ARCHITECTURE.md`, `docs/specs/cli.md`, `docs/specs/oopsbox.md` |
 | [`dns.md`](dns.md) | Oops DNS Discovery & Resolver Specification | Active | `ARCHITECTURE.md` |
 | [`oopsbox.md`](oopsbox.md) | Oopsbox Workspace Specification | Active | `ARCHITECTURE.md` |
 | [`volume-guard.md`](volume-guard.md) | Oops Volume Guard Specification | Active | `ARCHITECTURE.md` |
