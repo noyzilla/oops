@@ -241,5 +241,4 @@ func init() {
 	rootCmd.AddCommand(newRemoteCmd())
 	rootCmd.AddCommand(newRxCmd())
 	rootCmd.AddCommand(newDeployCmd())
-	rootCmd.AddCommand(newSyncCmd())
 }

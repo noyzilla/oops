@@ -31,6 +31,8 @@ func newRemoteCmd() *cobra.Command {
 	cmd.AddCommand(newRemoteListCmd())
 	cmd.AddCommand(newRemoteRemoveCmd())
 	cmd.AddCommand(newRemoteRenameCmd())
+	cmd.AddCommand(newRemotePushCmd())
+	cmd.AddCommand(newRemotePullCmd())
 
 	return cmd
 }
@@ -217,6 +219,19 @@ func newRemoteConnectCmd() *cobra.Command {
 				if err := sync.Push(sync.Options{WorkDir: workDirAbs, RemoteName: capsuleName, SyncAll: true}); err != nil {
 					cmd.Printf("Warning: push error: %v\n", err)
 				}
+			} else {
+				// Neither has files: initialize from blueprints
+				created, err := remote.InitCapsuleBlueprints(workDirAbs, capsuleName)
+				if err != nil {
+					cmd.Printf("Notice: blueprint initialization: %v\n", err)
+				} else if len(created) > 0 {
+					cmd.Printf("==> Initialized capsule blueprints for /@%s/: %s\n", capsuleName, strings.Join(created, ", "))
+				}
+			}
+
+			// Ensure blueprints exist even if pull happened
+			if _, err := remote.InitCapsuleBlueprints(workDirAbs, capsuleName); err != nil {
+				cmd.Printf("Notice: blueprint check: %v\n", err)
 			}
 
 			cmd.Printf("\n✓ Successfully connected remote '@%s'\n", capsuleName)
@@ -418,4 +433,127 @@ func extractSSHTarget(remoteURL string) string {
 		return remoteURL[:idx]
 	}
 	return remoteURL
+}
+
+func parsePushPullArgs(args []string) (stack string, remoteName string) {
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "/") {
+			stack = strings.TrimPrefix(arg, "/")
+		} else if strings.HasPrefix(arg, "@") {
+			remoteName = strings.TrimPrefix(arg, "@")
+		} else if remoteName == "" {
+			remoteName = arg
+		}
+	}
+	return stack, remoteName
+}
+
+func newRemotePushCmd() *cobra.Command {
+	var remoteFlag string
+	cmd := &cobra.Command{
+		Use:   "push [/<stack>] [@<remote>]",
+		Short: "Streams manifests and capsule overlay to remote server (pure delivery)",
+		Long:  "Streams selective stack/service manifests and capsule overlay (.oopsallow) to remote server via SSH without restarting containers.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
+			if err != nil {
+				return err
+			}
+			stack, rName := parsePushPullArgs(args)
+			if remoteFlag != "" {
+				rName = strings.TrimPrefix(remoteFlag, "@")
+			}
+			if rName == "" {
+				rName = resolveDefaultServer(workDirAbs)
+			}
+			if rName == "" {
+				return fmt.Errorf("no remote server specified. Run 'oops remote connect @<host>' first")
+			}
+			return executeRemotePush(workDirAbs, rName, stack)
+		},
+	}
+	cmd.Flags().StringVarP(&remoteFlag, "remote", "r", "", "Target remote server name (default: @prod or first registered remote)")
+	return cmd
+}
+
+func newRemotePullCmd() *cobra.Command {
+	var remoteFlag string
+	cmd := &cobra.Command{
+		Use:   "pull [/<stack>] [@<remote>]",
+		Short: "Downloads remote configurations into local capsule (filtered by .oopsallow)",
+		Long:  "Downloads manifests, overrides, and configurations from the remote server into /@<remote>/ via SSH, strictly filtered by .oopsallow.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
+			if err != nil {
+				return err
+			}
+			stack, rName := parsePushPullArgs(args)
+			if remoteFlag != "" {
+				rName = strings.TrimPrefix(remoteFlag, "@")
+			}
+			if rName == "" {
+				rName = resolveDefaultServer(workDirAbs)
+			}
+			if rName == "" {
+				return fmt.Errorf("no remote server specified. Run 'oops remote connect @<host>' first")
+			}
+			return sync.Pull(sync.Options{
+				WorkDir:    workDirAbs,
+				RemoteName: rName,
+				Stack:      stack,
+			})
+		},
+	}
+	cmd.Flags().StringVarP(&remoteFlag, "remote", "r", "", "Target remote server name (default: @prod or first registered remote)")
+	return cmd
+}
+
+func executeRemotePush(workDirAbs, remoteName, stack string) error {
+	remoteName = strings.TrimPrefix(remoteName, "@")
+
+	cfg, err := remote.LoadConfig(workDirAbs, remoteName)
+	if err != nil {
+		return fmt.Errorf("remote '@%s' not registered: %w", remoteName, err)
+	}
+
+	fmt.Printf("==> Delivering workspace to remote '@%s' (%s, target path: %s)...\n", remoteName, cfg.Host, cfg.Path)
+
+	// Step 1: Base Manifest Streaming (Selective copy)
+	fmt.Println("==> [1/2] Streaming base manifests and required services...")
+	inspector, err := remote.ResolveRequiredDependencies(workDirAbs, stack, remoteName)
+	if err != nil {
+		return fmt.Errorf("failed resolving service dependencies: %w", err)
+	}
+
+	var baseFiles []string
+	baseFiles = append(baseFiles, inspector.StackFiles...)
+	baseFiles = append(baseFiles, inspector.ServiceFiles...)
+	baseFiles = append(baseFiles, inspector.ConfigFiles...)
+
+	if len(baseFiles) > 0 {
+		fmt.Printf("    Selective Base: %d stack manifest(s), %d service template(s), %d config dir(s)\n",
+			len(inspector.StackFiles), len(inspector.ServiceFiles), len(inspector.ConfigFiles))
+		if err := remote.StreamTarFilesSSH(workDirAbs, baseFiles, cfg.Host, cfg.Path); err != nil {
+			return fmt.Errorf("base manifest streaming failed: %w", err)
+		}
+	}
+
+	// Step 2: Capsule Overlay Streaming (Strictly filtered by .oopsallow)
+	fmt.Printf("==> [2/2] Applying capsule overlay from /@%s/ (via .oopsallow)...\n", remoteName)
+	if err := sync.Push(sync.Options{
+		WorkDir:    workDirAbs,
+		RemoteName: remoteName,
+		Stack:      stack,
+	}); err != nil {
+		return fmt.Errorf("capsule overlay push failed: %w", err)
+	}
+
+	// Post-Delivery Hint (Pure delivery - no automatic up -d)
+	fmt.Printf("\n✓ Successfully delivered workspace to remote '@%s' (%s)\n", remoteName, cfg.Host)
+	if stack != "" {
+		fmt.Printf("  Run 'oops rx @%s up /%s' to start or restart services.\n", remoteName, stack)
+	} else {
+		fmt.Printf("  Run 'oops rx @%s up' to start or restart services.\n", remoteName)
+	}
+	return nil
 }

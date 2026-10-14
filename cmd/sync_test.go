@@ -4,39 +4,57 @@ import (
 	"testing"
 )
 
-func TestParseSyncRemote(t *testing.T) {
+func TestParsePushPullArgs(t *testing.T) {
 	tests := []struct {
-		name string
-		args []string
-		want string
+		name      string
+		args      []string
+		wantStack string
+		wantName  string
 	}{
 		{
-			name: "No args",
-			args: []string{},
-			want: "",
+			name:      "No args",
+			args:      []string{},
+			wantStack: "",
+			wantName:  "",
 		},
 		{
-			name: "Prefix with @",
-			args: []string{"@prod"},
-			want: "prod",
+			name:      "Only remote with @",
+			args:      []string{"@prod"},
+			wantStack: "",
+			wantName:  "prod",
 		},
 		{
-			name: "Bare remote name",
-			args: []string{"staging"},
-			want: "staging",
+			name:      "Only bare remote",
+			args:      []string{"staging"},
+			wantStack: "",
+			wantName:  "staging",
 		},
 		{
-			name: "Prefix with @ among flags",
-			args: []string{"-v", "@prod"},
-			want: "prod",
+			name:      "Stack and remote",
+			args:      []string{"/crm", "@prod"},
+			wantStack: "crm",
+			wantName:  "prod",
+		},
+		{
+			name:      "Remote and stack inverted",
+			args:      []string{"@prod", "/crm"},
+			wantStack: "crm",
+			wantName:  "prod",
+		},
+		{
+			name:      "Only stack",
+			args:      []string{"/crm"},
+			wantStack: "crm",
+			wantName:  "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := parseSyncRemote(tt.args)
-			if got != tt.want {
-				t.Errorf("parseSyncRemote(%v) = %q, want %q", tt.args, got, tt.want)
+			gotStack, gotName := parsePushPullArgs(tt.args)
+			if gotStack != tt.wantStack || gotName != tt.wantName {
+				t.Errorf("parsePushPullArgs(%v) = (%q, %q), want (%q, %q)",
+					tt.args, gotStack, gotName, tt.wantStack, tt.wantName)
 			}
 		})
 	}

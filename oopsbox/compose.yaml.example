@@ -1,0 +1,20 @@
+# ==============================================================================
+# Oops Remote Base Manifest Blueprint (compose.yaml.example)
+# ==============================================================================
+# Minimal infrastructure skeleton used to initialize /@<remote>/compose.yaml
+# Provides the shared networks for application stacks running on this host.
+# ==============================================================================
+name: oops
+
+networks:
+  default:
+    name: oops-network
+  net-edge:
+    name: net-edge
+    driver: bridge
+  net-db:
+    name: net-db
+    driver: bridge
+  net-storage:
+    name: net-storage
+    driver: bridge

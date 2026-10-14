@@ -1,18 +1,21 @@
 ---
 title: Environment Variable & Secrets Synchronization
-status: active
+status: superseded
 tags: [cli, ssh, env, secrets, deployment, docker, overlay]
 synapses: ["ARCHITECTURE.md", "docs/specs/remote.md", "docs/specs/cli.md"]
 ---
 
 # Specification: Environment & Secrets Synchronization
 
-- **Status**: Active
+> **Status Notice (SUPERSEDED)**: This specification has been superseded by [docs/specs/remote.md](remote.md).
+> The standalone `oops sync` command hierarchy (`oops sync push/pull/env/secret`) has been unified into the Symmetric Git/Remote model (`oops remote push` and `oops remote pull`) governed strictly by `.oopsallow`. See [docs/specs/remote.md](remote.md) for current system truth.
+
+- **Status**: Superseded (by [docs/specs/remote.md](remote.md))
 - **Target Audience**: Developers, Operators, and AI Coding Agents
 - **Parent Architecture**: [ARCHITECTURE.md](../../ARCHITECTURE.md)
-- **Companion Spec**: [docs/specs/remote.md](remote.md), [docs/specs/cli.md](cli.md)
+- **Canonical Spec**: [docs/specs/remote.md](remote.md)
 
-## Overview & Scope
+## Historical Overview & Scope
 
 Oops provides an isolated, out-of-band mechanism for synchronizing configuration (`.env` files) and sensitive data (`config/secrets/`) between the local developer workstation and remote servers via Native SSH.
 

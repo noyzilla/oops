@@ -3,12 +3,14 @@
 This file tracks the active focus, immediate next actions, and backlog deliverables for the repository.
 
 ## Active Focus
-- Completed Remote Connect Colon Paths, Remote Setup Upgrade & Rx Forwarding (`feat/remote-connect-colon-path`).
-  - Milestone 1: SCP-style colon remote path parsing in `oops remote connect @<remote>[:<path>]`.
-  - Milestone 2: `oops remote setup [@<remote>]` server bootstrap & unconditional binary upgrade.
-  - Milestone 3: Automatic prerequisite check and bootstrap during `oops remote connect`.
-  - Milestone 4: `oops rx` dynamic remote path resolution & `<oops-cmd>` forwarding clarification.
-  - Milestone 5: Specs, Context invariants, unit tests, and GATE 3 Pre-Merge Audit.
+- Remote Delivery Lifecycle & Symmetric Remote Model (`feat/remote-delivery-lifecycle`):
+  - Milestone 1: Exploration `exp-2610-1` and Blueprint Templates (`compose.yaml.example`, `oops.yaml.example`, `.oopsallow.example`).
+  - Milestone 2: `.oopsallow` default-deny whitelist engine in `internal/sync/allow.go`.
+  - Milestone 3: Blueprint initialization during `oops remote connect` in `internal/remote/blueprint.go`.
+  - Milestone 4: Services Dependency Resolution Algorithm in `internal/remote/resolve.go`.
+  - Milestone 5: Symmetric Git/Remote commands (`oops remote push` and `oops remote pull`), `oops deploy` alias with pure delivery semantics.
+  - Milestone 6: Deprecation and complete removal of legacy standalone `oops sync`.
+  - Milestone 7: Living specifications (`remote.md`, `cli.md`, `env-sync.md`), tests, and CHANGELOG synchronization.
 
 ## Immediate Next Actions
-- Ready for next development milestone on `main`.
+- Review uncommitted diff and prepare for GATE 3 Pre-Merge Audit.

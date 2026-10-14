@@ -130,7 +130,7 @@ func TestRemoteCapsuleAddAndList(t *testing.T) {
 
 func TestRemoteSubcommands(t *testing.T) {
 	remoteCmd := newRemoteCmd()
-	expected := []string{"connect", "setup", "list", "remove", "rename"}
+	expected := []string{"connect", "setup", "list", "remove", "rename", "push", "pull"}
 	for _, exp := range expected {
 		found := false
 		for _, c := range remoteCmd.Commands() {

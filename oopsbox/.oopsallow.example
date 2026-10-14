@@ -1,0 +1,24 @@
+# ==============================================================================
+# Oops Capsule Synchronization Whitelist (.oopsallow)
+# ==============================================================================
+# Strict default-deny whitelist defining files and patterns permitted for
+# bidirectional synchronization (push/pull) between the local capsule
+# (/@<remote>/) and the remote host environment (~/oopsbox/).
+#
+# Rules:
+# - Blank lines and lines starting with '#' are ignored.
+# - Leading '/' anchors matching to the root of the capsule / remote workspace.
+# - Glob wildcards ('*', '**') are supported.
+# - Files not explicitly matched by any rule are DENIED by default.
+# ==============================================================================
+
+# Core Orchestration & Base Manifests
+/.env
+/compose.yaml
+/oops.yaml
+
+# Remote Machine Overrides
+/compose*.local.yaml
+
+# Remote Configuration Trees (Full Streaming)
+/config/**

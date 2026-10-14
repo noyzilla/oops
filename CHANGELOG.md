@@ -7,39 +7,25 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
+- Symmetric Git/Remote Model: Introduced `oops remote push [/<stack>] [@<remote>]` and `oops remote pull [/<stack>] [@<remote>]` for bidirectional capsule synchronization.
+- `.oopsallow` default-deny whitelist engine for bidirectional synchronization (`push` and `pull`), protecting local capsules from downloading large database/backup files (`data/`, `backups/`).
+- Blueprint-driven initialization during `oops remote connect`: automatically creates `compose.yaml`, `oops.yaml`, and `.oopsallow` from `.example` blueprints when connecting to a fresh host.
+- Services Dependency Resolution Algorithm in `oops remote push` / `oops deploy`: selectively packages required service templates (`services/<name>.yaml`) and configs (`config/<name>/`) by scanning `x-oops-services:`, container `depends_on:`, and remote local overrides.
+- Blueprint templates in Oopsbox workspace: `compose.yaml.example`, `oops.yaml.example`, and `.oopsallow.example`.
 - SCP-style colon remote path parsing in `oops remote connect @<remote>[:<path>] [remote-path] [--path <p>]`, supporting home-relative paths (`@prod:path`, `@prod:~/path`) and absolute paths (`@prod:/opt/path`).
 - `oops remote setup [@<remote>]` command to unconditionally install or upgrade the remote server to the latest `oops` CLI binary from GitHub releases and ensure `docker-compose-plugin` is present.
 - Automatic server prerequisite checking (`docker compose` and `oops` binary) and setup bootstrap during `oops remote connect`.
 - Dynamic remote path resolution in `oops rx` from `remote.yaml` configuration.
-- `oops remote connect @<remote> [remote-path]` with smart first-time detection and sync state machine (both exist -> prompt push/pull, remote only -> auto pull to capsule, local only -> auto push, neither -> init empty `remote.yaml`).
-- Standardized CLI Target Sigil & Argument Bracketing notation (`CONTEXT.md` and `docs/specs/cli.md`) establishing the Sigil-Outside Invariant (`@<remote>`, `/<project>`, `+<group>`).
-- Multi `-f` Compose Flag Chaining protocol anchoring path resolution to root `compose.yaml` (eliminating `include:`).
-- Zero-Git Direct SSH Streaming deployment pipeline (`oops deploy [/<project>] [@<remote>]`) with tar stream over SSH.
-- 1:1 Mirror Directory Sync Protocol (`oops sync push|pull|env|secret`) syncing between local `/@<remote>/` and remote server root without filename mangling.
-- Canonical remote connection manifest `/@<remote>/remote.yaml` and remote capsule management (`oops remote connect|list|remove`).
-- Multi-target routing supporting Group Target (`+<group>` via `x-oops-groups`), Project Stack (`/<project>` via `projects/<name>/compose.yaml`), and Service Template (`<service>` via `services/<name>.yaml`).
-- Auto-tail chaining of machine-local override `compose.local.yaml`.
-- Service Triad architecture in `oopsbox/` blueprint (`services/`, `config/`, `data/`).
 
 ### Changed
+- Standardized `oops deploy` as an exact ergonomic alias for `oops remote push` with pure delivery semantics (no automatic container startup; outputs post-delivery execution hint for `oops rx`).
 - Clarified `oops rx [@<remote>] <oops-cmd> [args...]` as forwarding exclusively `oops` subcommands inside the remote Oopsbox workspace.
 - Renamed `oops remote add` to `oops remote connect @<remote> [remote-path]`.
 - Standardized `oops remote remove @<remote>` to use canonical `@<remote>` syntax across CLI and documentation.
-- Ecosystem-wide strict `.yaml` enforcement across `compose.yaml`, `oops.yaml`, `oopsbox.yaml`, `remote.yaml`, and `services/*.yaml`.
-- Renamed `oops storage` command to `oops volume` and migrated `internal/storage` to `internal/volume`.
-- Enforced strict requirement of `Authorization: Bearer <TOKEN>` in webhook headers, removing `X-Oops-Token` and the environment variable `OOPS_SECRET` fallback.
-- `oops up` execution now strictly respects the topological dependency tree (DFS) across templates and project stacks.
-
-### Deprecated
-- Deprecated and dropped server-side Git Bare repositories, Git push hooks (`post-receive`), and Git remotes (`oops-*`) in favor of Zero-Git Direct SSH Streaming.
-- Deprecated and dropped filename suffix mangling (`.env.prod`, `stripRemoteSuffix`).
-- Formally dropped all support for `docker-compose.*`, `compose.yml`, `oops.yml`, `oopsbox.yml`, and `*.yml` file extensions.
 
 ### Removed
-- Removed custom `oops.stop.cmd` and `oops.stop.timeout` pre-stop lifecycle hooks to align with native Docker Compose shutdown behavior.
-- Dropped legacy file extension fallbacks (`oops.yml`, `oopsbox.yml`, `oopsbox.yml.example`) and obsolete directory checks (`stacks/`).
-- Dropped configuration and naming fallbacks: `StoragePrefixes` alias (standardized on `VolumePrefixes`), legacy `/etc/hosts` parsing in DNS, and `Container` legacy selector in Webhook payload.
-- Dropped `-r` and `--remote` flags from `oops remote add`, `oops rx`, and `oops sync` in favor of canonical positional `@<remote>` syntax (`oops remote add <ssh-target> [@<name>]`, `oops rx [@<remote>] <cmd>`, and `oops sync [push|pull] [@<remote>]`).
+- Removed legacy standalone `oops sync` command hierarchy (`oops sync push|pull|env|secret`) in favor of unified `oops remote push` and `oops remote pull` governed by `.oopsallow`.
+- Removed automatic `docker compose up -d` execution from `oops deploy`.
 
 ## [v1.1.0] - 2026-10-09
 

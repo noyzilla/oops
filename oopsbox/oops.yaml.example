@@ -1,0 +1,39 @@
+# ==============================================================================
+# Oops Orchestrator Compose Manifest Blueprint (oops.yaml.example)
+# ==============================================================================
+# Used to initialize /@<remote>/oops.yaml when connecting to a fresh remote host.
+# Runs the Oops webhook daemon and declares system-level settings.
+# ==============================================================================
+name: oops-core
+
+services:
+  oops:
+    image: ghcr.io/noyzilla/oops:latest
+    container_name: oops-daemon
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - OOPS_SECRET=${OOPS_SECRET}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/workspace:ro
+    networks:
+      - default
+
+networks:
+  default:
+    name: oops-network
+
+x-oops:
+  registries:
+    noyzilla: ghcr.io/noyzilla
+  backups:
+    retention: 7d
+  dns:
+    tld: oops
+    upstreams:
+      - 1.1.1.1:53
+      - 8.8.8.8:53
+  volume:
+    mount_prefixes: [/mnt, /media, /Volumes]

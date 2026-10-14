@@ -133,9 +133,10 @@ For each matched service in target order:
 | `oops box stop` | *(none)* | Stops all running stacks on active box |
 | `oops box switch` | `<path>` | Forcefully wipes all containers, updates active box, and boots target box |
 | `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store |
-| `oops deploy` | `[/<project>] [@<remote>]` | Deploys stack to remote server via Direct SSH Tar Streaming |
-| `oops sync` | `[push\|pull] [@<remote>]` | 1:1 Mirror Directory sync between `/@<remote>/` and remote server |
-| `oops remote connect` | `@<remote>[:<path>] [path] [--path <p>]` | Connects to remote host, auto-bootstraps environment, syncs capsule, writes `/@<host>/remote.yaml` |
+| `oops deploy` | `[/<stack>] [@<remote>]` | Exact ergonomic alias for `oops remote push` (pure streaming delivery) |
+| `oops remote push` | `[/<stack>] [@<remote>]` | Streams manifests and capsule overlay to remote server (filtered by `.oopsallow`; pure delivery) |
+| `oops remote pull` | `[/<stack>] [@<remote>]` | Downloads remote configs and manifests into local capsule `/@<remote>/` (filtered by `.oopsallow`) |
+| `oops remote connect` | `@<remote>[:<path>] [path] [--path <p>]` | Connects to remote host, auto-bootstraps environment, initializes capsule with blueprints, writes `/@<host>/remote.yaml` |
 | `oops remote setup` | `[@<remote>]` | Installs or upgrades `docker-compose-plugin` and `oops` CLI to latest version on remote server |
 | `oops remote list` | *(none)* | Lists registered remotes discovered in `/@*/remote.yaml` |
 | `oops remote remove` | `@<remote>` | Removes registered remote directory `/@<remote>/` |
