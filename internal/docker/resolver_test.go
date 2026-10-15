@@ -499,3 +499,105 @@ services:
 		t.Errorf("expected api compose chain to include mysql.yaml and redis.yaml, got %v", apiTarget.ComposeFiles)
 	}
 }
+
+func TestLocalPrecedenceAndCrossStackResolution(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	servicesDir := filepath.Join(tmpDir, "services")
+	_ = os.MkdirAll(servicesDir, 0755)
+
+	// Global template services/mysql.yaml
+	_ = os.WriteFile(filepath.Join(servicesDir, "mysql.yaml"), []byte(`
+services:
+  mysql:
+    image: mysql:8.0-template
+`), 0644)
+
+	// Stack 1: compose.crm.yaml with local mysql definition
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.crm.yaml"), []byte(`
+services:
+  mysql:
+    image: mysql:8.4-crm-local
+  crm-api:
+    image: crm:latest
+    depends_on:
+      - mysql
+`), 0644)
+
+	// Stack 2: compose.tools2.yaml with redis
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.tools2.yaml"), []byte(`
+services:
+  redis:
+    image: redis:alpine
+  worker:
+    image: worker:latest
+`), 0644)
+
+	// Test 1: oops up mysql (no slash) targets services/mysql template, NOT crm's local mysql
+	tmplTargets, err := docker.ResolveTargets(tmpDir, []string{"mysql"})
+	if err != nil {
+		t.Fatalf("unexpected error resolving mysql: %v", err)
+	}
+	if len(tmplTargets) != 1 || tmplTargets[0].StackName != "services/mysql" {
+		t.Errorf("expected services/mysql target, got %+v", tmplTargets)
+	}
+
+	// Test 2: oops up /crm/mysql targets crm's local mysql
+	crmMysqlTargets, err := docker.ResolveTargets(tmpDir, []string{"/crm/mysql"})
+	if err != nil {
+		t.Fatalf("unexpected error resolving /crm/mysql: %v", err)
+	}
+	if len(crmMysqlTargets) != 1 || crmMysqlTargets[0].StackName != "crm" {
+		t.Errorf("expected crm stack target, got %+v", crmMysqlTargets)
+	}
+
+	// Test 3: oops up /crm resolves crm-api and local mysql, NEVER pulling services/mysql.yaml into chain
+	crmTargets, err := docker.ResolveTargets(tmpDir, []string{"/crm"})
+	if err != nil {
+		t.Fatalf("unexpected error resolving /crm: %v", err)
+	}
+	if len(crmTargets) != 2 {
+		t.Fatalf("expected 2 targets for /crm, got %d", len(crmTargets))
+	}
+	for _, tgt := range crmTargets {
+		if tgt.StackName != "crm" {
+			t.Errorf("expected target to belong to crm stack, got %s", tgt.StackName)
+		}
+		for _, f := range tgt.ComposeFiles {
+			if filepath.Base(f) == "mysql.yaml" {
+				t.Errorf("local definition violated: services/mysql.yaml was pulled into compose chain: %v", tgt.ComposeFiles)
+			}
+		}
+	}
+
+	// Test 4: Root compose.yaml with group referencing /tools2/redis
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yaml"), []byte(`
+x-oops-groups:
+  lab:
+    - mysql
+    - /tools2/redis
+`), 0644)
+
+	groupTargets, err := docker.ResolveTargets(tmpDir, []string{"+lab"})
+	if err != nil {
+		t.Fatalf("unexpected error resolving +lab: %v", err)
+	}
+	if len(groupTargets) != 2 {
+		t.Fatalf("expected 2 targets for +lab, got %d: %+v", len(groupTargets), groupTargets)
+	}
+
+	// First should be services/mysql, second tools2/redis (not worker!)
+	serviceMap := make(map[string]string)
+	for _, tgt := range groupTargets {
+		serviceMap[tgt.ServiceName] = tgt.StackName
+	}
+	if serviceMap["mysql"] != "services/mysql" {
+		t.Errorf("expected mysql in services/mysql, got %s", serviceMap["mysql"])
+	}
+	if serviceMap["redis"] != "tools2" {
+		t.Errorf("expected redis in tools2, got %s", serviceMap["redis"])
+	}
+	if _, hasWorker := serviceMap["worker"]; hasWorker {
+		t.Errorf("worker should not be targeted when /tools2/redis was specified in group")
+	}
+}

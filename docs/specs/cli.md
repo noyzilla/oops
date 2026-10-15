@@ -88,9 +88,9 @@ For each matched service in target order:
 - **Step 1 - Pull**: Run `docker compose -f <chain> pull <service>`.
 - **Step 2 - Recreate**: Run `docker compose -f <chain> up -d --no-deps <service>`.
 - **Step 3 - Health Polling**:
-  - Poll Docker container inspection state `.State.Health.Status` every `OOPS_HEALTHCHECK_INTERVAL` (default 3s).
+  - Poll Docker container inspection state `.State.Health.Status` every `OOPS_HEALTHCHECK_INTERVAL` (default 3s, loaded from `x-oops.orchestrator.healthcheck.interval` with env override).
   - If `.State.Health.Status == "healthy"`: Service update succeeded. If `-d` / `--delay` is set, pause for delay gap.
-  - If status is `"unhealthy"` or polling exceeds `OOPS_HEALTHCHECK_TIMEOUT` (default 10m): Abort update immediately and exit Code 1.
+  - If status is `"unhealthy"` or polling exceeds `OOPS_HEALTHCHECK_TIMEOUT` (default 10m, loaded from `x-oops.orchestrator.healthcheck.timeout` with env override): Abort update immediately and exit Code 1.
 
 ### Database Management (`oops db <mysql|postgres>[:<target>] <action>`)
 - **Supported Engines**: `mysql`, `postgres`

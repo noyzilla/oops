@@ -129,22 +129,26 @@ All Oops-managed container metadata is configured via Docker labels under the `o
 
 ## Configuration & Environment Variables Parity
 
-All environment variables follow the **[Topic] -> [Modifier] -> [Unit]** standard from `jarn-naming.md`:
+All environment variables follow the **[Topic] -> [Modifier] -> [Unit]** standard from `jarn-naming.md`.
+Declarative defaults are loaded from `oops.yaml` (`x-oops:`), where tree paths map 1:1 to environment variables (`x-oops` -> `OOPS_`, tree separators -> `_`, UPPERCASE). Environment variables take precedence as overrides.
 
-| Environment Variable | Internal Config Path | Type | Default | Description |
+| Environment Variable | oops.yaml Tree Path | Type | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `OOPSBOX_DIR` | `CONFIG.CLI.WORK_DIR` | `string` | `""` | Target oopsbox directory (auto-probes `~/.oops/active_box`, `~/oopsbox`, `/opt/oopsbox`) |
-| `OOPS_DOMAIN` | `CONFIG.SERVER.DOMAIN` | `string` | `""` | Optional ingress FQDN for webhook daemon |
-| `OOPS_PORT` | `CONFIG.SERVER.PORT` | `int / string` | `80` | Webhook HTTP daemon listening port |
-| `OOPS_SECRET` | `CONFIG.WEBHOOK.SECRET` | `string` | `""` | Global webhook secret token |
-| `OOPS_DNS_UPSTREAM` | `CONFIG.DNS.UPSTREAM` | `string` | `1.1.1.1:53,8.8.8.8:53` | Upstream DNS relays (override via `oops.yaml` `dns.upstreams`) |
-| `OOPS_HEALTHCHECK_TIMEOUT` | `CONFIG.HEALTHCHECK.TIMEOUT` | `duration` | `10m` | Maximum wait time for container to become healthy |
-| `OOPS_HEALTHCHECK_INTERVAL`| `CONFIG.HEALTHCHECK.INTERVAL`| `duration` | `3s` | Polling interval between health checks |
-| `OOPS_STOP_TIMEOUT` | `CONFIG.CONTAINER.STOP_TIMEOUT`| `duration` | `30s` | Default timeout for graceful container stop |
-| `OOPS_BACKUP_RETENTION` | `CONFIG.BACKUP.RETENTION` | `duration` | `7d` | Retention window for database and data dump archives |
-| `OOPS_BACKUP_DIR` | `CONFIG.BACKUP.DIR` | `string` | `./backups` | Target directory for backup files |
-| `MYSQL_ROOT_PASSWORD` | `CONFIG.MYSQL.ROOT_PASSWORD` | `string` | `""` | Root password for MySQL container exec |
-| `POSTGRES_PASSWORD` | `CONFIG.POSTGRES.PASSWORD` | `string` | `""` | Admin password for Postgres exec |
+| `OOPSBOX_DIR` | (CLI Flag / Probe) | `string` | `""` | Target oopsbox directory (auto-probes `~/.oops/active_box`, `~/oopsbox`, `/opt/oopsbox`) |
+| `OOPS_DOMAIN` | `services.oops.labels.caddy` | `string` | `""` | Optional ingress FQDN for webhook daemon |
+| `OOPS_PORT` | (Internal Webhook) | `int / string` | `80` | Webhook HTTP daemon listening port |
+| `OOPS_SECRET` | `x-oops.secret` | `string` | `""` | Global webhook secret token |
+| `OOPS_DNS_TLD` | `x-oops.dns.tld` | `string` | `oops` | Local DNS top-level domain |
+| `OOPS_DNS_UPSTREAMS` | `x-oops.dns.upstreams` | `string` | `1.1.1.1:53,8.8.8.8:53` | Upstream DNS relays (comma-separated or list) |
+| `OOPS_HEALTHCHECK_TIMEOUT` | `x-oops.orchestrator.healthcheck.timeout` | `duration` | `10m` | Maximum wait time for container to become healthy |
+| `OOPS_HEALTHCHECK_INTERVAL`| `x-oops.orchestrator.healthcheck.interval`| `duration` | `3s` | Polling interval between health checks |
+| `OOPS_STOP_TIMEOUT` | `x-oops.orchestrator.stop_timeout` | `duration` | `30s` | Default timeout for graceful container stop |
+| `OOPS_BACKUP_RETENTION` | `x-oops.backup.retention` | `duration` | `7d` | Retention window for database and data dump archives |
+| `OOPS_BACKUP_DIR` | `x-oops.backup.dir` | `string` | `./backups` | Target directory for backup files |
+| `OOPS_VOLUME_MOUNT_PREFIXES`| `x-oops.volume.mount_prefixes` | `string` | `/mnt,/media,/Volumes` | Permitted persistent storage mount prefixes |
+| `MYSQL_ROOT_PASSWORD` | `x-oops.db.mysql_root_password` | `string` | `""` | Superuser password for MySQL |
+| `POSTGRES_PASSWORD` | `x-oops.db.postgres_password` | `string` | `""` | Superuser password for Postgres |
+| `REDIS_PASSWORD` | `x-oops.db.redis_password` | `string` | `""` | Superuser / requirepass password for Redis |
 
 ---
 

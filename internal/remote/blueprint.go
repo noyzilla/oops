@@ -27,15 +27,18 @@ x-oops-groups:
   #   - caddy-proxy
   #   - mysql
   #   - /tools
+  #   - /tools2/redis
 
 # Runtime dependencies: services that must be auto-started along with this stack
+# (use name for services/, or /<stack>/<service> / /<stack> for cross-stack)
 # x-oops-depends:
 #   - mysql
-#   - redis
+#   - /tools2/redis
 
-# Service templates bundled into compose chain without auto-starting
+# Service templates or stacks bundled into compose chain without auto-starting
 # x-oops-services:
 #   - mailpit
+#   - /tools
 
 networks:
   default:
@@ -64,11 +67,6 @@ services:
     command: [ "server" ]
     environment:
       OOPS_SECRET: ${OOPS_SECRET:?OOPS_SECRET must be set}
-      OOPS_STOP_TIMEOUT: ${OOPS_STOP_TIMEOUT:-30s}
-      OOPS_HEALTHCHECK_TIMEOUT: ${OOPS_HEALTHCHECK_TIMEOUT:-10m}
-      OOPS_HEALTHCHECK_INTERVAL: ${OOPS_HEALTHCHECK_INTERVAL:-3s}
-      OOPS_BACKUP_RETENTION: ${OOPS_BACKUP_RETENTION:-7d}
-      OOPS_BACKUP_DIR: ${OOPS_BACKUP_DIR:-/oopsbox/backups}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -93,17 +91,38 @@ networks:
     external: true
 
 x-oops:
-  registries:
-    #my_org: ghcr.io/my_org
-  backups:
+  secret: ${OOPS_SECRET:-}
+
+  db:
+    mysql_root_password: ${MYSQL_ROOT_PASSWORD:-}
+    postgres_password: ${POSTGRES_PASSWORD:-}
+    redis_password: ${REDIS_PASSWORD:-}
+
+  orchestrator:
+    stop_timeout: 30s
+    healthcheck:
+      timeout: 10m
+      interval: 3s
+
+  backup:
+    dir: ./backups
     retention: 7d
+    data: []
+
   dns:
     tld: oops
     upstreams:
       - 1.1.1.1:53
       - 8.8.8.8:53
+    records: []
+
   volume:
     mount_prefixes: [/mnt, /media, /Volumes]
+
+  registries:
+    # my_org: ghcr.io/my_org
+    # gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
+    # ecr: 123456789.dkr.ecr.ap-southeast-1.amazonaws.com
 `
 
 const defaultOopsAllowExample = `# ==============================================================================

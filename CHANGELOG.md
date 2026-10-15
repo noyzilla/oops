@@ -6,6 +6,15 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Added
+- Standardized declarative infrastructure configuration in `oops.yaml` under `x-oops:` (`secret`, `db`, `orchestrator`, `backup`, `dns`, `volume`, `registries`).
+- Environment Variable Parity with `x-oops = OOPS_` tree rule: automatically loads project defaults from `oops.yaml` with shell / `.env` variable overrides taking precedence.
+- Cross-stack dependency and service resolution supporting `/stack`, `/<stack>/<service>`, and direct `services/<name>` templates with local definition precedence.
+
+### Changed
+- Converted `oops.yaml` to a standard Docker Compose manifest declaring `services: oops` and `x-oops:` settings block.
+- Streamlined `oopsbox/.env.example` to focus strictly on secrets (`OOPS_SECRET`, database passwords) and documented optional overrides.
+
 ## [v1.2.0] - 2026-10-14
 
 ### Added

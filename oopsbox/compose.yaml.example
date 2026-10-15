@@ -19,15 +19,18 @@ x-oops-groups:
   #   - caddy-proxy
   #   - mysql
   #   - /tools
+  #   - /tools2/redis
 
 # Runtime dependencies: services that must be auto-started along with this stack
+# (use name for services/, or /<stack>/<service> / /<stack> for cross-stack)
 # x-oops-depends:
 #   - mysql
-#   - redis
+#   - /tools2/redis
 
-# Service templates bundled into compose chain without auto-starting
+# Service templates or stacks bundled into compose chain without auto-starting
 # x-oops-services:
 #   - mailpit
+#   - /tools
 
 networks:
   default:

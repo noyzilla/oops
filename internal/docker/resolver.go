@@ -404,6 +404,38 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		}
 	}
 
+	// resolveDep resolves a dependency reference (starts with / for stack/service, or template name in services/)
+	resolveDep := func(dep string) (string, string) {
+		if strings.HasPrefix(dep, "/") {
+			trimmed := strings.TrimPrefix(dep, "/")
+			parts := strings.SplitN(trimmed, "/", 2)
+			if len(parts) == 2 {
+				return parts[0], parts[1]
+			}
+			return parts[0], ""
+		}
+		// No slash: refers to services/ template
+		if _, ok := templates[dep]; ok {
+			sName := "services/" + dep
+			if tSd, hasTSd := stacks[sName]; hasTSd {
+				for srvName := range tSd.services {
+					return sName, srvName
+				}
+			}
+			return sName, dep
+		}
+		// Search if dep is a service name inside any service template
+		for tmplName := range templates {
+			sName := "services/" + tmplName
+			if tSd, hasTSd := stacks[sName]; hasTSd {
+				if _, hasSrv := tSd.services[dep]; hasSrv {
+					return sName, dep
+				}
+			}
+		}
+		return "", ""
+	}
+
 	// Recursively resolve native depends_on dependencies
 	var expandDeps func(srvPath string)
 	expandDeps = func(srvPath string) {
@@ -423,20 +455,25 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		}
 
 		for _, dep := range srv.ParsedDependsOn {
-			depStack, ok := serviceToStack[dep]
-			if !ok {
-				// Check if dependency exists in templates
-				if _, ok := templates[dep]; ok {
-					depStack = "services/" + dep
-				} else {
-					continue
+			// Local Definition Takes Precedence (Mental Model 1):
+			// If dependency is defined locally within this stack, use local service!
+			if _, isLocal := sd.services[dep]; isLocal {
+				depPath := "/" + stackName + "/" + dep
+				if !targetServicesMap[depPath] {
+					targetServicesMap[depPath] = true
+					expandDeps(depPath)
 				}
+				continue
 			}
-			depPath := "/" + depStack + "/" + dep
-			if !targetServicesMap[depPath] {
-				targetServicesMap[depPath] = true
-				targetStacksMap[depStack] = true
-				expandDeps(depPath)
+
+			depStack, depSrv := resolveDep(dep)
+			if depStack != "" && depSrv != "" {
+				depPath := "/" + depStack + "/" + depSrv
+				if !targetServicesMap[depPath] {
+					targetServicesMap[depPath] = true
+					targetStacksMap[depStack] = true
+					expandDeps(depPath)
+				}
 			}
 		}
 	}
@@ -453,19 +490,25 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 	for sName := range targetStacksMap {
 		if sd, ok := stacks[sName]; ok {
 			for _, dep := range sd.xDepends {
-				depStack, ok := serviceToStack[dep]
-				if !ok {
-					if _, ok := templates[dep]; ok {
-						depStack = "services/" + dep
-					} else {
-						continue
-					}
+				depStack, depSrv := resolveDep(dep)
+				if depStack == "" {
+					continue
 				}
-				depPath := "/" + depStack + "/" + dep
-				if !targetServicesMap[depPath] {
-					targetServicesMap[depPath] = true
-					targetStacksMap[depStack] = true
-					expandDeps(depPath)
+				targetStacksMap[depStack] = true
+				if depSrv != "" {
+					depPath := "/" + depStack + "/" + depSrv
+					if !targetServicesMap[depPath] {
+						targetServicesMap[depPath] = true
+						expandDeps(depPath)
+					}
+				} else if depSd, ok := stacks[depStack]; ok {
+					for srvName := range depSd.services {
+						depPath := "/" + depStack + "/" + srvName
+						if !targetServicesMap[depPath] {
+							targetServicesMap[depPath] = true
+							expandDeps(depPath)
+						}
+					}
 				}
 			}
 		}
@@ -500,32 +543,43 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 
 		// Visit stack-level x-oops-depends first
 		for _, dep := range sd.xDepends {
-			depStack, ok := serviceToStack[dep]
-			if !ok {
-				if _, ok := templates[dep]; ok {
-					depStack = "services/" + dep
-				}
-			}
+			depStack, depSrv := resolveDep(dep)
 			if depStack != "" {
-				depPath := "/" + depStack + "/" + dep
-				if targetServicesMap[depPath] {
-					if err := visit(depPath); err != nil {
-						return err
+				if depSrv != "" {
+					depPath := "/" + depStack + "/" + depSrv
+					if targetServicesMap[depPath] {
+						if err := visit(depPath); err != nil {
+							return err
+						}
+					}
+				} else if depSd, ok := stacks[depStack]; ok {
+					for srvName := range depSd.services {
+						depPath := "/" + depStack + "/" + srvName
+						if targetServicesMap[depPath] {
+							if err := visit(depPath); err != nil {
+								return err
+							}
+						}
 					}
 				}
 			}
 		}
 
-		// Visit dependencies first
+		// Visit service depends_on dependencies
 		for _, dep := range srv.ParsedDependsOn {
-			depStack, ok := serviceToStack[dep]
-			if !ok {
-				if _, ok := templates[dep]; ok {
-					depStack = "services/" + dep
+			if _, isLocal := sd.services[dep]; isLocal {
+				depPath := "/" + stackName + "/" + dep
+				if targetServicesMap[depPath] {
+					if err := visit(depPath); err != nil {
+						return err
+					}
 				}
+				continue
 			}
-			if depStack != "" {
-				depPath := "/" + depStack + "/" + dep
+
+			depStack, depSrv := resolveDep(dep)
+			if depStack != "" && depSrv != "" {
+				depPath := "/" + depStack + "/" + depSrv
 				if targetServicesMap[depPath] {
 					if err := visit(depPath); err != nil {
 						return err
@@ -547,18 +601,31 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		} else if stackName != "." {
 			// Stack: prepend any service template dependencies
 			for _, dep := range srv.ParsedDependsOn {
-				if tmplPath, ok := templates[dep]; ok {
-					baseFiles = append(baseFiles, tmplPath)
+				// Local definition takes precedence: never pull in template if defined in stack!
+				if _, isLocal := sd.services[dep]; isLocal {
+					continue
+				}
+				depStack, _ := resolveDep(dep)
+				if depStack != "" {
+					if depSd, ok := stacks[depStack]; ok && depSd.composePath != "" {
+						baseFiles = append(baseFiles, depSd.composePath)
+					}
 				}
 			}
 			for _, dep := range sd.xDepends {
-				if tmplPath, ok := templates[dep]; ok {
-					baseFiles = append(baseFiles, tmplPath)
+				depStack, _ := resolveDep(dep)
+				if depStack != "" {
+					if depSd, ok := stacks[depStack]; ok && depSd.composePath != "" {
+						baseFiles = append(baseFiles, depSd.composePath)
+					}
 				}
 			}
 			for _, s := range sd.xServices {
-				if tmplPath, ok := templates[s]; ok {
-					baseFiles = append(baseFiles, tmplPath)
+				depStack, _ := resolveDep(s)
+				if depStack != "" {
+					if depSd, ok := stacks[depStack]; ok && depSd.composePath != "" {
+						baseFiles = append(baseFiles, depSd.composePath)
+					}
 				}
 			}
 			baseFiles = append(baseFiles, sd.composePath)

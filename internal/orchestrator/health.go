@@ -11,16 +11,31 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/noyzilla/oops/internal/docker"
 )
 
-// GetHealthcheckTimeout reads OOPS_HEALTHCHECK_TIMEOUT (default 10m)
-func GetHealthcheckTimeout() time.Duration {
+// GetHealthcheckTimeout reads healthcheck timeout from oops.yaml / OOPS_HEALTHCHECK_TIMEOUT (default 10m)
+func GetHealthcheckTimeout(workDir ...string) time.Duration {
+	dir := "."
+	if len(workDir) > 0 && workDir[0] != "" {
+		dir = workDir[0]
+	}
+	if cfg, err := docker.LoadOopsConfig(dir); err == nil && cfg.Orchestrator.Healthcheck.Timeout != "" {
+		return ParseDurationWithDefault(cfg.Orchestrator.Healthcheck.Timeout, 10*time.Minute)
+	}
 	val := os.Getenv("OOPS_HEALTHCHECK_TIMEOUT")
 	return ParseDurationWithDefault(val, 10*time.Minute)
 }
 
-// GetHealthcheckInterval reads OOPS_HEALTHCHECK_INTERVAL (default 3s)
-func GetHealthcheckInterval() time.Duration {
+// GetHealthcheckInterval reads healthcheck interval from oops.yaml / OOPS_HEALTHCHECK_INTERVAL (default 3s)
+func GetHealthcheckInterval(workDir ...string) time.Duration {
+	dir := "."
+	if len(workDir) > 0 && workDir[0] != "" {
+		dir = workDir[0]
+	}
+	if cfg, err := docker.LoadOopsConfig(dir); err == nil && cfg.Orchestrator.Healthcheck.Interval != "" {
+		return ParseDurationWithDefault(cfg.Orchestrator.Healthcheck.Interval, 3*time.Second)
+	}
 	val := os.Getenv("OOPS_HEALTHCHECK_INTERVAL")
 	return ParseDurationWithDefault(val, 3*time.Second)
 }
