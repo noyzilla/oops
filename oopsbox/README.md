@@ -8,7 +8,7 @@ Oopsbox is the production-ready, turnkey Infrastructure as Code (IaC) blueprint 
 ~/oopsbox/                # Standard Root Directory (or /opt/oopsbox on production)
 ├── .env                  # Environment variables & secrets (copy from .env.example)
 ├── .env.example          # Credentials template (Committed)
-├── oops.yaml             # Center Master Config: registries, backups, volume mount prefixes (Committed)
+├── oops.yaml             # Daemon orchestrator compose manifest & x-oops config (Committed)
 ├── oops.yaml.example     # Daemon orchestrator blueprint for remote /@<remote>/oops.yaml
 ├── oopsbox.yaml          # Local Workstation Engine & DNS settings (git-ignored)
 ├── oopsbox.yaml.example  # Workstation configuration template (Committed)
@@ -88,21 +88,30 @@ oops box switch ~/Workspaces/another-org/oopsbox
 
 ## Unified Configuration (`oops.yaml`)
 
-Define custom profiles, registry aliases, and shared DNS in `oops.yaml`:
+`oops.yaml` is a Docker Compose manifest holding the `oops` daemon service alongside orchestrator settings under `x-oops:` (registries, backups, DNS):
 
 ```yaml
-registries:
-  gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
-  noyzilla: ghcr.io/noyzilla
-  hub: docker.io/myorg
+services:
+  oops:
+    image: ghcr.io/noyzilla/oops:edge
+    restart: unless-stopped
+    networks:
+      - oops_edge
+    # ...
 
-dns:
-  upstreams:
-    - 1.1.1.1:53
-    - 8.8.8.8:53
-  records:
-    # - api.internal 10.0.0.5
-    # - .staging.oops 10.0.0.10
+x-oops:
+  registries:
+    gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
+    my_org: ghcr.io/my_org
+    hub: docker.io/myorg
+
+  dns:
+    upstreams:
+      - 1.1.1.1:53
+      - 8.8.8.8:53
+    records:
+      # - api.internal 10.0.0.5
+      # - .staging.oops 10.0.0.10
 ```
 
 Use the `/<stack>` target syntax with any `oops` command:
@@ -120,6 +129,18 @@ oops switch /apps
 oops stop -x /edge-caddy
 oops stop -x /edge-caddy -x redis
 ```
+
+---
+
+## Compose Extension Fields
+
+Oops manifests use standardized extension keys for service resolution and lifecycle grouping:
+
+| Extension Field | Placement | Purpose & Behavior |
+| :--- | :--- | :--- |
+| **`x-oops-groups:`** | `compose.yaml` | Groups services and stacks for batch targeting (`+<group>`), e.g. `oops up +db` |
+| **`x-oops-depends:`** | `compose.<stack>.yaml` | Runtime dependencies auto-started along with target stack (`oops up /<stack>`) |
+| **`x-oops-services:`** | `compose.<stack>.yaml` | Bundles service templates into the compose chain without auto-starting |
 
 ---
 

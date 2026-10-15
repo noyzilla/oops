@@ -20,7 +20,7 @@ The `oops` CLI is an ergonomic orchestrator over Docker Compose. It abstracts co
 ## Domain Context & Ubiquitous Language
 
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
-- **Group (`+<group>`)**: Logical aggregation of service templates defined in root `compose.yaml` under `x-groups:` (e.g. `+db`, `+monitoring`).
+- **Group (`+<group>`)**: Logical aggregation of service templates defined in root `compose.yaml` under `x-oops-groups:` (e.g. `+db`, `+monitoring`).
 - **Stack (`/<stack>`)**: Dedicated application stack composition defined in `compose.<stack>.yaml` (e.g. `/myapp`, `/crm`).
 - **Service Template**: Reusable atomic service definitions located in `services/<service>.yaml` (e.g. `services/mysql.yaml`, `services/redis.yaml`).
 - **Remote Overlay (`@<remote>`)**: Environment specialization capsule located in `/@<remote>/` (e.g. `/@prod/`).
@@ -36,8 +36,8 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
 | :--- | :--- | :--- |
 | `(none)` | Base Default | `-f compose.yaml [-f compose.local.yaml] up` |
 | `<service>` | Single Service | Auto-detects `services/<service>.yaml`, executing `-f compose.yaml -f services/<service>.yaml [-f compose.local.yaml] up <service>` |
-| `+<group>` | Service Group | Resolves members from `x-groups.<group>` in `compose.yaml`, chaining member templates + `[-f compose.local.yaml]` |
-| `/<stack>` | Application Stack | Resolves dependencies (`depends_on` / `x-services`), chaining `-f compose.yaml [dependencies] -f compose.<stack>.yaml [-f compose.<stack>.local.yaml] [-f compose.local.yaml] up` |
+| `+<group>` | Service Group | Resolves members from `x-oops-groups.<group>` in `compose.yaml`, chaining member templates + `[-f compose.local.yaml]` |
+| `/<stack>` | Application Stack | Resolves dependencies (`depends_on` / `x-oops-depends` / `x-oops-services`), chaining `-f compose.yaml [dependencies] -f compose.<stack>.yaml [-f compose.<stack>.local.yaml] [-f compose.local.yaml] up` |
 | `@<remote>` | Remote Host Capsule | Resolves capsule `/@<remote>/` and deploys via Direct SSH Streaming (`oops deploy`) |
 | `..wildcard..` | Wildcard Pattern | Matches service names matching prefix (`app..`), suffix (`..worker`), or substring (`..api..`). |
 
@@ -50,6 +50,7 @@ All command signatures adhere to the ubiquitous language defined in [CONTEXT.md]
 ### Tail-Chaining Invariant (Left-to-Right Precedence)
 All machine-specific overrides (`*.local.yaml`) are strictly appended to the tail of the `-f` flag pipeline:
 - `-f compose.yaml` (Root anchor for working directory)
+- `-f oops.yaml` (Orchestrator compose anchor holding daemon service & `x-oops:` config)
 - `-f services/<service>.yaml` (Atomic templates)
 - `-f compose.<stack>.yaml` (Stack configuration)
 - `-f compose.<stack>.local.yaml` (Stack-specific machine override)
@@ -165,7 +166,7 @@ For each matched service in target order:
 
 - **Targeted Test Command**: `go test -v -race ./...`
 - **Acceptance Scenarios**:
-  - `oops up +db` locates member templates declared in `x-groups.db` and chains them with `-f compose.yaml`.
+  - `oops up +db` locates member templates declared in `x-oops-groups.db` and chains them with `-f compose.yaml`.
   - `oops up mysql` locates `services/mysql.yaml` and executes cleanly.
   - `oops up /myapp` locates `compose.myapp.yaml` and chains dependencies.
   - Non-existent files or `.yml` files produce immediate actionable errors.

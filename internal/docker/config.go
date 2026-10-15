@@ -86,9 +86,40 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 				return nil, fmt.Errorf("failed to read config file %s: %w", c, err)
 			}
 
-			var fileCfg OopsConfig
-			if err := yaml.Unmarshal(data, &fileCfg); err != nil {
+			var wrapper struct {
+				XOops      *OopsConfig `yaml:"x-oops"`
+				OopsConfig `yaml:",inline"`
+			}
+			if err := yaml.Unmarshal(data, &wrapper); err != nil {
 				return nil, fmt.Errorf("failed to parse yaml in %s: %w", c, err)
+			}
+
+			fileCfg := wrapper.OopsConfig
+			if wrapper.XOops != nil {
+				if len(wrapper.XOops.Registries) > 0 {
+					fileCfg.Registries = wrapper.XOops.Registries
+				}
+				if wrapper.XOops.Backups.Retention != "" {
+					fileCfg.Backups.Retention = wrapper.XOops.Backups.Retention
+				}
+				if len(wrapper.XOops.Backups.Data) > 0 {
+					fileCfg.Backups.Data = wrapper.XOops.Backups.Data
+				}
+				if wrapper.XOops.DNS.TLD != "" {
+					fileCfg.DNS.TLD = wrapper.XOops.DNS.TLD
+				}
+				if len(wrapper.XOops.DNS.Upstreams) > 0 {
+					fileCfg.DNS.Upstreams = wrapper.XOops.DNS.Upstreams
+				}
+				if wrapper.XOops.DNS.Upstream != "" {
+					fileCfg.DNS.Upstream = wrapper.XOops.DNS.Upstream
+				}
+				if len(wrapper.XOops.DNS.Records) > 0 {
+					fileCfg.DNS.Records = wrapper.XOops.DNS.Records
+				}
+				if wrapper.XOops.Volume.MountPrefixes != nil {
+					fileCfg.Volume.MountPrefixes = wrapper.XOops.Volume.MountPrefixes
+				}
 			}
 
 			// Merge registries

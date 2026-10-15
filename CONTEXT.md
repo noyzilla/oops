@@ -19,7 +19,7 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ### Entity: Group
 - **Canonical Term**: `Group`
-- **Definition**: A logical aggregation of service templates declared within `compose.yaml` under `x-groups:` (e.g. `db: [mysql, redis]`).
+- **Definition**: A logical aggregation of service templates declared within `compose.yaml` under `x-oops-groups:` (e.g. `db: [mysql, redis]`).
 - **CLI Notation**: `+<group>` (e.g. `+db`, `+monitoring`).
 - **Avoid**: `bundle`, `cluster`, `environment`, `pod`
 
@@ -62,7 +62,7 @@ This document establishes the official domain glossary and ubiquitous language f
 - **Canonical Term**: `Target`
 - **Definition**: The user-supplied identifier passed to CLI commands, resolving to:
   - Exact service: `<service>` (e.g. `mysql`) -> auto-detects `services/<service>.yaml`.
-  - Service group: `+<group>` (e.g. `+db`) -> resolves member templates from `x-groups:`.
+  - Service group: `+<group>` (e.g. `+db`) -> resolves member templates from `x-oops-groups:`.
   - Application stack: `/<stack>` (e.g. `/myapp`) -> executes `compose.<stack>.yaml`.
   - Remote overlay: `@<remote>` (e.g. `@prod`) -> targets `/@<remote>/`.
 - **Permitted Synonyms**: `target_pattern`, `target_selector`
@@ -93,10 +93,10 @@ To ensure complete naming parity across CLI subcommands, developer documentation
 ### 1. Target Sigil Namespaces [ตารางกำหนด Sigil นำหน้า]
 
 | Sigil | Domain Target | Meaning / Resolves To | Example Syntax |
-| :---: | :--- | :--- | :--- |
+| :--- | :--- | :--- | :--- |
 | **`@`** | **Remote Host Capsule** | Target remote server capsule at `/@<remote>/` | `@prod`, `@staging`, `@192.168.1.50` |
 | **`/`** | **Application Stack** | Dedicated application composition at `compose.<stack>.yaml` | `/myapp`, `/api`, `/worker` |
-| **`+`** | **Service Group** | Aggregated service group declared in `compose.yaml` under `x-groups:` | `+db`, `+monitoring` |
+| **`+`** | **Service Group** | Aggregated service group declared in `compose.yaml` under `x-oops-groups:` | `+db`, `+monitoring` |gregated service group declared in `compose.yaml` under `x-groups:` | `+db`, `+monitoring` |
 | **`.`** | **Internal Subsystem** | Internal system services (e.g. DNS daemon) | `.dns` |
 | *(none)* | **Service Template** | Atomic reusable service definition at `services/<service>.yaml` | `mysql`, `redis`, `caddy` |
 

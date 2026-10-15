@@ -9,7 +9,33 @@ import (
 const defaultComposeExample = `# ==============================================================================
 # Oops Remote Base Manifest Blueprint (compose.yaml.example)
 # ==============================================================================
-name: oops
+# Minimal infrastructure skeleton used to initialize /@<remote>/compose.yaml
+# Defines lifecycle service groups and shared infrastructure networks.
+# ==============================================================================
+# name: oops
+
+# Targetable service groups for batch operations (e.g. oops up +db, oops stop +edge)
+# Use service name directly (e.g. caddy-proxy, mysql) or project/stack with leading slash (e.g. /tools)
+x-oops-groups:
+  edge:
+    - caddy-proxy
+  db:
+    - mysql
+    - postgres
+    - redis
+  # lab:
+  #   - caddy-proxy
+  #   - mysql
+  #   - /tools
+
+# Runtime dependencies: services that must be auto-started along with this stack
+# x-oops-depends:
+#   - mysql
+#   - redis
+
+# Service templates bundled into compose chain without auto-starting
+# x-oops-services:
+#   - mailpit
 
 networks:
   default:
@@ -28,30 +54,47 @@ networks:
 const defaultOopsExample = `# ==============================================================================
 # Oops Orchestrator Compose Manifest Blueprint (oops.yaml.example)
 # ==============================================================================
-name: oops-core
-
 services:
   oops:
     image: ghcr.io/noyzilla/oops:latest
-    container_name: oops-daemon
+    container_name: oops
+    hostname: oops.oops
     restart: unless-stopped
-    ports:
-      - "8080:8080"
+    entrypoint: [ "oops" ]
+    command: [ "server" ]
     environment:
-      - OOPS_SECRET=${OOPS_SECRET}
+      OOPS_SECRET: ${OOPS_SECRET:?OOPS_SECRET must be set}
+      OOPS_STOP_TIMEOUT: ${OOPS_STOP_TIMEOUT:-30s}
+      OOPS_HEALTHCHECK_TIMEOUT: ${OOPS_HEALTHCHECK_TIMEOUT:-10m}
+      OOPS_HEALTHCHECK_INTERVAL: ${OOPS_HEALTHCHECK_INTERVAL:-3s}
+      OOPS_BACKUP_RETENTION: ${OOPS_BACKUP_RETENTION:-7d}
+      OOPS_BACKUP_DIR: ${OOPS_BACKUP_DIR:-/oopsbox/backups}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    labels:
+      caddy: "${OOPS_DOMAIN:-oops.web.oops}"
+      caddy.reverse_proxy: "{{upstreams 8080}}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./:/workspace:ro
+      - ./:/oopsbox
+    working_dir: /oopsbox
     networks:
-      - default
+      - oops_edge
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/healthz" ]
+      interval: 10s
+      timeout: 3s
+      start_period: 3s
+      retries: 3
 
 networks:
-  default:
-    name: oops_default
+  oops_edge:
+    external: true
 
 x-oops:
   registries:
-    noyzilla: ghcr.io/noyzilla
+    #my_org: ghcr.io/my_org
   backups:
     retention: 7d
   dns:

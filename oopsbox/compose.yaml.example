@@ -2,9 +2,32 @@
 # Oops Remote Base Manifest Blueprint (compose.yaml.example)
 # ==============================================================================
 # Minimal infrastructure skeleton used to initialize /@<remote>/compose.yaml
-# Provides the shared networks for application stacks running on this host.
+# Defines lifecycle service groups and shared infrastructure networks.
 # ==============================================================================
-name: oops
+# name: oops
+
+# Targetable service groups for batch operations (e.g. oops up +db, oops stop +edge)
+# Use service name directly (e.g. caddy-proxy, mysql) or project/stack with leading slash (e.g. /tools)
+x-oops-groups:
+  edge:
+    - caddy-proxy
+  db:
+    - mysql
+    - postgres
+    - redis
+  # lab:
+  #   - caddy-proxy
+  #   - mysql
+  #   - /tools
+
+# Runtime dependencies: services that must be auto-started along with this stack
+# x-oops-depends:
+#   - mysql
+#   - redis
+
+# Service templates bundled into compose chain without auto-starting
+# x-oops-services:
+#   - mailpit
 
 networks:
   default:

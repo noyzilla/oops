@@ -73,8 +73,11 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 			continue
 		}
 
-		// Check x-oops-services
+		// Check x-oops-services and x-oops-depends
 		if v, ok := raw["x-oops-services"]; ok {
+			extractServiceNames(v, depSet)
+		}
+		if v, ok := raw["x-oops-depends"]; ok {
 			extractServiceNames(v, depSet)
 		}
 

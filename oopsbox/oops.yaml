@@ -1,58 +1,73 @@
 # ==============================================================================
-# Oops Unified Stack Configuration (oops.yaml)
+# Oops Orchestrator Compose Manifest & System Settings (oops.yaml)
 # ==============================================================================
-# Master configuration for registry aliases, backups, DNS, and volume guard.
+# Runs the Oops webhook daemon and declares system-level orchestrator settings.
 # ==============================================================================
+services:
+  oops:
+    image: ghcr.io/noyzilla/oops:latest
+    container_name: oops
+    hostname: oops.oops
+    restart: unless-stopped
+    entrypoint: [ "oops" ]
+    command: [ "server" ]
+    environment:
+      OOPS_SECRET: ${OOPS_SECRET:?OOPS_SECRET must be set}
+      OOPS_STOP_TIMEOUT: ${OOPS_STOP_TIMEOUT:-30s}
+      OOPS_HEALTHCHECK_TIMEOUT: ${OOPS_HEALTHCHECK_TIMEOUT:-10m}
+      OOPS_HEALTHCHECK_INTERVAL: ${OOPS_HEALTHCHECK_INTERVAL:-3s}
+      OOPS_BACKUP_RETENTION: ${OOPS_BACKUP_RETENTION:-7d}
+      OOPS_BACKUP_DIR: ${OOPS_BACKUP_DIR:-/oopsbox/backups}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    labels:
+      caddy: "${OOPS_DOMAIN:-oops.web.oops}"
+      caddy.reverse_proxy: "{{upstreams 8080}}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/oopsbox
+    working_dir: /oopsbox
+    networks:
+      - oops_edge
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/healthz" ]
+      interval: 10s
+      timeout: 3s
+      start_period: 3s
+      retries: 3
+
+networks:
+  oops_edge:
+    external: true
 
 # ------------------------------------------------------------------------------
-# Registry Aliases (Short prefixes for long image repositories)
-# Usage:
-#   oops pull noyzilla/my-app:v1.0
-#   oops update noyzilla/my-app:v1.0 -d 2s
-#   oops restart noyzilla/my-app:v1.0
+# System-Level Orchestrator Settings (Registry Aliases, Backups, DNS, Volume)
 # ------------------------------------------------------------------------------
-registries:
-  noyzilla: ghcr.io/noyzilla
-  # gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
-  # ecr: 123456789.dkr.ecr.ap-southeast-1.amazonaws.com
+x-oops:
+  registries:
+    #my_org: ghcr.io/my_org
+    # gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
+    # ecr: 123456789.dkr.ecr.ap-southeast-1.amazonaws.com
 
-# ------------------------------------------------------------------------------
-# Automated Backup Configuration (Database Dumps + Filesystem Data Volumes)
-# Usage:
-#   oops backup             # Full backup (DB + Data)
-#   oops backup-db          # Backup databases only
-#   oops backup-data        # Backup filesystem volumes only
-#   oops backup prune       # Clean all expired backup archives
-# ------------------------------------------------------------------------------
-backups:
-  retention: 7d             # Default retention for all backups (7 days)
-  data:
-    #- name: uploads         # Creates: backups/data_uploads_<TIMESTAMP>.tar.gz
-    #  paths:
-    #    - data/apps/uploads
-    #    - data/wordpress/wp-content/uploads
+  backups:
+    retention: 7d
+    data:
+      #- name: uploads
+      #  paths:
+      #    - data/apps/uploads
+      #- name: storage
+      #  paths:
+      #    - data/storage
 
-    #- name: storage         # Creates: backups/data_storage_<TIMESTAMP>.tar.gz
-    #  paths:
-    #    - data/storage
+  dns:
+    tld: oops
+    upstreams:
+      - 1.1.1.1:53
+      - 8.8.8.8:53
+    records:
+      # - api.internal 10.0.0.5
+      # - .staging.oops 10.0.0.10
 
-# ------------------------------------------------------------------------------
-# Shared DNS Engine Configuration (Team / Infra DNS)
-# Usage:
-#   oops dns                # Inspect active DNS resolution table
-#   oops dns get <domain>   # Query resolved IP for domain
-# ------------------------------------------------------------------------------
-dns:
-  tld: oops                 # Top-level domain for local resolution (e.g. oops, anthole, anthill)
-  upstreams:
-    - 1.1.1.1:53
-    - 8.8.8.8:53
-  records:
-    # - api.internal 10.0.0.5
-    # - .staging.oops 10.0.0.10
-
-# ------------------------------------------------------------------------------
-# Volume Guard (blocks services whose bind-mount paths are unhealthy)
-# ------------------------------------------------------------------------------
-#volume:
-#  mount_prefixes: [/mnt, /media, /Volumes]
+  volume:
+    mount_prefixes: [/mnt, /media, /Volumes]

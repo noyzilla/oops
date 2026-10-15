@@ -93,6 +93,15 @@ func DiscoverStacks(workDir string) ([]string, map[string]string, error) {
 		}
 	}
 
+	// Fallback to oops.yaml for "." stack if compose.yaml is not present
+	if !discovered["."] {
+		oopsFile := filepath.Join(workDir, "oops.yaml")
+		if _, err := os.Stat(oopsFile); err == nil {
+			composeMap["."] = oopsFile
+			discovered["."] = true
+		}
+	}
+
 	var orderedStacks []string
 	for s := range discovered {
 		orderedStacks = append(orderedStacks, s)
@@ -129,16 +138,17 @@ func DiscoverServiceTemplates(workDir string) map[string]string {
 	return templates
 }
 
-// DiscoverGroups reads x-groups from root compose.yaml if present
+// DiscoverGroups reads x-oops-groups from root compose.yaml (and oops.yaml fallback)
 func DiscoverGroups(workDir string) map[string][]string {
 	groups := make(map[string][]string)
-	rootCompose := filepath.Join(workDir, "compose.yaml")
-	cfg, err := ParseComposeFile(rootCompose)
-	if err != nil || cfg == nil {
-		return groups
-	}
-	if cfg.XGroups != nil {
-		return cfg.XGroups
+	for _, fname := range []string{"compose.yaml", "oops.yaml"} {
+		composePath := filepath.Join(workDir, fname)
+		cfg, err := ParseComposeFile(composePath)
+		if err == nil && cfg != nil && cfg.XOopsGroups != nil {
+			for k, v := range cfg.XOopsGroups {
+				groups[k] = v
+			}
+		}
 	}
 	return groups
 }
@@ -155,7 +165,14 @@ func BuildComposeChain(workDir string, baseFiles []string, project string) []str
 		seen[rootCompose] = true
 	}
 
-	// 2. Base files (templates, projects)
+	// 2. Orchestrator oops.yaml anchor (if exists)
+	oopsCompose := filepath.Join(workDir, "oops.yaml")
+	if _, err := os.Stat(oopsCompose); err == nil && !seen[oopsCompose] {
+		chain = append(chain, oopsCompose)
+		seen[oopsCompose] = true
+	}
+
+	// 3. Base files (templates, projects)
 	for _, f := range baseFiles {
 		if f != "" && !seen[f] {
 			chain = append(chain, f)
@@ -212,8 +229,8 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 			stackName:   s,
 			composePath: cPath,
 			services:    cfg.Services,
-			xServices:   cfg.XServices,
-			xDepends:    cfg.XDepends,
+			xServices:   cfg.XOopsServices,
+			xDepends:    cfg.XOopsDepends,
 		}
 	}
 
@@ -226,6 +243,27 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 				stackName:   "services/" + tmplName,
 				composePath: tmplPath,
 				services:    cfg.Services,
+			}
+		}
+	}
+
+	// Index services from oops.yaml into root "." stack so orchestrator daemon service is discoverable
+	oopsPath := filepath.Join(workDir, "oops.yaml")
+	if _, err := os.Stat(oopsPath); err == nil {
+		if oopsCfg, err := ParseComposeFile(oopsPath); err == nil && oopsCfg != nil && len(oopsCfg.Services) > 0 {
+			if dotStack, ok := stacks["."]; ok {
+				if dotStack.services == nil {
+					dotStack.services = make(map[string]ComposeService)
+				}
+				for k, v := range oopsCfg.Services {
+					dotStack.services[k] = v
+				}
+			} else {
+				stacks["."] = &stackData{
+					stackName:   ".",
+					composePath: oopsPath,
+					services:    oopsCfg.Services,
+				}
 			}
 		}
 	}
@@ -411,6 +449,28 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		expandDeps(tgt)
 	}
 
+	// Also expand stack-level x-oops-depends for targeted stacks
+	for sName := range targetStacksMap {
+		if sd, ok := stacks[sName]; ok {
+			for _, dep := range sd.xDepends {
+				depStack, ok := serviceToStack[dep]
+				if !ok {
+					if _, ok := templates[dep]; ok {
+						depStack = "services/" + dep
+					} else {
+						continue
+					}
+				}
+				depPath := "/" + depStack + "/" + dep
+				if !targetServicesMap[depPath] {
+					targetServicesMap[depPath] = true
+					targetStacksMap[depStack] = true
+					expandDeps(depPath)
+				}
+			}
+		}
+	}
+
 	// Topological sort
 	var sortedResults []ResolvedTarget
 	visited := make(map[string]bool)
@@ -437,6 +497,24 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 			return fmt.Errorf("stack not found: %s", stackName)
 		}
 		srv := sd.services[srvName]
+
+		// Visit stack-level x-oops-depends first
+		for _, dep := range sd.xDepends {
+			depStack, ok := serviceToStack[dep]
+			if !ok {
+				if _, ok := templates[dep]; ok {
+					depStack = "services/" + dep
+				}
+			}
+			if depStack != "" {
+				depPath := "/" + depStack + "/" + dep
+				if targetServicesMap[depPath] {
+					if err := visit(depPath); err != nil {
+						return err
+					}
+				}
+			}
+		}
 
 		// Visit dependencies first
 		for _, dep := range srv.ParsedDependsOn {

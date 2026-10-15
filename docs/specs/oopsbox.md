@@ -40,6 +40,11 @@ When provisioning a new workspace via `oops box init [path]`:
 - **Default Config Initialization**: Copies `oopsbox.yaml.example` to `oopsbox.yaml` if `oopsbox.yaml` does not exist.
 - **Automatic Active Box Registration**: Automatically writes the new workspace canonical path to `~/.oops/active_box`.
 
+### Manifest Architecture (`compose.yaml` & `oops.yaml`)
+Oopsbox decouples base infrastructure definitions from the Oops orchestrator daemon:
+- **`compose.yaml`**: The primary root compose manifest defining common networks (`oops_edge`, `oops_db`) and group definitions (`x-oops-groups:`).
+- **`oops.yaml`**: The orchestrator compose manifest containing the `oops` daemon service definition, joined to `oops_edge` (as an external network), and encapsulating orchestrator configuration under extension field `x-oops:` (`registries`, `backups`, `dns`, `volume`).
+
 ### Persistent Volumes & Configuration Mapping (The Service Triad)
 To maintain a clean and standardized workspace structure, Oopsbox enforces strict conventions for mapping container data volumes and configurations onto the host filesystem:
 
