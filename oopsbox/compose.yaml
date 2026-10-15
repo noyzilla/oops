@@ -9,8 +9,6 @@ x-oops-groups:
     - httpbin
     - mailpit
 
-
-
 networks:
   default:
     name: oops_default
