@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.3.0] - 2026-10-16
+
 ### Added
 - Standardized declarative infrastructure configuration in `oops.yaml` under `x-oops:` (`secret`, `db`, `orchestrator`, `backup`, `dns`, `volume`, `registries`).
 - Environment Variable Parity with `x-oops = OOPS_` tree rule: automatically loads project defaults from `oops.yaml` with shell / `.env` variable overrides taking precedence.
