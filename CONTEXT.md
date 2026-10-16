@@ -146,9 +146,9 @@ Declarative defaults are loaded from `oops.yaml` (`x-oops:`), where tree paths m
 | `OOPS_BACKUP_RETENTION` | `x-oops.backup.retention` | `duration` | `7d` | Retention window for database and data dump archives |
 | `OOPS_BACKUP_DIR` | `x-oops.backup.dir` | `string` | `./backups` | Target directory for backup files |
 | `OOPS_VOLUME_MOUNT_PREFIXES`| `x-oops.volume.mount_prefixes` | `string` | `/mnt,/media,/Volumes` | Permitted persistent storage mount prefixes |
-| `MYSQL_ROOT_PASSWORD` | `x-oops.db.mysql_root_password` | `string` | `""` | Superuser password for MySQL |
-| `POSTGRES_PASSWORD` | `x-oops.db.postgres_password` | `string` | `""` | Superuser password for Postgres |
-| `REDIS_PASSWORD` | `x-oops.db.redis_password` | `string` | `""` | Superuser / requirepass password for Redis |
+| `OOPS_DB_MYSQL_PASSWORD` | `x-oops.db.mysql_password` | `string` | `""` | Superuser password for MySQL |
+| `OOPS_DB_POSTGRES_PASSWORD` | `x-oops.db.postgres_password` | `string` | `""` | Superuser password for Postgres |
+| `OOPS_DB_REDIS_PASSWORD` | `x-oops.db.redis_password` | `string` | `""` | Superuser / requirepass password for Redis |
 
 ---
 

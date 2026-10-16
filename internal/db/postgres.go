@@ -57,9 +57,9 @@ func ExecutePostgres(ctx context.Context, containerTarget, query string) (string
 		pgUser = "postgres"
 	}
 
-	pgPass := InspectContainerEnv(ctx, containerTarget, "POSTGRES_PASSWORD")
+	pgPass := os.Getenv("OOPS_DB_POSTGRES_PASSWORD")
 	if pgPass == "" {
-		pgPass = os.Getenv("POSTGRES_PASSWORD")
+		pgPass = InspectContainerEnv(ctx, containerTarget, "POSTGRES_PASSWORD")
 	}
 
 	var execArgs []string

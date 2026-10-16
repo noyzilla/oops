@@ -77,7 +77,7 @@ func TestLoadOopsConfig_XOopsTreeAndEnvOverrides(t *testing.T) {
 x-oops:
   secret: base-secret
   db:
-    mysql_root_password: yaml-mysql-pass
+    mysql_password: yaml-mysql-pass
     postgres_password: yaml-pg-pass
     redis_password: yaml-redis-pass
   orchestrator:
@@ -106,8 +106,8 @@ x-oops:
 	if cfg.Secret != "base-secret" {
 		t.Errorf("expected secret 'base-secret', got %q", cfg.Secret)
 	}
-	if cfg.DB.MySQLRootPassword != "yaml-mysql-pass" {
-		t.Errorf("expected mysql pass 'yaml-mysql-pass', got %q", cfg.DB.MySQLRootPassword)
+	if cfg.DB.MySQLPassword != "yaml-mysql-pass" {
+		t.Errorf("expected mysql pass 'yaml-mysql-pass', got %q", cfg.DB.MySQLPassword)
 	}
 	if cfg.DB.PostgresPassword != "yaml-pg-pass" {
 		t.Errorf("expected pg pass 'yaml-pg-pass', got %q", cfg.DB.PostgresPassword)
@@ -131,9 +131,11 @@ x-oops:
 		t.Errorf("expected retention '30d', got %q", cfg.Backup.Retention)
 	}
 
-	// 2. With env overrides: env variables must take precedence
+	// 2. With OOPS_DB_* env overrides: env variables must take precedence
 	t.Setenv("OOPS_SECRET", "env-secret-override")
-	t.Setenv("MYSQL_ROOT_PASSWORD", "env-mysql-override")
+	t.Setenv("OOPS_DB_MYSQL_PASSWORD", "env-mysql-override")
+	t.Setenv("OOPS_DB_POSTGRES_PASSWORD", "env-pg-override")
+	t.Setenv("OOPS_DB_REDIS_PASSWORD", "env-redis-override")
 	t.Setenv("OOPS_STOP_TIMEOUT", "60s")
 	t.Setenv("OOPS_HEALTHCHECK_TIMEOUT", "15m")
 	t.Setenv("OOPS_BACKUP_RETENTION", "14d")
@@ -147,8 +149,14 @@ x-oops:
 	if cfgOverridden.Secret != "env-secret-override" {
 		t.Errorf("expected secret override 'env-secret-override', got %q", cfgOverridden.Secret)
 	}
-	if cfgOverridden.DB.MySQLRootPassword != "env-mysql-override" {
-		t.Errorf("expected mysql pass override 'env-mysql-override', got %q", cfgOverridden.DB.MySQLRootPassword)
+	if cfgOverridden.DB.MySQLPassword != "env-mysql-override" {
+		t.Errorf("expected mysql pass override 'env-mysql-override', got %q", cfgOverridden.DB.MySQLPassword)
+	}
+	if cfgOverridden.DB.PostgresPassword != "env-pg-override" {
+		t.Errorf("expected pg pass override 'env-pg-override', got %q", cfgOverridden.DB.PostgresPassword)
+	}
+	if cfgOverridden.DB.RedisPassword != "env-redis-override" {
+		t.Errorf("expected redis pass override 'env-redis-override', got %q", cfgOverridden.DB.RedisPassword)
 	}
 	if cfgOverridden.Orchestrator.StopTimeout != "60s" {
 		t.Errorf("expected stop timeout override '60s', got %q", cfgOverridden.Orchestrator.StopTimeout)

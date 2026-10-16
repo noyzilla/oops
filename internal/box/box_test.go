@@ -107,9 +107,9 @@ func TestInitWorkspaceEnv(t *testing.T) {
 
 	// Write .env.example
 	exampleContent := `OOPS_SECRET=
-MYSQL_ROOT_PASSWORD=secret
-POSTGRES_PASSWORD=secret
-REDIS_PASSWORD=secret
+OOPS_DB_MYSQL_PASSWORD=secret
+OOPS_DB_POSTGRES_PASSWORD=secret
+OOPS_DB_REDIS_PASSWORD=secret
 `
 	if err := os.WriteFile(filepath.Join(tmpDir, ".env.example"), []byte(exampleContent), 0644); err != nil {
 		t.Fatalf("failed to write .env.example: %v", err)
@@ -128,7 +128,7 @@ REDIS_PASSWORD=secret
 	if strings.Contains(envStr, "OOPS_SECRET=\n") || strings.Contains(envStr, "OOPS_SECRET=\"\"") {
 		t.Errorf(".env has empty OOPS_SECRET: %s", envStr)
 	}
-	if strings.Contains(envStr, "MYSQL_ROOT_PASSWORD=secret") {
+	if strings.Contains(envStr, "OOPS_DB_MYSQL_PASSWORD=secret") {
 		t.Errorf(".env has placeholder db password: %s", envStr)
 	}
 }

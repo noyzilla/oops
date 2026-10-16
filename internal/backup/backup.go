@@ -25,7 +25,7 @@ func DumpMySQL(ctx context.Context, containerTarget string, dbName string, w io.
 		Database:  dbName,
 	})
 
-	rootPass := os.Getenv("MYSQL_ROOT_PASSWORD")
+	rootPass := os.Getenv("OOPS_DB_MYSQL_PASSWORD")
 	var cmdArgs []string
 	if dbName != "" {
 		if rootPass != "" {
@@ -78,7 +78,7 @@ func DumpRedis(ctx context.Context, containerTarget string, w io.Writer) error {
 	if containerTarget == "" {
 		containerTarget = "redis"
 	}
-	pass := os.Getenv("REDIS_PASSWORD")
+	pass := os.Getenv("OOPS_DB_REDIS_PASSWORD")
 
 	var saveArgs []string
 	var rdbArgs []string

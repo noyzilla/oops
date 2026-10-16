@@ -5,7 +5,7 @@ services:
     hostname: mysql.oops
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
+      MYSQL_ROOT_PASSWORD: ${OOPS_DB_MYSQL_PASSWORD:?OOPS_DB_MYSQL_PASSWORD must be set}
     volumes:
       - ./data/mysql:/var/lib/mysql
     networks:

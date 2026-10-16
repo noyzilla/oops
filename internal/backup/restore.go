@@ -111,7 +111,7 @@ func ExecuteRestoreDB(ctx context.Context, backupDir string, engineSpec string, 
 
 	var cmd *exec.Cmd
 	if engine == "mysql" {
-		rootPass := os.Getenv("MYSQL_ROOT_PASSWORD")
+		rootPass := os.Getenv("OOPS_DB_MYSQL_PASSWORD")
 		var args []string
 		if rootPass != "" {
 			args = []string{"exec", "-i", containerTarget, "mysql", "-u", "root", "-p" + rootPass, dbName}

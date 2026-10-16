@@ -60,9 +60,9 @@ func (d *DNSConfig) GetUpstreams() []string {
 
 // DBConfig defines database credentials in oops.yaml
 type DBConfig struct {
-	MySQLRootPassword string `yaml:"mysql_root_password,omitempty"`
-	PostgresPassword  string `yaml:"postgres_password,omitempty"`
-	RedisPassword     string `yaml:"redis_password,omitempty"`
+	MySQLPassword    string `yaml:"mysql_password,omitempty"`
+	PostgresPassword string `yaml:"postgres_password,omitempty"`
+	RedisPassword    string `yaml:"redis_password,omitempty"`
 }
 
 // HealthcheckConfig defines healthcheck timeout and polling interval
@@ -123,8 +123,8 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 				if wrapper.XOops.Secret != "" {
 					fileCfg.Secret = wrapper.XOops.Secret
 				}
-				if wrapper.XOops.DB.MySQLRootPassword != "" {
-					fileCfg.DB.MySQLRootPassword = wrapper.XOops.DB.MySQLRootPassword
+				if wrapper.XOops.DB.MySQLPassword != "" {
+					fileCfg.DB.MySQLPassword = wrapper.XOops.DB.MySQLPassword
 				}
 				if wrapper.XOops.DB.PostgresPassword != "" {
 					fileCfg.DB.PostgresPassword = wrapper.XOops.DB.PostgresPassword
@@ -212,15 +212,13 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 	if envSecret := os.Getenv("OOPS_SECRET"); envSecret != "" {
 		cfg.Secret = envSecret
 	}
-	if envPass := os.Getenv("MYSQL_ROOT_PASSWORD"); envPass != "" {
-		cfg.DB.MySQLRootPassword = envPass
-	} else if envPass := os.Getenv("MYSQL_PASSWORD"); envPass != "" {
-		cfg.DB.MySQLRootPassword = envPass
+	if envPass := os.Getenv("OOPS_DB_MYSQL_PASSWORD"); envPass != "" {
+		cfg.DB.MySQLPassword = envPass
 	}
-	if envPass := os.Getenv("POSTGRES_PASSWORD"); envPass != "" {
+	if envPass := os.Getenv("OOPS_DB_POSTGRES_PASSWORD"); envPass != "" {
 		cfg.DB.PostgresPassword = envPass
 	}
-	if envPass := os.Getenv("REDIS_PASSWORD"); envPass != "" {
+	if envPass := os.Getenv("OOPS_DB_REDIS_PASSWORD"); envPass != "" {
 		cfg.DB.RedisPassword = envPass
 	}
 

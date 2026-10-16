@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     command: [ "sh", "-c", "if [ -n \"$${REDIS_PASSWORD}\" ]; then exec redis-server --requirepass \"$${REDIS_PASSWORD}\"; else exec redis-server; fi" ]
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${OOPS_DB_REDIS_PASSWORD:-}
     volumes:
       - ./data/redis:/data
     networks:

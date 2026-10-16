@@ -67,9 +67,9 @@ services:
     command: [ "server" ]
     environment:
       OOPS_SECRET: ${OOPS_SECRET:?OOPS_SECRET must be set}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      OOPS_DB_MYSQL_PASSWORD: ${OOPS_DB_MYSQL_PASSWORD:-}
+      OOPS_DB_POSTGRES_PASSWORD: ${OOPS_DB_POSTGRES_PASSWORD:-}
+      OOPS_DB_REDIS_PASSWORD: ${OOPS_DB_REDIS_PASSWORD:-}
     labels:
       caddy: "${OOPS_DOMAIN:-oops.web.oops}"
       caddy.reverse_proxy: "{{upstreams 8080}}"
@@ -94,9 +94,9 @@ x-oops:
   secret: ${OOPS_SECRET:-}
 
   db:
-    mysql_root_password: ${MYSQL_ROOT_PASSWORD:-}
-    postgres_password: ${POSTGRES_PASSWORD:-}
-    redis_password: ${REDIS_PASSWORD:-}
+    mysql_password: ${OOPS_DB_MYSQL_PASSWORD:-}
+    postgres_password: ${OOPS_DB_POSTGRES_PASSWORD:-}
+    redis_password: ${OOPS_DB_REDIS_PASSWORD:-}
 
   orchestrator:
     stop_timeout: 30s

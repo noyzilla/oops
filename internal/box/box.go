@@ -134,16 +134,16 @@ func InitWorkspaceEnv(workDir string) error {
 			content += fmt.Sprintf("\nOOPS_SECRET=%s\n", secret)
 			updated = true
 		}
-		if !strings.Contains(content, "MYSQL_ROOT_PASSWORD=") {
-			content += fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s\n", dbPass)
+		if !strings.Contains(content, "OOPS_DB_MYSQL_PASSWORD=") {
+			content += fmt.Sprintf("OOPS_DB_MYSQL_PASSWORD=%s\n", dbPass)
 			updated = true
 		}
-		if !strings.Contains(content, "POSTGRES_PASSWORD=") {
-			content += fmt.Sprintf("POSTGRES_PASSWORD=%s\n", dbPass)
+		if !strings.Contains(content, "OOPS_DB_POSTGRES_PASSWORD=") {
+			content += fmt.Sprintf("OOPS_DB_POSTGRES_PASSWORD=%s\n", dbPass)
 			updated = true
 		}
-		if !strings.Contains(content, "REDIS_PASSWORD=") {
-			content += fmt.Sprintf("REDIS_PASSWORD=%s\n", dbPass)
+		if !strings.Contains(content, "OOPS_DB_REDIS_PASSWORD=") {
+			content += fmt.Sprintf("OOPS_DB_REDIS_PASSWORD=%s\n", dbPass)
 			updated = true
 		}
 		if updated {
@@ -156,19 +156,23 @@ func InitWorkspaceEnv(workDir string) error {
 	var envContent string
 	if data, err := os.ReadFile(envExampleFile); err == nil {
 		template := string(data)
+		template = strings.ReplaceAll(template, "OOPS_SECRET=change_this_to_a_secure_token", fmt.Sprintf("OOPS_SECRET=%s", secret))
 		template = strings.ReplaceAll(template, "OOPS_SECRET=", fmt.Sprintf("OOPS_SECRET=%s", secret))
-		template = strings.ReplaceAll(template, "MYSQL_ROOT_PASSWORD=secret", fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", dbPass))
-		template = strings.ReplaceAll(template, "POSTGRES_PASSWORD=secret", fmt.Sprintf("POSTGRES_PASSWORD=%s", dbPass))
-		template = strings.ReplaceAll(template, "REDIS_PASSWORD=secret", fmt.Sprintf("REDIS_PASSWORD=%s", dbPass))
+		template = strings.ReplaceAll(template, "OOPS_DB_MYSQL_PASSWORD=change_this_root_password", fmt.Sprintf("OOPS_DB_MYSQL_PASSWORD=%s", dbPass))
+		template = strings.ReplaceAll(template, "OOPS_DB_MYSQL_PASSWORD=secret", fmt.Sprintf("OOPS_DB_MYSQL_PASSWORD=%s", dbPass))
+		template = strings.ReplaceAll(template, "OOPS_DB_POSTGRES_PASSWORD=change_this_pg_password", fmt.Sprintf("OOPS_DB_POSTGRES_PASSWORD=%s", dbPass))
+		template = strings.ReplaceAll(template, "OOPS_DB_POSTGRES_PASSWORD=secret", fmt.Sprintf("OOPS_DB_POSTGRES_PASSWORD=%s", dbPass))
+		template = strings.ReplaceAll(template, "OOPS_DB_REDIS_PASSWORD=change_this_redis_password", fmt.Sprintf("OOPS_DB_REDIS_PASSWORD=%s", dbPass))
+		template = strings.ReplaceAll(template, "OOPS_DB_REDIS_PASSWORD=secret", fmt.Sprintf("OOPS_DB_REDIS_PASSWORD=%s", dbPass))
 		if !strings.Contains(template, "OOPS_SECRET=") {
 			template = fmt.Sprintf("OOPS_SECRET=%s\n", secret) + template
 		}
 		envContent = template
 	} else {
 		envContent = fmt.Sprintf(`OOPS_SECRET=%s
-MYSQL_ROOT_PASSWORD=%s
-POSTGRES_PASSWORD=%s
-REDIS_PASSWORD=%s
+OOPS_DB_MYSQL_PASSWORD=%s
+OOPS_DB_POSTGRES_PASSWORD=%s
+OOPS_DB_REDIS_PASSWORD=%s
 `, secret, dbPass, dbPass, dbPass)
 	}
 

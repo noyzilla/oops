@@ -35,7 +35,7 @@ When provisioning a new workspace via `oops box init [path]`:
 - **Dynamic Blueprint Fetch**: Downloads the latest official release blueprint `oopsbox.tar.gz` from GitHub Releases (`https://github.com/noyzilla/oops/releases/latest/download/oopsbox.tar.gz`), extracting it cleanly into the target directory. If the release asset is unreachable, falls back to `https://github.com/noyzilla/oops/archive/refs/heads/main.tar.gz` (extracting `oopsbox/`).
 - **Cryptographic Credential Generation**:
   - Automatically generates a 48-character cryptographic string for `OOPS_SECRET`.
-  - Automatically generates a single shared 32-character secure password for `MYSQL_ROOT_PASSWORD`, `POSTGRES_PASSWORD`, and `REDIS_PASSWORD`.
+  - Automatically generates a single shared 32-character secure password for `OOPS_DB_MYSQL_PASSWORD`, `OOPS_DB_POSTGRES_PASSWORD`, and `OOPS_DB_REDIS_PASSWORD`.
   - Generates `.env` from template if not present.
 - **Default Config Initialization**: Copies `oopsbox.yaml.example` to `oopsbox.yaml` if `oopsbox.yaml` does not exist.
 - **Automatic Active Box Registration**: Automatically writes the new workspace canonical path to `~/.oops/active_box`.
