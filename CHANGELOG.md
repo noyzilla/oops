@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Fixed
+- Suppressed macOS extended attributes (`--no-xattrs`, `--no-mac-metadata`, `COPYFILE_DISABLE=1`) during `oops remote push` and `oops deploy` tar streaming to eliminate `LIBARCHIVE.xattr.com.apple.provenance` warnings on Linux servers.
+- Resolved `x-oops-groups` dependencies and inner service names (`services/*.yaml`) during remote deployment dependency resolution (`ResolveRequiredDependencies`).
+
 ## [v1.3.0] - 2026-10-16
 
 ### Added

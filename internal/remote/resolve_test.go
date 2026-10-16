@@ -266,3 +266,58 @@ services:
 		t.Errorf("Case 3 failed: compose.db.yaml must be in CapsuleStackFiles, got: %v", inspector.CapsuleStackFiles)
 	}
 }
+
+func TestResolveRequiredDependencies_OopsGroupsAndServiceAlias(t *testing.T) {
+	tempDir := t.TempDir()
+
+	_ = os.MkdirAll(filepath.Join(tempDir, "services"), 0755)
+	_ = os.WriteFile(filepath.Join(tempDir, "services", "caddy.yaml"), []byte("services:\n  caddy-proxy:\n    image: lucaslorentz/caddy-docker-proxy:alpine\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "services", "mysql.yaml"), []byte("services:\n  mysql:\n    image: mysql:8.0\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "services", "postgres.yaml"), []byte("services:\n  postgres:\n    image: postgres:16-alpine\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "services", "redis.yaml"), []byte("services:\n  redis:\n    image: redis:7-alpine\n"), 0644)
+
+	capsuleDir := filepath.Join(tempDir, "@b9tpe")
+	_ = os.MkdirAll(capsuleDir, 0755)
+	_ = os.WriteFile(filepath.Join(capsuleDir, "compose.yaml"), []byte(`x-oops-groups:
+  edge:
+    - caddy-proxy
+  db:
+    - mysql
+    - postgres
+    - redis
+`), 0644)
+
+	inspector, err := ResolveRequiredDependencies(tempDir, "", "b9tpe")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expectedFiles := map[string]bool{
+		filepath.Join("services", "caddy.yaml"):    false,
+		filepath.Join("services", "mysql.yaml"):    false,
+		filepath.Join("services", "postgres.yaml"): false,
+		filepath.Join("services", "redis.yaml"):    false,
+	}
+	for _, sf := range inspector.ServiceFiles {
+		if _, ok := expectedFiles[sf]; ok {
+			expectedFiles[sf] = true
+		}
+	}
+	for file, found := range expectedFiles {
+		if !found {
+			t.Errorf("expected %s in ServiceFiles, got: %v", file, inspector.ServiceFiles)
+		}
+	}
+}
+
+func TestBuildLocalTarArgs(t *testing.T) {
+	darwinArgs := buildLocalTarArgs("darwin", "-czf", "-", "-C", ".", "compose.yaml")
+	if len(darwinArgs) < 2 || darwinArgs[0] != "--no-xattrs" || darwinArgs[1] != "--no-mac-metadata" {
+		t.Errorf("expected --no-xattrs and --no-mac-metadata on darwin, got: %v", darwinArgs)
+	}
+
+	linuxArgs := buildLocalTarArgs("linux", "-czf", "-", "-C", ".", "compose.yaml")
+	if len(linuxArgs) == 0 || linuxArgs[0] != "-czf" {
+		t.Errorf("expected no darwin flags on linux, got: %v", linuxArgs)
+	}
+}
