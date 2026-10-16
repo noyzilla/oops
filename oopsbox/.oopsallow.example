@@ -17,8 +17,8 @@
 /compose.yaml
 /oops.yaml
 
-# Remote Machine Overrides
-/compose*.local.yaml
+# Remote Machine Overrides & Stack Overrides
+/compose*.yaml
 
 # Remote Configuration Trees (Full Streaming)
 /config/**

@@ -437,7 +437,7 @@ func extractSSHTarget(remoteURL string) string {
 
 func parsePushPullArgs(args []string) (stack string, remoteName string) {
 	for _, arg := range args {
-		if strings.HasPrefix(arg, "/") {
+		if strings.HasPrefix(arg, "/") || strings.Contains(arg, ",") {
 			stack = strings.TrimPrefix(arg, "/")
 		} else if strings.HasPrefix(arg, "@") {
 			remoteName = strings.TrimPrefix(arg, "@")
@@ -451,7 +451,7 @@ func parsePushPullArgs(args []string) (stack string, remoteName string) {
 func newRemotePushCmd() *cobra.Command {
 	var remoteFlag string
 	cmd := &cobra.Command{
-		Use:   "push [/<stack>] [@<remote>]",
+		Use:   "push [/<stack1>,/<stack2>] [@<remote>]",
 		Short: "Streams manifests and capsule overlay to remote server (pure delivery)",
 		Long:  "Streams selective stack/service manifests and capsule overlay (.oopsallow) to remote server via SSH without restarting containers.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -479,7 +479,7 @@ func newRemotePushCmd() *cobra.Command {
 func newRemotePullCmd() *cobra.Command {
 	var remoteFlag string
 	cmd := &cobra.Command{
-		Use:   "pull [/<stack>] [@<remote>]",
+		Use:   "pull [/<stack1>,/<stack2>] [@<remote>]",
 		Short: "Downloads remote configurations into local capsule (filtered by .oopsallow)",
 		Long:  "Downloads manifests, overrides, and configurations from the remote server into /@<remote>/ via SSH, strictly filtered by .oopsallow.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -541,9 +541,10 @@ func executeRemotePush(workDirAbs, remoteName, stack string) error {
 	// Step 2: Capsule Overlay Streaming (Strictly filtered by .oopsallow)
 	fmt.Printf("==> [2/2] Applying capsule overlay from /@%s/ (via .oopsallow)...\n", remoteName)
 	if err := sync.Push(sync.Options{
-		WorkDir:    workDirAbs,
-		RemoteName: remoteName,
-		Stack:      stack,
+		WorkDir:        workDirAbs,
+		RemoteName:     remoteName,
+		Stack:          stack,
+		RequiredStacks: inspector.RequiredStacks,
 	}); err != nil {
 		return fmt.Errorf("capsule overlay push failed: %w", err)
 	}
@@ -551,7 +552,13 @@ func executeRemotePush(workDirAbs, remoteName, stack string) error {
 	// Post-Delivery Hint (Pure delivery - no automatic up -d)
 	fmt.Printf("\n✓ Successfully delivered workspace to remote '@%s' (%s)\n", remoteName, cfg.Host)
 	if stack != "" {
-		fmt.Printf("  Run 'oops rx @%s up /%s' to start or restart services.\n", remoteName, stack)
+		targets := remote.ParseStackTargets(stack)
+		var prefixed []string
+		for _, t := range targets {
+			prefixed = append(prefixed, "/"+t)
+		}
+		targetStr := strings.Join(prefixed, ",")
+		fmt.Printf("  Run 'oops rx @%s up %s' to start or restart services.\n", remoteName, targetStr)
 	} else {
 		fmt.Printf("  Run 'oops rx @%s up' to start or restart services.\n", remoteName)
 	}

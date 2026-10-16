@@ -13,12 +13,13 @@ import (
 
 // Options defines the parameters for a push/pull synchronization operation.
 type Options struct {
-	WorkDir    string
-	RemoteName string // e.g., "prod" or "@prod"
-	Stack      string // optional stack filter e.g., "crm"
-	SyncEnv    bool   // backward-compatibility flag
-	SyncSecret bool   // backward-compatibility flag
-	SyncAll    bool   // backward-compatibility flag
+	WorkDir        string
+	RemoteName     string // e.g., "prod" or "@prod"
+	Stack          string // optional stack filter e.g., "crm"
+	RequiredStacks []string
+	SyncEnv        bool // backward-compatibility flag
+	SyncSecret     bool // backward-compatibility flag
+	SyncAll        bool // backward-compatibility flag
 }
 
 // Push orchestrates uploading files from /@<remote>/ to the remote server, strictly filtered by .oopsallow.
@@ -44,7 +45,7 @@ func Push(opts Options) error {
 		return fmt.Errorf("failed loading .oopsallow rules: %w", err)
 	}
 
-	files, err := CollectCapsuleFiles(capsuleDir, rules, opts.Stack)
+	files, err := CollectCapsuleFiles(capsuleDir, rules, opts.Stack, opts.RequiredStacks...)
 	if err != nil {
 		return err
 	}
@@ -117,8 +118,15 @@ func Pull(opts Options) error {
 
 		// Stack filter if specified
 		if opts.Stack != "" && strings.HasPrefix(clean, "compose.") && strings.HasSuffix(clean, ".local.yaml") {
-			expected := "compose." + opts.Stack + ".local.yaml"
-			if clean != expected && clean != "compose.local.yaml" {
+			allowed := false
+			for _, s := range strings.Split(opts.Stack, ",") {
+				cleanStack := strings.TrimSpace(strings.TrimPrefix(s, "/"))
+				if cleanStack != "" && (clean == "compose."+cleanStack+".local.yaml" || clean == "compose.local.yaml") {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
 				continue
 			}
 		}
@@ -192,8 +200,21 @@ func pullFilesFallback(sshHost, remotePath, capsuleDir, rName string, files []st
 }
 
 // CollectCapsuleFiles discovers files to sync inside capsuleDir according to .oopsallow rules and stack filter.
-func CollectCapsuleFiles(capsuleDir string, rules *AllowRuleSet, stack string) ([]string, error) {
+func CollectCapsuleFiles(capsuleDir string, rules *AllowRuleSet, stack string, requiredStacks ...string) ([]string, error) {
 	var files []string
+
+	allowedStacks := make(map[string]bool)
+	if stack != "" {
+		for _, s := range strings.Split(stack, ",") {
+			clean := strings.TrimSpace(strings.TrimPrefix(s, "/"))
+			if clean != "" {
+				allowedStacks[clean] = true
+			}
+		}
+	}
+	for _, s := range requiredStacks {
+		allowedStacks[s] = true
+	}
 
 	err := filepath.Walk(capsuleDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -213,10 +234,14 @@ func CollectCapsuleFiles(capsuleDir string, rules *AllowRuleSet, stack string) (
 			return nil
 		}
 
-		if stack != "" && strings.HasPrefix(relSlash, "compose.") && strings.HasSuffix(relSlash, ".local.yaml") {
-			expected := "compose." + stack + ".local.yaml"
-			if relSlash != expected && relSlash != "compose.local.yaml" {
-				return nil
+		if stack != "" && strings.HasPrefix(relSlash, "compose.") {
+			// If this is a stack-specific file (compose.<name>.yaml or compose.<name>.local.yaml)
+			if relSlash != "compose.yaml" && relSlash != "compose.local.yaml" {
+				base := strings.TrimPrefix(relSlash, "compose.")
+				sName := strings.TrimSuffix(strings.TrimSuffix(base, ".local.yaml"), ".yaml")
+				if sName != "" && !allowedStacks[sName] {
+					return nil
+				}
 			}
 		}
 

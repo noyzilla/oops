@@ -38,8 +38,16 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
 | `<service>` | Single Service | Auto-detects `services/<service>.yaml`, executing `-f compose.yaml -f services/<service>.yaml [-f compose.local.yaml] up <service>` |
 | `+<group>` | Service Group | Resolves members from `x-oops-groups.<group>` in `compose.yaml`, chaining member templates + `[-f compose.local.yaml]` |
 | `/<stack>` | Application Stack | Resolves dependencies (`depends_on` / `x-oops-depends` / `x-oops-services`), chaining `-f compose.yaml [dependencies] -f compose.<stack>.yaml [-f compose.<stack>.local.yaml] [-f compose.local.yaml] up` |
+| `/<stack>/<service>` | Stack Service | Targets a specific service within an application stack, resolving dependencies locally without pulling conflicting service templates |
 | `@<remote>` | Remote Host Capsule | Resolves capsule `/@<remote>/` and deploys via Direct SSH Streaming (`oops deploy`) |
 | `..wildcard..` | Wildcard Pattern | Matches service names matching prefix (`app..`), suffix (`..worker`), or substring (`..api..`). |
+
+### Local Service Precedence Invariant
+When resolving dependencies (`depends_on`, `x-oops-depends`, `x-oops-services`) within a stack (`compose.<stack>.yaml`), any dependency whose name matches a service defined locally within that same stack takes absolute precedence:
+- The local service definition is used directly within the stack.
+- The shared template `services/<service>.yaml` is strictly NOT chained into the compose `-f` pipeline.
+- Shared templates under `services/` are only resolved if no local service definition with the matching name exists in the active stack.
+- CLI target `<service>` (without leading slash) targets the shared template in `services/<service>.yaml`, while `/<stack>/<service>` targets the specific service defined within that application stack.
 
 #### CLI Argument Bracketing & Sigil-Outside Invariant [มาตรฐานการใช้วงเล็บอาร์กิวเมนต์]
 All command signatures adhere to the ubiquitous language defined in [CONTEXT.md](../../CONTEXT.md):
@@ -134,9 +142,9 @@ For each matched service in target order:
 | `oops box stop` | *(none)* | Stops all running stacks on active box |
 | `oops box switch` | `<path>` | Forcefully wipes all containers, updates active box, and boots target box |
 | `oops box cert` | *(none)* | Installs local Caddy CA root certificate into host OS trust store |
-| `oops deploy` | `[/<stack>] [@<remote>]` | Exact ergonomic alias for `oops remote push` (pure streaming delivery) |
-| `oops remote push` | `[/<stack>] [@<remote>]` | Streams manifests and capsule overlay to remote server (filtered by `.oopsallow`; pure delivery) |
-| `oops remote pull` | `[/<stack>] [@<remote>]` | Downloads remote configs and manifests into local capsule `/@<remote>/` (filtered by `.oopsallow`) |
+| `oops deploy` | `[/<stack1>,/<stack2>] [@<remote>]` | Exact ergonomic alias for `oops remote push` (pure streaming delivery) |
+| `oops remote push` | `[/<stack1>,/<stack2>] [@<remote>]` | Streams manifests and capsule overlay to remote server (filtered by `.oopsallow`; pure delivery) |
+| `oops remote pull` | `[/<stack1>,/<stack2>] [@<remote>]` | Downloads remote configs and manifests into local capsule `/@<remote>/` (filtered by `.oopsallow`) |
 | `oops remote connect` | `@<remote>[:<path>] [path] [--path <p>]` | Connects to remote host, auto-bootstraps environment, initializes capsule with blueprints, writes `/@<host>/remote.yaml` |
 | `oops remote setup` | `[@<remote>]` | Installs or upgrades `docker-compose-plugin` and `oops` CLI to latest version on remote server |
 | `oops remote list` | *(none)* | Lists registered remotes discovered in `/@*/remote.yaml` |

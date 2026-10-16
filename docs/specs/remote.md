@@ -77,15 +77,23 @@ Container Execution         ───[oops rx up / down / restart]────�
 
 #### Outgoing Delivery: `oops remote push` *(Alias: `oops deploy`)*
 Pure streaming delivery of application manifests and capsule overrides. **No automatic container startup**:
+- **Target Specification (`[/<stack1>,/<stack2>] [@<remote>]`)**:
+  - Operators can target a single stack (`/app`) or a cluster of stacks using comma-separated notation (`/app,/db`).
+  - Order-agnostic: `@<remote>` can be specified before or after target stacks.
+- **Strict Pre-Flight Dependency Guard (Zero-Accidental Leak Invariant)**:
+  - If a targeted stack depends on another stack (e.g. `/app` references `/db/mysql` or `x-oops-depends: [db]`):
+    - **Remote Capsule Scope Precedence**: If `/db` is already declared in `/@<remote>/compose.db.yaml` (or within capsule base `compose.yaml`), the push proceeds without error because `@<remote>` local scope already provides it.
+    - **Explicit Inclusion Requirement**: If `/db` exists ONLY in the root workspace `compose.db.yaml` and is NOT in `/@<remote>/`, pushing `/app` alone is strictly rejected with Exit Code 1. The operator MUST explicitly include it (`/app,/db`) to confirm intention to ship the root stack manifest.
 - **Step 1 — Base Manifest Streaming**:
   - Resolves required services via Dependency Resolution Algorithm (`x-oops-services:` + `depends_on:` in `compose.<stack>.yaml` and `/@<remote>/compose.yaml`, plus remote overrides `/@<remote>/compose.local.yaml` and `/@<remote>/compose.<stack>.local.yaml`).
-  - Streams selected `compose.<stack>.yaml`, resolved `services/<service>.yaml`, and matching `config/<service>/`.
+  - **Local & Remote Precedence Invariant**: If a service is already declared under `services:` in the stack or within the `@remote` capsule (including `/@<remote>/services/*.yaml`), the algorithm strictly avoids pulling or streaming matching templates from workspace root `services/<service>.yaml` and `config/<service>/`.
+  - Streams selected `compose.<stack>.yaml` (for stacks not overridden in `/@<remote>/`), resolved `services/<service>.yaml`, and matching `config/<service>/`.
   - Excludes local `./compose.yaml`, `./oops.yaml`, `oopsbox.yaml`, `*.local.yaml`, `/@*`, `.git`, `.scratch`, and `data/`.
 - **Step 2 — Capsule Overlay Streaming (Filtered via `.oopsallow`)**:
-  - Streams files in `/@<remote>/` that strictly match `/@<remote>/.oopsallow` (`compose.yaml` -> `~/oopsbox/compose.yaml`, `oops.yaml` -> `~/oopsbox/oops.yaml`, `.env`, `compose.local.yaml`, `compose.<stack>.local.yaml`, `config/*`).
+  - Streams files in `/@<remote>/` that strictly match `/@<remote>/.oopsallow` (`compose.yaml` -> `~/oopsbox/compose.yaml`, `oops.yaml` -> `~/oopsbox/oops.yaml`, `.env`, `compose.local.yaml`, `compose.<stack>.local.yaml`, `compose.<stack>.yaml`, `config/*`).
 - **Step 3 — Post-Delivery Prompt**:
   - Outputs summary of transferred manifests.
-  - Prompts operator: `==> Push complete. Run 'oops rx [@<remote>] up [/<stack>]' to start or restart services.`
+  - Prompts operator: `==> Push complete. Run 'oops rx [@<remote>] up [/<stack1>,/<stack2>]' to start or restart services.`
 
 #### Incoming Synchronization: `oops remote pull`
 Downloads configurations, overrides, and secrets from the remote server into the local capsule:
@@ -110,9 +118,9 @@ Downloads configurations, overrides, and secrets from the remote server into the
 | :--- | :--- | :--- |
 | `oops remote connect` | `@<remote>[:<path>] [path] [--path <p>]` | Connects to remote host, auto-bootstraps environment, initializes capsule with blueprints, writes `/@<host>/remote.yaml` |
 | `oops remote setup` | `[@<remote>]` | Installs or upgrades `docker-compose-plugin` and `oops` CLI to the latest version on the remote server |
-| `oops remote push` | `[/<stack>] [@<remote>]` | Streams manifests and capsule overlay to remote server (filtered by `.oopsallow`; pure delivery, no auto-start) |
-| `oops remote pull` | `[/<stack>] [@<remote>]` | Downloads remote configs and manifests into local capsule `/@<remote>/` (filtered by `.oopsallow`) |
-| `oops deploy` | `[/<stack>] [@<remote>]` | Exact ergonomic alias for `oops remote push` |
+| `oops remote push` | `[/<stack1>,/<stack2>] [@<remote>]` | Streams manifests and capsule overlay to remote server (filtered by `.oopsallow`; pure delivery, no auto-start) |
+| `oops remote pull` | `[/<stack1>,/<stack2>] [@<remote>]` | Downloads remote configs and manifests into local capsule `/@<remote>/` (filtered by `.oopsallow`) |
+| `oops deploy` | `[/<stack1>,/<stack2>] [@<remote>]` | Exact ergonomic alias for `oops remote push` |
 | `oops remote list` | *(none)* | Discovers and lists all registered remotes |
 | `oops remote remove` | `@<remote>` | Removes registered remote capsule directory `/@<remote>/` |
 | `oops rx` | `[@<remote>] <oops-cmd> [args...]` | Forwards oops command over SSH to remote target (e.g. `oops rx up /crm`, `oops rx ps`) |

@@ -55,3 +55,45 @@ func TestCollectSyncFiles(t *testing.T) {
 		t.Fatalf("expected 1 secret file, got: %v", filesSecret)
 	}
 }
+
+func TestCollectCapsuleFiles_MultiStackFilter(t *testing.T) {
+	tempDir := t.TempDir()
+	capsuleDir := filepath.Join(tempDir, "@prod")
+	_ = os.MkdirAll(capsuleDir, 0755)
+
+	_ = os.WriteFile(filepath.Join(capsuleDir, "compose.yaml"), []byte("services: {}\n"), 0644)
+	_ = os.WriteFile(filepath.Join(capsuleDir, "compose.app.yaml"), []byte("services: {}\n"), 0644)
+	_ = os.WriteFile(filepath.Join(capsuleDir, "compose.db.yaml"), []byte("services: {}\n"), 0644)
+	_ = os.WriteFile(filepath.Join(capsuleDir, "compose.cache.yaml"), []byte("services: {}\n"), 0644)
+
+	rules, err := LoadAllowRuleSet(filepath.Join(capsuleDir, ".oopsallow"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Filter for "/app,/db"
+	files, err := CollectCapsuleFiles(capsuleDir, rules, "/app,/db")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	foundApp, foundDB, foundCache := false, false, false
+	for _, f := range files {
+		if f == "compose.app.yaml" {
+			foundApp = true
+		}
+		if f == "compose.db.yaml" {
+			foundDB = true
+		}
+		if f == "compose.cache.yaml" {
+			foundCache = true
+		}
+	}
+
+	if !foundApp || !foundDB {
+		t.Errorf("expected compose.app.yaml and compose.db.yaml, got: %v", files)
+	}
+	if foundCache {
+		t.Errorf("compose.cache.yaml should NOT be included when filtering /app,/db, got: %v", files)
+	}
+}

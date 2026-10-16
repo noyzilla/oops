@@ -601,3 +601,79 @@ x-oops-groups:
 		t.Errorf("worker should not be targeted when /tools2/redis was specified in group")
 	}
 }
+
+func TestLocalServiceVersionDiscrepancyAndPrecedence(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	servicesDir := filepath.Join(tmpDir, "services")
+	_ = os.MkdirAll(servicesDir, 0755)
+
+	// Global default template: services/mysql.yaml (MySQL 8.0)
+	_ = os.WriteFile(filepath.Join(servicesDir, "mysql.yaml"), []byte(`
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+`), 0644)
+
+	// Legacy project: compose.legacy.yaml using MySQL 5.7
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.legacy.yaml"), []byte(`
+x-oops-depends:
+  - mysql
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: legacy_mysql
+  app:
+    image: legacy-app:v1
+    depends_on:
+      - mysql
+`), 0644)
+
+	// 1. Resolve /legacy: must use local mysql 5.7, never pull services/mysql.yaml (8.0)
+	legacyTargets, err := docker.ResolveTargets(tmpDir, []string{"/legacy"})
+	if err != nil {
+		t.Fatalf("failed to resolve /legacy: %v", err)
+	}
+	if len(legacyTargets) != 2 {
+		t.Fatalf("expected 2 targets for /legacy, got %d", len(legacyTargets))
+	}
+
+	for _, tgt := range legacyTargets {
+		if tgt.StackName != "legacy" {
+			t.Errorf("expected target to belong to legacy stack, got %s", tgt.StackName)
+		}
+		if tgt.ServiceName == "mysql" && tgt.Image != "mysql:5.7" {
+			t.Errorf("expected mysql:5.7 in legacy stack, got %s", tgt.Image)
+		}
+		for _, f := range tgt.ComposeFiles {
+			if filepath.Base(f) == "mysql.yaml" {
+				t.Errorf("services/mysql.yaml (8.0) was illegally pulled into compose chain for legacy stack: %v", tgt.ComposeFiles)
+			}
+		}
+	}
+
+	// 2. Resolve /legacy/mysql: specifically targets local mysql 5.7
+	specificTargets, err := docker.ResolveTargets(tmpDir, []string{"/legacy/mysql"})
+	if err != nil {
+		t.Fatalf("failed to resolve /legacy/mysql: %v", err)
+	}
+	if len(specificTargets) != 1 {
+		t.Fatalf("expected 1 target for /legacy/mysql, got %d", len(specificTargets))
+	}
+	if specificTargets[0].StackName != "legacy" || specificTargets[0].Image != "mysql:5.7" {
+		t.Errorf("expected legacy mysql 5.7, got %+v", specificTargets[0])
+	}
+
+	// 3. Resolve standalone 'mysql': targets shared services/mysql.yaml (8.0)
+	sharedTargets, err := docker.ResolveTargets(tmpDir, []string{"mysql"})
+	if err != nil {
+		t.Fatalf("failed to resolve mysql: %v", err)
+	}
+	if len(sharedTargets) != 1 {
+		t.Fatalf("expected 1 target for shared mysql, got %d", len(sharedTargets))
+	}
+	if sharedTargets[0].StackName != "services/mysql" || sharedTargets[0].Image != "mysql:8.0" {
+		t.Errorf("expected shared mysql 8.0, got %+v", sharedTargets[0])
+	}
+}

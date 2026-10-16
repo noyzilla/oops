@@ -47,6 +47,18 @@ func TestParsePushPullArgs(t *testing.T) {
 			wantStack: "crm",
 			wantName:  "",
 		},
+		{
+			name:      "Multi-stack and remote",
+			args:      []string{"/app,/db", "@prod"},
+			wantStack: "app,/db",
+			wantName:  "prod",
+		},
+		{
+			name:      "Remote and multi-stack inverted",
+			args:      []string{"@staging", "/app,/db"},
+			wantStack: "app,/db",
+			wantName:  "staging",
+		},
 	}
 
 	for _, tt := range tests {

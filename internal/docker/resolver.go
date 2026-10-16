@@ -490,6 +490,14 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 	for sName := range targetStacksMap {
 		if sd, ok := stacks[sName]; ok {
 			for _, dep := range sd.xDepends {
+				if _, isLocal := sd.services[dep]; isLocal {
+					depPath := "/" + sName + "/" + dep
+					if !targetServicesMap[depPath] {
+						targetServicesMap[depPath] = true
+						expandDeps(depPath)
+					}
+					continue
+				}
 				depStack, depSrv := resolveDep(dep)
 				if depStack == "" {
 					continue
@@ -543,11 +551,20 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 
 		// Visit stack-level x-oops-depends first
 		for _, dep := range sd.xDepends {
+			if _, isLocal := sd.services[dep]; isLocal {
+				depPath := "/" + stackName + "/" + dep
+				if depPath != srvPath && targetServicesMap[depPath] {
+					if err := visit(depPath); err != nil {
+						return err
+					}
+				}
+				continue
+			}
 			depStack, depSrv := resolveDep(dep)
 			if depStack != "" {
 				if depSrv != "" {
 					depPath := "/" + depStack + "/" + depSrv
-					if targetServicesMap[depPath] {
+					if depPath != srvPath && targetServicesMap[depPath] {
 						if err := visit(depPath); err != nil {
 							return err
 						}
@@ -555,7 +572,7 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 				} else if depSd, ok := stacks[depStack]; ok {
 					for srvName := range depSd.services {
 						depPath := "/" + depStack + "/" + srvName
-						if targetServicesMap[depPath] {
+						if depPath != srvPath && targetServicesMap[depPath] {
 							if err := visit(depPath); err != nil {
 								return err
 							}
@@ -569,7 +586,7 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		for _, dep := range srv.ParsedDependsOn {
 			if _, isLocal := sd.services[dep]; isLocal {
 				depPath := "/" + stackName + "/" + dep
-				if targetServicesMap[depPath] {
+				if depPath != srvPath && targetServicesMap[depPath] {
 					if err := visit(depPath); err != nil {
 						return err
 					}
@@ -613,6 +630,9 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 				}
 			}
 			for _, dep := range sd.xDepends {
+				if _, isLocal := sd.services[dep]; isLocal {
+					continue
+				}
 				depStack, _ := resolveDep(dep)
 				if depStack != "" {
 					if depSd, ok := stacks[depStack]; ok && depSd.composePath != "" {
@@ -621,6 +641,9 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 				}
 			}
 			for _, s := range sd.xServices {
+				if _, isLocal := sd.services[s]; isLocal {
+					continue
+				}
 				depStack, _ := resolveDep(s)
 				if depStack != "" {
 					if depSd, ok := stacks[depStack]; ok && depSd.composePath != "" {

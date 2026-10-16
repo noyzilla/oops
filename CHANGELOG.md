@@ -11,6 +11,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Environment Variable Parity with `x-oops = OOPS_` tree rule: automatically loads project defaults from `oops.yaml` with shell / `.env` variable overrides taking precedence.
 - Dedicated namespace isolation for database credentials under `OOPS_DB_*` (`OOPS_DB_MYSQL_PASSWORD`, `OOPS_DB_POSTGRES_PASSWORD`, `OOPS_DB_REDIS_PASSWORD`) preventing environment variable collisions with container applications.
 - Cross-stack dependency and service resolution supporting `/stack`, `/<stack>/<service>`, and direct `services/<name>` templates with local definition precedence.
+- Enforced Local Service Precedence in target resolution: project services defined inside `compose.<stack>.yaml` shadow matching shared templates in `services/`, preventing template injection when dependencies match local definitions.
+- Extended Local & Remote Precedence to `oops remote push` and `oops deploy`: dependencies declared locally in stack manifests or within `@remote` capsules strictly suppress pulling conflicting default templates from workspace `services/` and `config/`.
+- Multi-stack target support in `oops remote push`, `oops deploy`, and `oops remote pull` using comma-separated notation (`/<stack1>,/<stack2>`), treating target stacks as an explicit delivery cluster.
+- Strict Pre-Flight Dependency Guard for remote push/deploy: automatically validates cross-stack dependencies prior to file transmission; aborts deployment if referenced stacks are neither included in push targets nor provided within the remote capsule scope, preventing accidental leaks of local workspace stacks to remote environments.
 
 ### Changed
 - Converted `oops.yaml` to a standard Docker Compose manifest declaring `services: oops` and `x-oops:` settings block.

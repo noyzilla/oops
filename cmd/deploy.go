@@ -13,7 +13,7 @@ var (
 
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "deploy [/<stack>] [@<remote>]",
+		Use:   "deploy [/<stack1>,/<stack2>] [@<remote>]",
 		Short: "Deploys workspace updates to a remote server over SSH (alias for 'oops remote push')",
 		Long:  "Streams selective stack/service manifests and capsule overlays (.oopsallow) via SSH (pure delivery, no auto-start). Exact ergonomic alias for 'oops remote push'.",
 		RunE: func(cmd *cobra.Command, args []string) error {
