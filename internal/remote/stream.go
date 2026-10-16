@@ -5,7 +5,24 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 )
+
+func buildLocalTarArgs(osName string, tailArgs ...string) []string {
+	var args []string
+	if osName == "darwin" {
+		args = append(args, "--no-xattrs", "--no-mac-metadata")
+	}
+	args = append(args, tailArgs...)
+	return args
+}
+
+func newLocalTarCommand(tailArgs ...string) *exec.Cmd {
+	args := buildLocalTarArgs(runtime.GOOS, tailArgs...)
+	cmd := exec.Command("tar", args...)
+	cmd.Env = append(os.Environ(), "COPYFILE_DISABLE=1")
+	return cmd
+}
 
 // StreamTarSSH streams files from local source dir into remote path via tar over SSH.
 // Exclude patterns can be provided (e.g. "*.local.yaml", "@*", ".git", "remote.yaml").
@@ -22,7 +39,7 @@ func StreamTarSSH(srcDir string, excludes []string, sshHost, remoteTargetDir str
 	}
 	tarArgs = append(tarArgs, "-C", srcDir, ".")
 
-	tarCmd := exec.Command("tar", tarArgs...)
+	tarCmd := newLocalTarCommand(tarArgs...)
 
 	extractCmd := fmt.Sprintf("tar -xzf - -C %s", remoteTargetDir)
 	sshArgs := []string{
@@ -76,7 +93,7 @@ func StreamTarFilesSSH(srcDir string, relativePaths []string, sshHost, remoteTar
 	tarArgs = append(tarArgs, "-czf", "-", "-C", srcDir)
 	tarArgs = append(tarArgs, relativePaths...)
 
-	tarCmd := exec.Command("tar", tarArgs...)
+	tarCmd := newLocalTarCommand(tarArgs...)
 
 	extractCmd := fmt.Sprintf("tar -xzf - -C %s", remoteTargetDir)
 	sshArgs := []string{

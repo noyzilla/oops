@@ -70,6 +70,9 @@ func parseStackManifest(filePath string, name string, isCapsule bool) *stackMani
 	if v, ok := raw["x-oops-depends"]; ok {
 		extractServiceNames(v, info.rawDeps)
 	}
+	if v, ok := raw["x-oops-groups"]; ok {
+		extractGroupServiceNames(v, info.rawDeps)
+	}
 	if svcs, ok := raw["services"].(map[string]interface{}); ok {
 		for sName, sDef := range svcs {
 			clean := strings.TrimSpace(sName)
@@ -218,6 +221,9 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 				if v, ok := raw["x-oops-depends"]; ok {
 					extractServiceNames(v, depSet)
 				}
+				if v, ok := raw["x-oops-groups"]; ok {
+					extractGroupServiceNames(v, depSet)
+				}
 				if svcs, ok := raw["services"].(map[string]interface{}); ok {
 					for sName, sDef := range svcs {
 						clean := strings.TrimSpace(sName)
@@ -240,7 +246,11 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 	if entries, err := os.ReadDir(capsuleServicesDir); err == nil {
 		for _, e := range entries {
 			if !e.IsDir() && strings.HasSuffix(e.Name(), ".yaml") {
-				definedServices[strings.TrimSuffix(e.Name(), ".yaml")] = struct{}{}
+				baseName := strings.TrimSuffix(e.Name(), ".yaml")
+				definedServices[baseName] = struct{}{}
+				for _, sName := range parseServiceTemplateNames(filepath.Join(capsuleServicesDir, e.Name())) {
+					definedServices[sName] = struct{}{}
+				}
 			}
 		}
 	}
@@ -279,6 +289,10 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 	}
 
 	// 7. Locate service templates (Case 1 & 2: Local & Remote Precedence)
+	templateMap := mapWorkspaceServiceTemplates(filepath.Join(workDir, "services"))
+	seenServiceFiles := make(map[string]bool)
+	seenConfigDirs := make(map[string]bool)
+
 	for dep := range depSet {
 		cleanDep := dep
 		if strings.HasPrefix(cleanDep, "/") {
@@ -295,18 +309,89 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 			continue
 		}
 
-		svcFile := filepath.Join("services", cleanDep+".yaml")
-		if _, err := os.Stat(filepath.Join(workDir, svcFile)); err == nil {
-			inspector.ServiceFiles = append(inspector.ServiceFiles, svcFile)
+		templateBase := cleanDep
+		if mapped, ok := templateMap[cleanDep]; ok {
+			templateBase = mapped
+		}
+		if _, isDefined := definedServices[templateBase]; isDefined {
+			continue
 		}
 
-		configDir := filepath.Join("config", cleanDep)
-		if fi, err := os.Stat(filepath.Join(workDir, configDir)); err == nil && fi.IsDir() {
-			inspector.ConfigFiles = append(inspector.ConfigFiles, configDir)
+		svcFile := filepath.Join("services", templateBase+".yaml")
+		if !seenServiceFiles[svcFile] {
+			if _, err := os.Stat(filepath.Join(workDir, svcFile)); err == nil {
+				seenServiceFiles[svcFile] = true
+				inspector.ServiceFiles = append(inspector.ServiceFiles, svcFile)
+			}
+		}
+
+		configDir := filepath.Join("config", templateBase)
+		if !seenConfigDirs[configDir] {
+			if fi, err := os.Stat(filepath.Join(workDir, configDir)); err == nil && fi.IsDir() {
+				seenConfigDirs[configDir] = true
+				inspector.ConfigFiles = append(inspector.ConfigFiles, configDir)
+			}
 		}
 	}
 
+	sort.Strings(inspector.ServiceFiles)
+	sort.Strings(inspector.ConfigFiles)
+
 	return inspector, nil
+}
+
+func parseServiceTemplateNames(filePath string) []string {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil
+	}
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return nil
+	}
+	svcs, ok := raw["services"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	var names []string
+	for sName := range svcs {
+		clean := strings.TrimSpace(sName)
+		if clean != "" {
+			names = append(names, clean)
+		}
+	}
+	return names
+}
+
+func mapWorkspaceServiceTemplates(servicesDir string) map[string]string {
+	result := make(map[string]string)
+	entries, err := os.ReadDir(servicesDir)
+	if err != nil {
+		return result
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
+			continue
+		}
+		baseName := strings.TrimSuffix(e.Name(), ".yaml")
+		result[baseName] = baseName
+		for _, sName := range parseServiceTemplateNames(filepath.Join(servicesDir, e.Name())) {
+			if _, exists := result[sName]; !exists {
+				result[sName] = baseName
+			}
+		}
+	}
+	return result
+}
+
+func extractGroupServiceNames(v interface{}, depSet map[string]struct{}) {
+	groups, ok := v.(map[string]interface{})
+	if !ok {
+		return
+	}
+	for _, groupMembers := range groups {
+		extractServiceNames(groupMembers, depSet)
+	}
 }
 
 func extractServiceNames(v interface{}, depSet map[string]struct{}) {
