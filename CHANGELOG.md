@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
-## [Unreleased]
+## [v1.8.0] - 2026-10-17
 
 ### Added
 - **Default Container Log Rotation (`x-logging: &default-logging`)**: Added `json-file` log rotation (`max-size: "10m"`, `max-file: "3"`) across `oopsbox/compose.yaml`, `oopsbox/compose.yaml.example`, `internal/remote/blueprint.go`, and all Oopsbox stack manifests (`compose.edge.yaml`, `compose.db.yaml`, `compose.storage.yaml`, `compose.tools.yaml`) to prevent unbounded container logs from exhausting host disk space.
