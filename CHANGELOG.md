@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
-## [Unreleased]
+## [v1.8.1] - 2026-10-18
 
 ### Fixed
 - Suppressed false-positive `Found orphan containers (...) for this project` warnings during `oops up`, `oops update`, and webhook recreation by injecting `COMPOSE_IGNORE_ORPHANS=True` into `docker compose` execution environments (`internal/orchestrator/updater.go`, `internal/docker/client.go`).
