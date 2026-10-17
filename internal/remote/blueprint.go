@@ -16,6 +16,12 @@ const defaultComposeExample = `# ===============================================
 # ==============================================================================
 # name: oops
 
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 x-oops-stack:
   - /edge
   - /db

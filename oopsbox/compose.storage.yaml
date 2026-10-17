@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 x-oops-stack:
   - seaweedfs
 
@@ -7,6 +13,7 @@ services:
     container_name: seaweedfs
     hostname: seaweedfs.oops
     restart: unless-stopped
+    logging: *default-logging
     command: "server -s3 -dir=/data"
     volumes:
       - ./data/storage:/data
@@ -17,4 +24,3 @@ networks:
   oops_storage:
     name: oops_storage
     driver: bridge
-
