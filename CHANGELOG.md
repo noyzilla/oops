@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Added
+- **Capsule-Scoped Default Delivery (Omitted Stack Invariant)**: In `oops deploy @remote` and `oops remote push @remote`, omitting `/stack` restricts discovery and deployment strictly to manifests, stacks, and services declared within the target capsule `/@<remote>/`. Root workspace stacks that do not belong to the capsule are excluded from streaming.
+
 ## [v1.5.0] - 2026-10-17
 
 ### Added

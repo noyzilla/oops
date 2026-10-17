@@ -85,6 +85,7 @@ Pure streaming delivery of application manifests and capsule overrides. **No aut
 - **Target Specification (`[/<stack1>,/<stack2>] [@<remote>]`)**:
   - Operators can target a single stack (`/app`) or a cluster of stacks using comma-separated notation (`/app,/db`).
   - Order-agnostic: `@<remote>` can be specified before or after target stacks.
+  - **Capsule-Scoped Default Delivery (Omitted Stack Invariant)**: When no target stack `/stack` is specified (e.g. `oops deploy @remote` or `oops remote push @remote`), scope is strictly bound to the target capsule `/@<remote>/`. The resolver inspects only stacks declared in the capsule (`/@<remote>/compose.<stack>.yaml`), stacks declared in `/@<remote>/compose.<stack>.local.yaml`, and service templates/groups declared in `/@<remote>/compose.yaml` (under `x-oops-groups:`, `x-oops-services:`, or `services:`). Root workspace stacks (`compose.<stack>.yaml`) that are NOT present in the capsule are strictly ignored and never shipped to the remote.
 - **Strict Pre-Flight Dependency Guard (Zero-Accidental Leak Invariant)**:
   - If a targeted stack depends on another stack (e.g. `/app` references `/db/mysql` or `x-oops-depends: [db]`):
     - **Remote Capsule Scope Precedence**: If `/db` is already declared in `/@<remote>/compose.db.yaml` (or within capsule base `compose.yaml`), the push proceeds without error because `@<remote>` local scope already provides it.

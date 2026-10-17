@@ -141,10 +141,13 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 			stackQueue = append(stackQueue, t)
 		}
 	} else {
-		for sName := range allStacks {
-			pushedStacks[sName] = true
-			requiredStacksMap[sName] = true
-			stackQueue = append(stackQueue, sName)
+		// When no stack target is specified, scope strictly to stacks defined in capsule.
+		for sName, sInfo := range allStacks {
+			if sInfo.isCapsule {
+				pushedStacks[sName] = true
+				requiredStacksMap[sName] = true
+				stackQueue = append(stackQueue, sName)
+			}
 		}
 	}
 
