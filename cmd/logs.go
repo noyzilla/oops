@@ -61,42 +61,32 @@ func runLogs(cmd *cobra.Command, args []string, tail int, follow bool) error {
 		}
 	}
 
-	// 2. Resolve via compose stacks (for multi-targets or stack paths like /edge, /db)
+	// 2. Resolve via compose stacks (for multi-targets, default x-oops-stack, or stack paths like /edge, /db)
 	targets, err := docker.ResolveTargets(workDir, args)
 	if err == nil && len(targets) > 0 {
-		// Group targets by compose file
-		byCompose := make(map[string][]string)
-		for _, t := range targets {
-			byCompose[t.ComposePath] = append(byCompose[t.ComposePath], t.ServiceName)
-		}
+		composeArgs, services := buildComposeLogsArgs(workDir, targets, tail, follow)
 
-		// Find .env file in workspace
-		var envFile string
-		candidate := filepath.Join(workDir, ".env")
-		if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
-			envFile = candidate
-		}
-
-		for composePath, services := range byCompose {
-			composeArgs := []string{"compose"}
-			if envFile != "" {
-				composeArgs = append(composeArgs, "--env-file", envFile)
-			}
-			composeArgs = append(composeArgs, "-f", composePath, "logs", "--tail", strconv.Itoa(tail))
-			if follow {
-				composeArgs = append(composeArgs, "-f")
-			}
-			composeArgs = append(composeArgs, services...)
-
-			c := exec.Command("docker", composeArgs...)
-			c.Stdin = os.Stdin
-			c.Stdout = cmd.OutOrStdout()
-			c.Stderr = cmd.ErrOrStderr()
-			if err := c.Run(); err != nil {
-				// Fallback to docker logs on each container
-				for _, svc := range services {
-					_ = exec.Command("docker", "logs", "--tail", strconv.Itoa(tail), svc).Run()
+		c := exec.Command("docker", composeArgs...)
+		c.Stdin = os.Stdin
+		c.Stdout = cmd.OutOrStdout()
+		c.Stderr = cmd.ErrOrStderr()
+		if err := c.Run(); err != nil {
+			// Fallback to direct docker logs on each container/service with proper stdout/stderr binding
+			for i, svc := range services {
+				containerRef := svc
+				if i < len(targets) && targets[i].ContainerName != "" {
+					containerRef = targets[i].ContainerName
 				}
+				fbArgs := []string{"logs", "--tail", strconv.Itoa(tail)}
+				if follow && len(services) == 1 {
+					fbArgs = append(fbArgs, "-f")
+				}
+				fbArgs = append(fbArgs, containerRef)
+				fbCmd := exec.Command("docker", fbArgs...)
+				fbCmd.Stdin = os.Stdin
+				fbCmd.Stdout = cmd.OutOrStdout()
+				fbCmd.Stderr = cmd.ErrOrStderr()
+				_ = fbCmd.Run()
 			}
 		}
 		return nil
@@ -121,4 +111,60 @@ func runLogs(cmd *cobra.Command, args []string, tail int, follow bool) error {
 		return err
 	}
 	return fmt.Errorf("no target services or containers found to fetch logs")
+}
+
+// buildComposeLogsArgs constructs the unified 'docker compose [--env-file .env] -f ... logs' arguments
+// across all resolved targets while preserving Tail-Chaining for compose.local.yaml.
+func buildComposeLogsArgs(workDir string, targets []docker.ResolvedTarget, tail int, follow bool) ([]string, []string) {
+	var composeFiles []string
+	seenFile := make(map[string]bool)
+	var globalLocalFile string
+
+	for _, t := range targets {
+		files := t.ComposeFiles
+		if len(files) == 0 && t.ComposePath != "" {
+			files = []string{t.ComposePath}
+		}
+		for _, f := range files {
+			if f == "" {
+				continue
+			}
+			if filepath.Base(f) == "compose.local.yaml" {
+				globalLocalFile = f
+				continue
+			}
+			if !seenFile[f] {
+				seenFile[f] = true
+				composeFiles = append(composeFiles, f)
+			}
+		}
+	}
+	if globalLocalFile != "" && !seenFile[globalLocalFile] {
+		composeFiles = append(composeFiles, globalLocalFile)
+	}
+
+	var services []string
+	seenSvc := make(map[string]bool)
+	for _, t := range targets {
+		if t.ServiceName != "" && !seenSvc[t.ServiceName] {
+			seenSvc[t.ServiceName] = true
+			services = append(services, t.ServiceName)
+		}
+	}
+
+	composeArgs := []string{"compose"}
+	candidate := filepath.Join(workDir, ".env")
+	if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
+		composeArgs = append(composeArgs, "--env-file", candidate)
+	}
+	for _, f := range composeFiles {
+		composeArgs = append(composeArgs, "-f", f)
+	}
+	composeArgs = append(composeArgs, "logs", "--tail", strconv.Itoa(tail))
+	if follow {
+		composeArgs = append(composeArgs, "-f")
+	}
+	composeArgs = append(composeArgs, services...)
+
+	return composeArgs, services
 }

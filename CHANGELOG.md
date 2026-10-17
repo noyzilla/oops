@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+### Fixed
+- Fixed `oops logs` failing with `no such service: caddy-proxy` by passing the full deduplicated `ComposeFiles` `-f` chain (instead of only the root `compose.yaml` anchor) to `docker compose logs`, and bound `Stdout`/`Stderr` on fallback `docker logs` calls (`cmd/logs.go`).
+
 ## [v1.7.0] - 2026-10-17
 
 ### Added
