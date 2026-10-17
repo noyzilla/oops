@@ -90,6 +90,12 @@ func FindEnvFile(composePath string) string {
 	return ""
 }
 
+// ComposeCommandEnv returns the process environment with COMPOSE_IGNORE_ORPHANS=True
+// so multi-stack invocations sharing the root oopsbox project do not emit false-positive orphan warnings.
+func ComposeCommandEnv() []string {
+	return append(os.Environ(), "COMPOSE_IGNORE_ORPHANS=True")
+}
+
 // RunComposeFiles executes docker compose with multi -f files and auto-detected .env
 func RunComposeFiles(composeFiles []string, args ...string) error {
 	var cmdArgs []string
@@ -106,6 +112,7 @@ func RunComposeFiles(composeFiles []string, args ...string) error {
 	cmdArgs = append(cmdArgs, args...)
 
 	cmd := exec.Command("docker", cmdArgs...)
+	cmd.Env = ComposeCommandEnv()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("docker %v failed: %s (%w)", cmdArgs, string(out), err)

@@ -44,3 +44,30 @@ func TestNormalizeGitURL(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildTargetComposeArgs(t *testing.T) {
+	target := ResolvedTarget{
+		StackName:    "edge",
+		ComposePath:  "/opt/oopsbox/compose.yaml",
+		ComposeFiles: []string{"/opt/oopsbox/compose.yaml", "/opt/oopsbox/compose.edge.yaml"},
+		ServiceName:  "caddy-proxy",
+	}
+
+	got := BuildTargetComposeArgs(target, "up", "-d", "--no-deps", "caddy-proxy")
+	want := []string{
+		"compose",
+		"-f", "/opt/oopsbox/compose.yaml",
+		"-f", "/opt/oopsbox/compose.edge.yaml",
+		"up", "-d", "--no-deps", "caddy-proxy",
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("BuildTargetComposeArgs() len = %d (%v), want %d (%v)", len(got), got, len(want), want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("BuildTargetComposeArgs()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+

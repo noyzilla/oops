@@ -73,3 +73,18 @@ func TestFindEnvFile(t *testing.T) {
 		t.Errorf("expected FindEnvFile to find %q, got %q", envPath, found)
 	}
 }
+
+func TestComposeCommandEnv(t *testing.T) {
+	env := orchestrator.ComposeCommandEnv()
+	found := false
+	for _, entry := range env {
+		if entry == "COMPOSE_IGNORE_ORPHANS=True" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected COMPOSE_IGNORE_ORPHANS=True in ComposeCommandEnv(), got %v", env)
+	}
+}
+

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -98,16 +99,25 @@ func ValidateAndFindTargets(ctx context.Context, action, imageURL, gitURL, conta
 
 		cFiles, hasCFiles := inspect.Config.Labels["com.docker.compose.project.config_files"]
 		cPath := ""
+		var composeFiles []string
 		if hasCFiles && cFiles != "" {
-			cPaths := strings.Split(cFiles, ",")
-			cPath = cPaths[0] // just use the first one
+			for _, p := range strings.Split(cFiles, ",") {
+				if trimmed := strings.TrimSpace(p); trimmed != "" {
+					composeFiles = append(composeFiles, trimmed)
+				}
+			}
+			if len(composeFiles) > 0 {
+				cPath = composeFiles[0]
+			}
 		} else {
 			cPath = filepath.Join(inspect.Config.Labels["com.docker.compose.project.working_dir"], "compose.yaml")
+			composeFiles = []string{cPath}
 		}
 
 		targets = append(targets, ResolvedTarget{
 			StackName:     inspect.Config.Labels["com.docker.compose.project"],
 			ComposePath:   cPath,
+			ComposeFiles:  composeFiles,
 			ServiceName:   inspect.Config.Labels["com.docker.compose.service"],
 			ContainerName: strings.TrimPrefix(inspect.Name, "/"),
 			ContainerID:   c.ID,
@@ -120,18 +130,35 @@ func ValidateAndFindTargets(ctx context.Context, action, imageURL, gitURL, conta
 	return targets, nil
 }
 
+// BuildTargetComposeArgs builds docker compose arguments with full -f chain for a ResolvedTarget
+func BuildTargetComposeArgs(target ResolvedTarget, subArgs ...string) []string {
+	args := []string{"compose"}
+	if len(target.ComposeFiles) > 0 {
+		for _, f := range target.ComposeFiles {
+			if f != "" {
+				args = append(args, "-f", f)
+			}
+		}
+	} else if target.ComposePath != "" {
+		args = append(args, "-f", target.ComposePath)
+	}
+	return append(args, subArgs...)
+}
+
 // ExecuteRecreation pulls the latest image and recreates the target containers
 func ExecuteRecreation(ctx context.Context, targets []ResolvedTarget, imageURL string, delayDur time.Duration) error {
 	for i, target := range targets {
 		log.Printf("Recreating %s...", target.ContainerName)
 
-		if target.ComposePath != "" && target.ServiceName != "" {
-			cmdPull := exec.Command("docker", "compose", "-f", target.ComposePath, "pull", target.ServiceName)
+		if (len(target.ComposeFiles) > 0 || target.ComposePath != "") && target.ServiceName != "" {
+			cmdPull := exec.Command("docker", BuildTargetComposeArgs(target, "pull", target.ServiceName)...)
+			cmdPull.Env = append(os.Environ(), "COMPOSE_IGNORE_ORPHANS=True")
 			if err := cmdPull.Run(); err != nil {
 				log.Printf("Warning: failed to compose pull %s: %v", target.ServiceName, err)
 			}
 
-			cmdUp := exec.Command("docker", "compose", "-f", target.ComposePath, "up", "-d", "--no-deps", target.ServiceName)
+			cmdUp := exec.Command("docker", BuildTargetComposeArgs(target, "up", "-d", "--no-deps", target.ServiceName)...)
+			cmdUp.Env = append(os.Environ(), "COMPOSE_IGNORE_ORPHANS=True")
 			if err := cmdUp.Run(); err != nil {
 				return fmt.Errorf("failed to recreate %s: %v", target.ServiceName, err)
 			}
@@ -305,8 +332,9 @@ func ExecuteGitPull(ctx context.Context, targets []ResolvedTarget, tag string, d
 		}
 
 		log.Printf("[%s] Restarting target container...", name)
-		if target.ComposePath != "" && target.ServiceName != "" {
-			cmdRestart := exec.Command("docker", "compose", "-f", target.ComposePath, "restart", target.ServiceName)
+		if (len(target.ComposeFiles) > 0 || target.ComposePath != "") && target.ServiceName != "" {
+			cmdRestart := exec.Command("docker", BuildTargetComposeArgs(target, "restart", target.ServiceName)...)
+			cmdRestart.Env = append(os.Environ(), "COMPOSE_IGNORE_ORPHANS=True")
 			if err := cmdRestart.Run(); err != nil {
 				log.Printf("[%s] Error restarting container via compose: %v", name, err)
 			} else {
