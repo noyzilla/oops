@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -15,29 +17,98 @@ import (
 )
 
 type containerStatusItem struct {
-	Stack     string
-	Service   string
-	Container string
-	Status    string
-	IP        string
-	Ports     string
+	ContainerID  string
+	Stack        string
+	Service      string
+	StackService string
+	Container    string
+	Image        string
+	Status       string
+	IP           string
+	Ports        string
 }
 
 func newStatusCmd() *cobra.Command {
+	var fullImage bool
+
 	cmd := &cobra.Command{
 		Use:     "status [targets...]",
 		Aliases: []string{"ps"},
 		Short:   "Displays formatted status of containers, health, IPs, and ports",
 		Long:    "Inspects and displays formatted status for active Docker containers across Oopsbox compose stacks or targeted services.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runStatus(cmd, args)
+			return runStatus(cmd, args, fullImage)
 		},
 	}
+
+	cmd.Flags().BoolVar(&fullImage, "full", false, "Display full container image path including registry and repository (-fl)")
 
 	return cmd
 }
 
-func runStatus(cmd *cobra.Command, args []string) error {
+func shortContainerID(id string) string {
+	if len(id) > 12 {
+		return id[:12]
+	}
+	return id
+}
+
+func formatContainerImage(image string, full bool) string {
+	if full || image == "" {
+		return image
+	}
+	if idx := strings.LastIndex(image, "/"); idx != -1 && idx < len(image)-1 {
+		return image[idx+1:]
+	}
+	return image
+}
+
+func extractContainerStackName(labels map[string]string) string {
+	if cFiles, ok := labels["com.docker.compose.project.config_files"]; ok && cFiles != "" {
+		var matchedStack string
+		for _, part := range strings.Split(cFiles, ",") {
+			base := filepath.Base(strings.TrimSpace(part))
+			if strings.HasPrefix(base, "compose.") && strings.HasSuffix(base, ".yaml") && !strings.HasSuffix(base, ".local.yaml") {
+				stack := strings.TrimSuffix(strings.TrimPrefix(base, "compose."), ".yaml")
+				if stack != "" {
+					matchedStack = stack
+				}
+			}
+		}
+		if matchedStack != "" {
+			return matchedStack
+		}
+	}
+	if proj := labels["com.docker.compose.project"]; proj != "" {
+		return proj
+	}
+	return "default"
+}
+
+func formatStackService(stackName, serviceName string) string {
+	if stackName == "" || stackName == "." {
+		return "/" + serviceName
+	}
+	return fmt.Sprintf("/%s/%s", strings.TrimPrefix(stackName, "/"), serviceName)
+}
+
+func renderStatusTable(out io.Writer, items []containerStatusItem) {
+	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "CONTAINER ID\tSTACK/SERVICE\tIMAGE\tSTATUS\tIP\tPORTS (*=all, #=local)")
+	for _, it := range items {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			it.ContainerID,
+			it.StackService,
+			it.Image,
+			it.Status,
+			it.IP,
+			it.Ports,
+		)
+	}
+	w.Flush()
+}
+
+func runStatus(cmd *cobra.Command, args []string, fullImage bool) error {
 	workDir := ResolveWorkDir(targetDir)
 	if err := ValidateActiveBox(workDir); err != nil {
 		return err
@@ -63,6 +134,9 @@ func runStatus(cmd *cobra.Command, args []string) error {
 			for _, r := range resolved {
 				targetMap[r.ContainerName] = true
 				targetMap[r.ServiceName] = true
+				if r.StackName != "" {
+					targetMap[fmt.Sprintf("/%s/%s", r.StackName, r.ServiceName)] = true
+				}
 			}
 		}
 	}
@@ -81,18 +155,21 @@ func runStatus(cmd *cobra.Command, args []string) error {
 			svcName = cName
 		}
 
-		stackName := inspect.Config.Labels["com.docker.compose.project"]
-		if stackName == "" {
-			stackName = "default"
-		}
+		stackName := extractContainerStackName(inspect.Config.Labels)
+		stackService := formatStackService(stackName, svcName)
+		projectLabel := inspect.Config.Labels["com.docker.compose.project"]
 
 		// Target filtering check
 		if targetMap != nil {
-			matched := targetMap[cName] || targetMap[svcName] || targetMap[stackName]
+			matched := targetMap[cName] || targetMap[svcName] || targetMap[stackName] || targetMap[stackService] || targetMap[projectLabel]
 			if !matched {
 				for _, arg := range args {
 					argClean := strings.TrimPrefix(arg, "/")
-					if strings.EqualFold(cName, argClean) || strings.EqualFold(svcName, argClean) || strings.EqualFold(stackName, argClean) || strings.Contains(strings.ToLower(cName), strings.ToLower(argClean)) {
+					if strings.EqualFold(cName, argClean) ||
+						strings.EqualFold(svcName, argClean) ||
+						strings.EqualFold(stackName, argClean) ||
+						strings.EqualFold( strings.TrimPrefix(stackService, "/"), argClean) ||
+						strings.Contains(strings.ToLower(cName), strings.ToLower(argClean)) {
 						matched = true
 						break
 					}
@@ -103,12 +180,20 @@ func runStatus(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		// Status calculation
-		status := inspect.State.Status
-		if inspect.State.Health != nil && inspect.State.Health.Status != "" {
-			status = fmt.Sprintf("%s (%s)", inspect.State.Status, inspect.State.Health.Status)
-		} else if inspect.State.ExitCode != 0 {
-			status = fmt.Sprintf("%s (%d)", inspect.State.Status, inspect.State.ExitCode)
+		// Status calculation (prefer Docker summary status which includes uptime and health, e.g. "Up 2 hours (healthy)")
+		status := strings.TrimSpace(c.Status)
+		if status == "" {
+			status = inspect.State.Status
+			if inspect.State.Health != nil && inspect.State.Health.Status != "" {
+				status = fmt.Sprintf("%s (%s)", inspect.State.Status, inspect.State.Health.Status)
+			} else if inspect.State.ExitCode != 0 {
+				status = fmt.Sprintf("%s (%d)", inspect.State.Status, inspect.State.ExitCode)
+			}
+		}
+
+		rawImage := c.Image
+		if rawImage == "" && inspect.Config != nil {
+			rawImage = inspect.Config.Image
 		}
 
 		// Extract primary IP
@@ -122,12 +207,15 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		ports := formatContainerPorts(&inspect)
 
 		items = append(items, containerStatusItem{
-			Stack:     stackName,
-			Service:   svcName,
-			Container: cName,
-			Status:    status,
-			IP:        ipStr,
-			Ports:     ports,
+			ContainerID:  shortContainerID(c.ID),
+			Stack:        stackName,
+			Service:      svcName,
+			StackService: stackService,
+			Container:    cName,
+			Image:        formatContainerImage(rawImage, fullImage),
+			Status:       status,
+			IP:           ipStr,
+			Ports:        ports,
 		})
 	}
 
@@ -144,13 +232,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return items[i].Service < items[j].Service
 	})
 
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "STACK\tSERVICE\tSTATUS\tIP\tPORTS (*=all, #=local)")
-	fmt.Fprintln(w, "----------------------------------------------------------------------------------------")
-	for _, it := range items {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", it.Stack, it.Service, it.Status, it.IP, it.Ports)
-	}
-	w.Flush()
+	renderStatusTable(cmd.OutOrStdout(), items)
 
 	return nil
 }

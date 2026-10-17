@@ -360,7 +360,6 @@ func RenderDNSTable(report *DNSReport) string {
 	} else {
 		w := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
 		fmt.Fprintln(w, "  HOSTNAME\tIP\tTYPE\tSOURCE")
-		fmt.Fprintln(w, "  ----------------------------------------------------------------------------")
 		for _, r := range report.StaticRecords {
 			fmt.Fprintf(w, "  %s\t%s\t%s\t%s\n", r.Hostname, r.IP, r.Type, r.Source)
 		}
@@ -375,7 +374,6 @@ func RenderDNSTable(report *DNSReport) string {
 	} else {
 		w := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
 		fmt.Fprintln(w, "  CONTAINER\tHOSTNAME\tIP\tTYPE\tNETWORKS")
-		fmt.Fprintln(w, "  ----------------------------------------------------------------------------")
 		for _, r := range report.DynamicRecords {
 			fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\n", r.Container, r.Hostname, r.IP, r.Type, r.Networks)
 		}

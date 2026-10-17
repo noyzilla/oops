@@ -117,7 +117,6 @@ func runIPsList(cmd *cobra.Command) error {
 
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "IP\tCONTAINER\tSERVICE\tNETWORKS\tSTATUS")
-	fmt.Fprintln(w, "----------------------------------------------------------------------------")
 	for _, it := range items {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", it.IP, it.Container, it.Service, it.Networks, it.Status)
 	}

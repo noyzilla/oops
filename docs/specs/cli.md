@@ -129,7 +129,7 @@ For each matched service in target order:
 | `oops stop` | `[targets...] [-x, --except <tgt>] [-d 0s]` | Gracefully stops target services |
 | `oops restart`| `[targets...] [-d 0s] [-i <img/alias>]` | Restarts target services with stop hooks and delay |
 | `oops down` | `[-d 0s] [--wipe-all] [-y]` | Tears down running containers |
-| `oops status` | `[targets...]` | Formatted table of containers, health status, and ports |
+| `oops status` | `[targets...] [--full, -fl]` | Formatted table of `CONTAINER ID`, `STACK/SERVICE`, `IMAGE` (shortened by default, full path with `--full` / `-fl`), `STATUS` (with uptime & health), `IP`, and `PORTS` (alias: `ps`) |
 | `oops logs` | `[targets...] [--tail 50] [-f]` | Tail service logs |
 | `oops pull` | `[targets...] [--all]` | Pulls images for targets |
 | `oops update` | `[targets...] [--all] [-i <img/alias>] [-d 0s]` | Executes sequential rolling update with health check |
