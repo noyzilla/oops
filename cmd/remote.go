@@ -28,6 +28,7 @@ func newRemoteCmd() *cobra.Command {
 
 	cmd.AddCommand(newRemoteConnectCmd())
 	cmd.AddCommand(newRemoteSetupCmd())
+	cmd.AddCommand(newRemoteRepairCmd())
 	cmd.AddCommand(newRemoteListCmd())
 	cmd.AddCommand(newRemoteRemoveCmd())
 	cmd.AddCommand(newRemoteRenameCmd())
@@ -310,6 +311,86 @@ func newRemoteSetupCmd() *cobra.Command {
 	}
 }
 
+func newRemoteRepairCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:     "repair [@<remote>]",
+		Aliases: []string{"doctor"},
+		Short:   "Audits and repairs workspace directory hierarchy and missing blueprint files",
+		Long:    "Inspects local capsule and remote server, ensuring standard Oopsbox directories, configuration overlays, and missing blueprints are initialized and synchronized.",
+		Args:    cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			workDirAbs, err := RequireOopsboxWorkspace(targetDir)
+			if err != nil {
+				return err
+			}
+
+			var remoteName string
+			if len(args) > 0 {
+				remoteName = strings.TrimPrefix(args[0], "@")
+			} else {
+				remotes, err := remote.ListRemotes(workDirAbs)
+				if err != nil {
+					return err
+				}
+				if len(remotes) == 0 {
+					return fmt.Errorf("no remote servers registered. Run 'oops remote connect @<remote>' first")
+				}
+				remoteName = remotes[0]
+				for _, r := range remotes {
+					if r == "prod" {
+						remoteName = "prod"
+						break
+					}
+				}
+			}
+
+			cfg, err := remote.LoadConfig(workDirAbs, remoteName)
+			if err != nil {
+				return fmt.Errorf("remote '@%s' not registered: %w", remoteName, err)
+			}
+
+			cmd.Printf("==> [Repair] Auditing remote environment '@%s' (%s, path: %s)...\n", remoteName, cfg.Host, cfg.Path)
+
+			// 1. Audit & Backfill Local Capsule Blueprints
+			created, err := remote.InitCapsuleBlueprints(workDirAbs, remoteName)
+			if err != nil {
+				cmd.Printf("Warning: capsule blueprint repair error: %v\n", err)
+			} else if len(created) > 0 {
+				cmd.Printf("✓ Backfilled missing capsule blueprint files in /@%s/: %s\n", remoteName, strings.Join(created, ", "))
+			} else {
+				cmd.Printf("✓ Local capsule /@%s/ manifests and credentials verified\n", remoteName)
+			}
+
+			// 2. Audit & Ensure Remote Directory Structure
+			cmd.Printf("==> [Repair] Ensuring standard Oopsbox directories on server (%s)...\n", cfg.Path)
+			if err := remote.EnsureRemoteWorkspaceDirs(cfg.Host, cfg.Path); err != nil {
+				return fmt.Errorf("failed creating remote directories: %w", err)
+			}
+			cmd.Printf("✓ Standard directories verified on server: %s/{services,config,data,backups}\n", cfg.Path)
+
+			// 3. Ensure Remote Prerequisites (docker-compose & oops CLI)
+			ready, _ := remote.CheckServerPrerequisites(cfg.Host)
+			if !ready {
+				cmd.Printf("==> [Repair] Remote server missing prerequisites. Running setup...\n")
+				if err := remote.SetupServer(cfg.Host, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+					cmd.Printf("Warning: server setup error: %v\n", err)
+				}
+			} else {
+				cmd.Printf("✓ Remote server docker compose and oops CLI verified\n")
+			}
+
+			// 4. Synchronize and deliver base manifests & capsule overlay
+			cmd.Printf("==> [Repair] Synchronizing and delivering workspace to server...\n")
+			if err := executeRemotePush(workDirAbs, remoteName, ""); err != nil {
+				return fmt.Errorf("repair push delivery failed: %w", err)
+			}
+
+			cmd.Printf("\n✓ Successfully repaired and synchronized remote '@%s'\n", remoteName)
+			return nil
+		},
+	}
+}
+
 func newRemoteListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
@@ -511,6 +592,12 @@ func newRemotePullCmd() *cobra.Command {
 			if rName == "" {
 				return fmt.Errorf("no remote server specified. Run 'oops remote connect @<host>' first")
 			}
+			cfg, err := remote.LoadConfig(workDirAbs, rName)
+			if err == nil && cfg.Host != "" {
+				_ = remote.EnsureRemoteWorkspaceDirs(cfg.Host, cfg.Path)
+			}
+			_, _ = remote.InitCapsuleBlueprints(workDirAbs, rName)
+
 			return sync.Pull(sync.Options{
 				WorkDir:    workDirAbs,
 				RemoteName: rName,
@@ -529,6 +616,10 @@ func executeRemotePush(workDirAbs, remoteName, stack string) error {
 	if err != nil {
 		return fmt.Errorf("remote '@%s' not registered: %w", remoteName, err)
 	}
+
+	// Self-healing: ensure remote directory hierarchy exists and backfill missing local blueprints
+	_ = remote.EnsureRemoteWorkspaceDirs(cfg.Host, cfg.Path)
+	_, _ = remote.InitCapsuleBlueprints(workDirAbs, remoteName)
 
 	fmt.Printf("==> Delivering workspace to remote '@%s' (%s, target path: %s)...\n", remoteName, cfg.Host, cfg.Path)
 
