@@ -110,8 +110,13 @@ Downloads configurations, overrides, and secrets from the remote server into the
 ### 4. Remote Server Management & Execution Commands
 - **List Remotes (`oops remote list`)**: Discovers and prints all registered environments by reading `/@*/remote.yaml`.
 - **Remote Setup (`oops remote setup [@<remote>]`)**: Installs or upgrades `docker-compose-plugin` and `oops` CLI binary to the latest version on the remote server over SSH.
+- **Remote Repair (`oops remote repair [@<remote>]` / `oops remote doctor`)**: Audits and repairs workspace directory hierarchy and missing blueprint files on both the local capsule and the remote server.
 - **Remove Remote (`oops remote remove @<remote>`)**: Deletes the local `/@<remote>/` directory.
 - **Remote Execute (`oops rx [@<remote>] <oops-cmd> [args...]`)**: Forwards and executes `oops` subcommands on the remote server inside the target workspace directory via SSH (e.g. `oops rx ps` -> executes `oops ps` on server).
+
+### 5. Self-Healing Workspace Invariant
+- **Automatic Idempotent Directory Guarantee**: All remote delivery operations (`oops remote push`, `oops deploy`, `oops remote pull`, `oops remote connect`, `oops remote repair`) ensure the standard Oopsbox directory structure (`<remotePath>/{services,config,data,backups}`) exists on the remote host before executing file operations.
+- **Local Capsule Blueprint Backfill**: Operations backfill missing core manifests (`compose.yaml`, `oops.yaml`, `.oopsallow`, `.env`, `config/`) idempotently without overwriting customized user files.
 
 ---
 
@@ -123,6 +128,7 @@ Downloads configurations, overrides, and secrets from the remote server into the
 | :--- | :--- | :--- |
 | `oops remote connect` | `@<remote>[:<path>] [path] [--path <p>]` | Connects to remote host, auto-bootstraps environment, initializes capsule with blueprints, writes `/@<host>/remote.yaml` |
 | `oops remote setup` | `[@<remote>]` | Installs or upgrades `docker-compose-plugin` and `oops` CLI to the latest version on the remote server |
+| `oops remote repair` | `[@<remote>]` | Audits and repairs directory structure and blueprint manifests on local capsule and remote server (alias: `doctor`) |
 | `oops remote push` | `[/<stack1>,/<stack2>] [@<remote>]` | Streams manifests and capsule overlay to remote server (filtered by `.oopsallow`; pure delivery, no auto-start) |
 | `oops remote pull` | `[/<stack1>,/<stack2>] [@<remote>]` | Downloads remote configs and manifests into local capsule `/@<remote>/` (filtered by `.oopsallow`) |
 | `oops deploy` | `[/<stack1>,/<stack2>] [@<remote>]` | Exact ergonomic alias for `oops remote push` |
