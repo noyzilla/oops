@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.4.0] - 2026-10-17
+
 ### Added
 - Automated Oopsbox directory structure provisioning (`services/`, `config/`, `data/`, `backups/`) and initial workspace delivery during `oops remote connect @<remote>` for fresh remote servers.
 - Automated `.env` generation with strong cryptographic credentials (`OOPS_SECRET` and `OOPS_DB_*_PASSWORD`) and `config/` directory initialization during capsule blueprint setup.
