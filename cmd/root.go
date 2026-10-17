@@ -43,6 +43,19 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+// NormalizeCLIArgs normalizes multi-character single-dash shorthands such as -fl to --full.
+func NormalizeCLIArgs(args []string) []string {
+	out := make([]string, len(args))
+	for i, a := range args {
+		if a == "-fl" {
+			out[i] = "--full"
+		} else {
+			out[i] = a
+		}
+	}
+	return out
+}
+
 // Execute runs the root command.
 func Execute() {
 	if handled, err := HandleDynamicRxCommands(os.Args[1:]); handled {
@@ -53,6 +66,7 @@ func Execute() {
 		return
 	}
 
+	rootCmd.SetArgs(NormalizeCLIArgs(os.Args[1:]))
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

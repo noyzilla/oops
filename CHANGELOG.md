@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [v1.9.0] - 2026-10-18
+
+### Added
+- **Enhanced `oops ps` (`oops status`) Table Columns & `--full` (`-fl`) Flag**: Added `CONTAINER ID`, unified `STACK/SERVICE` (`/<stack>/<service>` resolved from `compose.<stack>.yaml`), `IMAGE` (shortened `<image>:<tag>` by default, full registry/repository path with `--full` or `-fl`), and `STATUS` with uptime and health (`cmd/status.go`, `cmd/root.go`).
+
+### Fixed
+- **CLI Table Column Alignment**: Removed un-tabbed dashed separator lines inside `text/tabwriter` across `oops ps` (`cmd/status.go`), `oops ips` (`cmd/ip.go`), and `oops dns` (`internal/dns/inspector.go`) so header columns align with data rows like `docker ps`.
+
 ## [v1.8.1] - 2026-10-18
 
 ### Fixed
