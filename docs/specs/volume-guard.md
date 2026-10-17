@@ -44,11 +44,12 @@ Scope:
 
 ### Configuration
 ```yaml
-volume:
-  mount_prefixes: [/mnt, /media, /Volumes]   # default when omitted
+x-oops:
+  volume:
+    mount_prefixes: [/mnt, /media, /Volumes]   # default when omitted
 ```
 - Setting `mount_prefixes` replaces the default list. An empty list disables the mount check but dead-link detection stays on.
-- `priority` entries are `/stack`, `service`, or `@group`. The first matching entry decides the priority of a target.
+- `priority` entries are `/<stack>`, `/<stack>/<service>`, or `<service>`. The first matching entry decides the priority of a target.
 
 ### Backup Behavior
 - `oops backup`, `backup-db`, `backup-data`, their `prune` subcommands, and `oops restore*` refuse to run when the backup directory is a Bad Path and exit non-zero. No container is blocked.
