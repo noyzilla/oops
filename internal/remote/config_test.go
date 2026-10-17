@@ -65,4 +65,23 @@ func TestRemoteConfigManagement(t *testing.T) {
 	if len(remotesAfter) != 1 || remotesAfter[0] != "prod" {
 		t.Fatalf("expected only prod remaining, got %v", remotesAfter)
 	}
+
+	// 5. Test InitCapsuleBlueprints generates manifests, .env, and config/
+	created, err := InitCapsuleBlueprints(tempDir, "newbox")
+	if err != nil {
+		t.Fatalf("InitCapsuleBlueprints failed: %v", err)
+	}
+	if len(created) == 0 {
+		t.Errorf("expected created items, got 0")
+	}
+
+	capsuleDir := filepath.Join(tempDir, "@newbox")
+	for _, expectedFile := range []string{"compose.yaml", "oops.yaml", ".oopsallow", ".env"} {
+		if _, err := os.Stat(filepath.Join(capsuleDir, expectedFile)); err != nil {
+			t.Errorf("expected %s to be created in capsule: %v", expectedFile, err)
+		}
+	}
+	if fi, err := os.Stat(filepath.Join(capsuleDir, "config")); err != nil || !fi.IsDir() {
+		t.Errorf("expected config directory in capsule, got: %v", err)
+	}
 }

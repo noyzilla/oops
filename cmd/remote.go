@@ -215,9 +215,13 @@ func newRemoteConnectCmd() *cobra.Command {
 					cmd.Printf("Warning: pull error: %v\n", err)
 				}
 			} else if !remoteHasWorkspace && localHasFiles {
-				cmd.Printf("==> Remote workspace not found on server. Pushing local capsule configurations from '/@%s/' to server...\n", capsuleName)
-				if err := sync.Push(sync.Options{WorkDir: workDirAbs, RemoteName: capsuleName, SyncAll: true}); err != nil {
-					cmd.Printf("Warning: push error: %v\n", err)
+				cmd.Printf("==> Remote workspace not found on server. Provisioning Oopsbox directory structure at '%s'...\n", remotePath)
+				if err := remote.EnsureRemoteWorkspaceDirs(sshTarget, remotePath); err != nil {
+					cmd.Printf("Notice: could not pre-create remote directories: %v\n", err)
+				}
+				cmd.Printf("==> Pushing local capsule configurations from '/@%s/' to server...\n", capsuleName)
+				if err := executeRemotePush(workDirAbs, capsuleName, ""); err != nil {
+					cmd.Printf("Warning: initial push error: %v\n", err)
 				}
 			} else {
 				// Neither has files: initialize from blueprints
@@ -226,6 +230,16 @@ func newRemoteConnectCmd() *cobra.Command {
 					cmd.Printf("Notice: blueprint initialization: %v\n", err)
 				} else if len(created) > 0 {
 					cmd.Printf("==> Initialized capsule blueprints for /@%s/: %s\n", capsuleName, strings.Join(created, ", "))
+				}
+
+				cmd.Printf("==> Provisioning Oopsbox directory structure on server (%s)...\n", remotePath)
+				if err := remote.EnsureRemoteWorkspaceDirs(sshTarget, remotePath); err != nil {
+					cmd.Printf("Notice: could not pre-create remote directories: %v\n", err)
+				}
+
+				cmd.Printf("==> Delivering initial Oopsbox workspace to server (%s)...\n", remotePath)
+				if err := executeRemotePush(workDirAbs, capsuleName, ""); err != nil {
+					cmd.Printf("Warning: initial workspace delivery error: %v\n", err)
 				}
 			}
 
