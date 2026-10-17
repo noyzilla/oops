@@ -55,14 +55,14 @@ When executing `oops remote connect @<remote>[:<path>]`:
 - **Blueprint-Driven Initialization [การสร้างค่าเริ่มต้นเมื่อเชื่อมต่อเครื่องใหม่]**:
   - If remote server already contains `compose.yaml`, `oops.yaml`, or `.oopsallow`: Automatically pulls them down into `/@<host>/` following `.oopsallow`.
   - If remote server is fresh (no manifests): Generates capsule manifests from workspace blueprint templates:
-    - `/@<host>/compose.yaml` initialized from `compose.yaml.example` (clean shared network base).
-    - `/@<host>/oops.yaml` initialized from `oops.yaml.example` (daemon orchestrator compose manifest).
+    - `/@<host>/compose.yaml` initialized from `compose.yaml.example` (with `x-oops-stack:` and `oops_default` network).
+    - `/@<host>/oops.yaml` initialized from `oops.yaml.example` (pure `x-oops:` system configuration).
     - `/@<host>/.oopsallow` initialized from `.oopsallow.example` (bidirectional sync whitelist).
     - `/@<host>/.env` initialized from `.env.example` with cryptographically secure random `OOPS_SECRET` and `OOPS_DB_*_PASSWORD` credentials.
     - `/@<host>/config/` initialized for host-specific configuration overlays.
 - **Remote Server Oopsbox Provisioning**:
-  - Automatically ensures standard Oopsbox directory hierarchy exists on the remote host (`<remotePath>/{services,config,data,backups}`).
-  - When connecting to a fresh remote host (`!remoteHasWorkspace`), performs initial streaming delivery of required service templates and capsule overlay manifests directly to the remote server so the Oopsbox workspace is fully initialized and operational immediately upon connection.
+  - Automatically ensures standard Oopsbox directory hierarchy exists on the remote host (`<remotePath>/{config,data,backups}`).
+  - When connecting to a fresh remote host (`!remoteHasWorkspace`), performs initial streaming delivery of required stack manifests (`compose.<stack>.yaml`) and capsule overlay manifests directly to the remote server so the Oopsbox workspace is fully initialized and operational immediately upon connection.
 - **Capsule Isolation Invariant**: All remote host manifests (`.env`, `compose.yaml`, `oops.yaml`, `compose*.local.yaml`, `config/`) remain strictly inside `/@<host>/` and never mutate root workspace files.
 
 #### Automated Prerequisite Bootstrap [การติดตั้ง Prerequisite อัตโนมัติ]
@@ -85,20 +85,20 @@ Pure streaming delivery of application manifests and capsule overrides. **No aut
 - **Target Specification (`[/<stack1>,/<stack2>] [@<remote>]`)**:
   - Operators can target a single stack (`/app`) or a cluster of stacks using comma-separated notation (`/app,/db`).
   - Order-agnostic: `@<remote>` can be specified before or after target stacks.
-  - **Capsule-Scoped Default Delivery (Omitted Stack Invariant)**: When no target stack `/stack` is specified (e.g. `oops deploy @remote` or `oops remote push @remote`), scope is strictly bound to the target capsule `/@<remote>/`. The resolver inspects only stacks declared in the capsule (`/@<remote>/compose.<stack>.yaml`), stacks declared in `/@<remote>/compose.<stack>.local.yaml`, and service templates/groups declared in `/@<remote>/compose.yaml` (under `x-oops-groups:`, `x-oops-services:`, or `services:`). Root workspace stacks (`compose.<stack>.yaml`) that are NOT present in the capsule are strictly ignored and never shipped to the remote.
-- **Strict Pre-Flight Dependency Guard (Zero-Accidental Leak Invariant)**:
-  - If a targeted stack depends on another stack (e.g. `/app` references `/db/mysql` or `x-oops-depends: [db]`):
-    - **Remote Capsule Scope Precedence**: If `/db` is already declared in `/@<remote>/compose.db.yaml` (or within capsule base `compose.yaml`), the push proceeds without error because `@<remote>` local scope already provides it.
-    - **Explicit Inclusion Requirement**: If `/db` exists ONLY in the root workspace `compose.db.yaml` and is NOT in `/@<remote>/`, pushing `/app` alone is strictly rejected with Exit Code 1. The operator MUST explicitly include it (`/app,/db`) to confirm intention to ship the root stack manifest.
-- **Step 1 — Base Manifest Streaming**:
-  - Resolves required services via Dependency Resolution Algorithm (`x-oops-services:` + `depends_on:` in `compose.<stack>.yaml` and `/@<remote>/compose.yaml`, plus remote overrides `/@<remote>/compose.local.yaml` and `/@<remote>/compose.<stack>.local.yaml`).
-  - **Local & Remote Precedence Invariant**: If a service is already declared under `services:` in the stack or within the `@remote` capsule (including `/@<remote>/services/*.yaml`), the algorithm strictly avoids pulling or streaming matching templates from workspace root `services/<service>.yaml` and `config/<service>/`.
-  - Streams selected `compose.<stack>.yaml` (for stacks not overridden in `/@<remote>/`), resolved `services/<service>.yaml`, and matching `config/<service>/`.
+  - **Capsule-Scoped Default Delivery (Omitted Stack Invariant)**: When no target stack `/stack` is specified (e.g. `oops deploy @remote` or `oops remote push @remote`), scope is strictly bound to the target capsule `/@<remote>/`. The resolver inspects only stacks declared in the capsule (`/@<remote>/compose.<stack>.yaml`) and stacks/services referenced in `/@<remote>/compose.yaml` under `x-oops-stack:`. Root workspace stacks (`compose.<stack>.yaml`) that are NOT present or referenced in the capsule are strictly ignored and never shipped to the remote.
+- **Strict Pre-Flight Dependency Guard & `depends_on` Warnings**:
+  - If a targeted stack depends on another stack (e.g. `/app` has `depends_on: [mysql]` or `x-oops-stack: [/db/mysql]`):
+    - **Remote Capsule Scope Precedence**: If `/db` is already declared in `/@<remote>/compose.db.yaml` or referenced in `/@<remote>/compose.yaml` (`x-oops-stack:`), the push proceeds without error because `@<remote>` local scope already provides it.
+    - **Explicit Inclusion Requirement**: When an explicit stack target (e.g. `oops deploy /app @remote`) is given and `/db` exists ONLY in the root workspace `compose.db.yaml` and is NOT in `/@<remote>/`, pushing `/app` alone is strictly rejected with Exit Code 1. The operator MUST explicitly include it (`/app,/db`) or declare `/db` in `x-oops-stack:`.
+    - **Undeclared `depends_on` Pre-Flight Warning**: If a service in `compose.<stack>.yaml` declares `depends_on: [<target>]`, and `<target>` is omitted from `x-oops-stack:` (either a local service omitted from `compose.<stack>.yaml`'s `x-oops-stack:`, or a cross-stack service not declared in `compose.<stack>.yaml` or `/@<remote>/compose.yaml` `x-oops-stack:`), the CLI emits an explicit warning (`! Warning: ...`) during `oops deploy` / `oops remote push` to alert the operator that the dependency will not auto-start on `oops up`.
+- **Step 1 — Base Stack & Config Streaming**:
+  - Resolves required stacks (`compose.<stack>.yaml`) and service configuration directories (`config/<service>/`) referenced via `x-oops-stack:` and `depends_on:`.
+  - **Local & Remote Precedence Invariant**: If a stack `compose.<stack>.yaml` or `config/<service>/` is already overridden within the `/@<remote>/` capsule, the algorithm strictly avoids streaming the root workspace copy so the capsule version takes precedence.
   - Excludes local `./compose.yaml`, `./oops.yaml`, `oopsbox.yaml`, `*.local.yaml`, `/@*`, `.git`, `.scratch`, and `data/`.
 - **Step 2 — Capsule Overlay Streaming (Filtered via `.oopsallow`)**:
   - Streams files in `/@<remote>/` that strictly match `/@<remote>/.oopsallow` (`compose.yaml` -> `~/oopsbox/compose.yaml`, `oops.yaml` -> `~/oopsbox/oops.yaml`, `.env`, `compose.local.yaml`, `compose.<stack>.local.yaml`, `compose.<stack>.yaml`, `config/*`).
 - **Step 3 — Post-Delivery Prompt**:
-  - Outputs summary of transferred manifests.
+  - Outputs summary of transferred manifests (and any pre-flight `depends_on` warnings).
   - Prompts operator: `==> Push complete. Run 'oops rx [@<remote>] up [/<stack1>,/<stack2>]' to start or restart services.`
 
 #### Incoming Synchronization: `oops remote pull`
@@ -116,7 +116,7 @@ Downloads configurations, overrides, and secrets from the remote server into the
 - **Remote Execute (`oops rx [@<remote>] <oops-cmd> [args...]`)**: Forwards and executes `oops` subcommands on the remote server inside the target workspace directory via SSH (e.g. `oops rx ps` -> executes `oops ps` on server).
 
 ### 5. Self-Healing Workspace Invariant
-- **Automatic Idempotent Directory Guarantee**: All remote delivery operations (`oops remote push`, `oops deploy`, `oops remote pull`, `oops remote connect`, `oops remote repair`) ensure the standard Oopsbox directory structure (`<remotePath>/{services,config,data,backups}`) exists on the remote host before executing file operations.
+- **Automatic Idempotent Directory Guarantee**: All remote delivery operations (`oops remote push`, `oops deploy`, `oops remote pull`, `oops remote connect`, `oops remote repair`) ensure the standard Oopsbox directory structure (`<remotePath>/{config,data,backups}`) exists on the remote host before executing file operations.
 - **Local Capsule Blueprint Backfill**: Operations backfill missing core manifests (`compose.yaml`, `oops.yaml`, `.oopsallow`, `.env`, `config/`) idempotently without overwriting customized user files.
 
 ---

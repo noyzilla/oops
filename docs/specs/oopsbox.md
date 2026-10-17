@@ -22,7 +22,7 @@ synapses: ["ARCHITECTURE.md", "CONTEXT.md", "docs/specs/cli.md", "docs/specs/dns
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Oops Box Manager (`oops box`)**: Native Go CLI command group for creating, activating, starting, switching, and securing Oopsbox workspaces.
 - **Active Box State (`~/.oops/active_box`)**: System file recording the absolute path of the currently active Oopsbox workspace on the machine.
-- **Release Blueprint (`oopsbox.tar.gz`)**: Tarball release asset containing the clean Oopsbox workspace structure (`compose.yaml`, `compose.yaml.example`, `oops.yaml`, `oops.yaml.example`, `oopsbox.yaml.example`, `.oopsallow.example`, `services/`, `config/`, `data/`).
+- **Release Blueprint (`oopsbox.tar.gz`)**: Tarball release asset containing the clean Oopsbox workspace structure (`compose.yaml`, `compose.yaml.example`, `compose.edge.yaml`, `compose.db.yaml`, `compose.storage.yaml`, `compose.tools.yaml`, `oops.yaml`, `oops.yaml.example`, `oopsbox.yaml.example`, `.oopsallow.example`, `config/`, `data/`).
 - **VM / Container Engine**: The underlying virtualization and container engine (`orbstack`, `colima`, or `docker`).
 - **Local TLD Resolver**: macOS `/etc/resolver/<domain>` entry forwarding local domain resolution to the Oops embedded DNS watcher.
 - **Local Root CA**: Caddy-generated internal root certificate installed into the host OS trust store or macOS Keychain.
@@ -40,19 +40,24 @@ When provisioning a new workspace via `oops box init [path]`:
 - **Default Config Initialization**: Copies `oopsbox.yaml.example` to `oopsbox.yaml` if `oopsbox.yaml` does not exist.
 - **Automatic Active Box Registration**: Automatically writes the new workspace canonical path to `~/.oops/active_box`.
 
-### Manifest Architecture (`compose.yaml` & `oops.yaml`)
-Oopsbox decouples base infrastructure definitions from the Oops orchestrator daemon:
-- **`compose.yaml`**: The primary root compose manifest defining common networks (`oops_edge`, `oops_db`) and group definitions (`x-oops-groups:`).
-- **`oops.yaml`**: The orchestrator compose manifest containing the `oops` daemon service definition, joined to `oops_edge` (as an external network), and encapsulating orchestrator configuration under extension field `x-oops:` (`registries`, `backups`, `dns`, `volume`).
+### Manifest Architecture & Stack-Scoped Network Isolation
+Oopsbox enforces a **Pure Stack Architecture** with network micro-segmentation and pure configuration separation:
+- **`compose.yaml`**: The primary root compose manifest defining `x-oops-stack:` (boot order and auto-start whitelist, e.g. `[/edge, /db, /tools]`) and the default untrusted bridge network (`default: name: oops_default`). Containers without an explicit `networks:` block fall into `oops_default` and cannot access databases or internal services.
+- **`compose.<stack>.yaml`**: Self-contained infrastructure and application stack files declaring their own services, internal `x-oops-stack:` auto-start order, and stack-scoped bridge networks:
+  - `compose.edge.yaml`: Contains `caddy-proxy` and `oops` (daemon), and defines `oops_edge` bridge network.
+  - `compose.db.yaml`: Contains `mysql`, `postgres`, and `redis`, and defines `oops_db` bridge network.
+  - `compose.storage.yaml`: Contains `seaweedfs` object storage and defines `oops_storage` bridge network.
+  - `compose.tools.yaml`: Contains developer utilities (`httpbin`, `mailpit`) joined to `oops_edge`.
+- **`oops.yaml`**: Pure Oops system configuration file holding `x-oops:` settings (`secret`, `db`, `orchestrator`, `backup`, `dns`, `volume`, `registries`). It contains NO `services:` or `networks:` definitions.
 
-### Persistent Volumes & Configuration Mapping (The Service Triad)
-To maintain a clean and standardized workspace structure, Oopsbox enforces strict conventions for mapping container data volumes and configurations onto the host filesystem:
+### Persistent Volumes & Configuration Mapping (The Stack & Service Triad)
+To maintain a clean and standardized workspace structure, Oopsbox enforces strict conventions for mapping stack manifests, container data volumes, and configurations onto the host filesystem:
 
-- **The Canonical Service Triad**:
-  - Service container manifests MUST reside in `./services/<service>.yaml`
+- **The Canonical Stack & Service Triad**:
+  - Stack container manifests MUST reside in `./compose.<stack>.yaml`
   - Service configurations MUST be mapped to `./config/<service>/`
   - Persistent runtime data MUST be mapped to `./data/<service>/`
-  - Example: `./services/mysql.yaml`, `./config/mysql/my.cnf`, `./data/mysql/`
+  - Example: `./compose.db.yaml`, `./config/mysql/my.cnf`, `./data/mysql/`
 
 - **Global / Shared Volumes (Cross-Project Data)**:
   - For data or configuration that is explicitly shared across multiple projects, prepend the directory name with an underscore (`_`).

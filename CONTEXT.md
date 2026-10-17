@@ -14,20 +14,18 @@ This document establishes the official domain glossary and ubiquitous language f
 
 ### Entity: Oopsbox
 - **Canonical Term**: `Oopsbox`
-- **Definition**: The complete host deployment environment encapsulating base compose manifests (`compose.yaml`), service templates (`services/`), configuration overlays (`config/`), live data storage (`data/`), backup dumps (`backups/`), and environment configuration (`.env`).
+- **Definition**: The complete host deployment environment encapsulating base compose manifests (`compose.yaml`, `compose.<stack>.yaml`), pure system configuration (`oops.yaml`), configuration overlays (`config/`), live data storage (`data/`), backup dumps (`backups/`), and environment configuration (`.env`).
 - **Standard Default Locations**: `~/oopsbox` (Local Dev) and `/opt/oopsbox` (Production Server).
-
-### Entity: Group
-- **Canonical Term**: `Group`
-- **Definition**: A logical aggregation of service templates declared within `compose.yaml` under `x-oops-groups:` (e.g. `db: [mysql, redis]`).
-- **CLI Notation**: `+<group>` (e.g. `+db`, `+monitoring`).
-- **Avoid**: `bundle`, `cluster`, `environment`, `pod`
 
 ### Entity: Stack
 - **Canonical Term**: `Stack`
-- **Definition**: An application or stack composition defined in `compose.<stack>.yaml` at the project root, optionally paired with machine override `compose.<stack>.local.yaml`.
-- **CLI Notation**: `/<stack>` (e.g. `/myapp`, `/crm`).
-- **Avoid**: `project`, `project stack`, `bundle`, `app_instance`
+- **Definition**: An infrastructure or application composition defined in `compose.<stack>.yaml` at the project root (e.g. `compose.edge.yaml`, `compose.db.yaml`, `compose.tools.yaml`, `compose.myapp.yaml`), optionally paired with machine override `compose.<stack>.local.yaml`.
+- **CLI Notation**: `/<stack>` (e.g. `/edge`, `/db`, `/tools`, `/myapp`) or `/<stack>/<service>` (e.g. `/db/mysql`).
+- **Avoid**: `project`, `project stack`, `bundle`, `app_instance`, `group`
+
+### Entity: Stack Auto-Start & Order (`x-oops-stack`)
+- **Canonical Term**: `x-oops-stack`
+- **Definition**: An ordered list in `compose.yaml` or `compose.<stack>.yaml` that acts as both an explicit auto-start whitelist for `oops up` and a deterministic top-to-bottom boot sequence.
 
 ### Entity: Capsule Blueprint
 - **Canonical Term**: `Capsule Blueprint`
@@ -36,12 +34,6 @@ This document establishes the official domain glossary and ubiquitous language f
 ### Entity: Synchronization Whitelist
 - **Canonical Term**: `Synchronization Whitelist` / `.oopsallow`
 - **Definition**: A default-deny filter file residing in `/@<remote>/.oopsallow` that specifies the exact file patterns permitted for bidirectional synchronization (`oops remote push` and `oops remote pull`).
-
-### Entity: Service Template
-- **Canonical Term**: `Service Template`
-- **Definition**: Pure, atomic service definitions residing in `services/<service>.yaml` (e.g. `services/mysql.yaml`, `services/redis.yaml`).
-- **Permitted Synonyms**: `service_module`
-- **Avoid**: `microservice`, `app_instance`
 
 ### Entity: Remote & Environment Overlay
 - **Canonical Term**: `Remote` / `Environment Overlay`
@@ -61,9 +53,9 @@ This document establishes the official domain glossary and ubiquitous language f
 ### Entity: Target
 - **Canonical Term**: `Target`
 - **Definition**: The user-supplied identifier passed to CLI commands, resolving to:
-  - Exact service: `<service>` (e.g. `mysql`) -> auto-detects `services/<service>.yaml`.
-  - Service group: `+<group>` (e.g. `+db`) -> resolves member templates from `x-oops-groups:`.
-  - Application stack: `/<stack>` (e.g. `/myapp`) -> executes `compose.<stack>.yaml`.
+  - Stack: `/<stack>` (e.g. `/edge`, `/db`, `/myapp`) -> executes `compose.<stack>.yaml` (honoring `x-oops-stack:`).
+  - Scoped stack service: `/<stack>/<service>` (e.g. `/db/mysql`) -> targets `<service>` in `compose.<stack>.yaml`.
+  - Bare service: `<service>` (e.g. `mysql`) -> resolves `<service>` across `compose.<stack>.yaml` files.
   - Remote overlay: `@<remote>` (e.g. `@prod`) -> targets `/@<remote>/`.
 - **Permitted Synonyms**: `target_pattern`, `target_selector`
 
@@ -95,10 +87,9 @@ To ensure complete naming parity across CLI subcommands, developer documentation
 | Sigil | Domain Target | Meaning / Resolves To | Example Syntax |
 | :--- | :--- | :--- | :--- |
 | **`@`** | **Remote Host Capsule** | Target remote server capsule at `/@<remote>/` | `@prod`, `@staging`, `@192.168.1.50` |
-| **`/`** | **Application Stack** | Dedicated application composition at `compose.<stack>.yaml` | `/myapp`, `/api`, `/worker` |
-| **`+`** | **Service Group** | Aggregated service group declared in `compose.yaml` under `x-oops-groups:` | `+db`, `+monitoring` |gregated service group declared in `compose.yaml` under `x-groups:` | `+db`, `+monitoring` |
+| **`/`** | **Stack / Scoped Service** | Stack composition at `compose.<stack>.yaml` or specific service within it | `/edge`, `/db`, `/db/mysql`, `/myapp` |
 | **`.`** | **Internal Subsystem** | Internal system services (e.g. DNS daemon) | `.dns` |
-| *(none)* | **Service Template** | Atomic reusable service definition at `services/<service>.yaml` | `mysql`, `redis`, `caddy` |
+| *(none)* | **Bare Service Name** | Service resolved across `compose.<stack>.yaml` manifests | `mysql`, `redis`, `caddy-proxy` |
 
 ### 2. Argument Bracketing & Sigil-Outside Invariant [กฎการใช้วงเล็บและ Sigil อยู่นอกวงเล็บ]
 
@@ -109,8 +100,8 @@ To ensure complete naming parity across CLI subcommands, developer documentation
   - Always wrapped in square brackets as `[sigil<placeholder>]` or `[placeholder]` (e.g. `[@<remote>]`, `[/<stack>]`, `[<service>]`).
   - Examples: `oops deploy [/<stack>] [@<remote>]`, `oops remote push [/<stack>] [@<remote>]`, `oops remote pull [/<stack>] [@<remote>]`, `oops rx [@<remote>] <cmd>`.
 - **Sigil-Outside Invariant (Anti-HTML Collision Guard) [กฎ Sigil อยู่นอกวงเล็บแหลม]**:
-  - Sigils (`@`, `/`, `+`) MUST strictly reside outside angle brackets `<...>`.
-  - **Correct**: `[@<remote>]`, `[/<stack>]`, `[+<group>]`, `@<remote>`, `/<stack>`.
+  - Sigils (`@`, `/`) MUST strictly reside outside angle brackets `<...>`.
+  - **Correct**: `[@<remote>]`, `[/<stack>]`, `@<remote>`, `/<stack>`.
   - **Forbidden**: `[<@remote>]`, `[</stack>]`, `</stack>`. (Placing `/` inside `<...>` collides with HTML/XML closing tags like `</stack>` in Markdown renderers, syntax highlighters, and terminal parsers).
 
 ---

@@ -1,23 +1,9 @@
-x-oops-groups:
-  edge:
-    - caddy-proxy
-  db:
-    - mysql
-    - postgres
-    - redis
-  tools:
-    - httpbin
-    - mailpit
+x-oops-stack:
+  - /edge
+  - /db
+  - /tools
+  # - /storage
 
 networks:
   default:
     name: oops_default
-  oops_edge:
-    name: oops_edge
-    driver: bridge
-  oops_db:
-    name: oops_db
-    driver: bridge
-  oops_storage:
-    name: oops_storage
-    driver: bridge

@@ -630,14 +630,18 @@ func executeRemotePush(workDirAbs, remoteName, stack string) error {
 		return fmt.Errorf("failed resolving service dependencies: %w", err)
 	}
 
+	for _, w := range inspector.Warnings {
+		fmt.Printf("Warning: %s\n", w)
+	}
+
 	var baseFiles []string
 	baseFiles = append(baseFiles, inspector.StackFiles...)
 	baseFiles = append(baseFiles, inspector.ServiceFiles...)
 	baseFiles = append(baseFiles, inspector.ConfigFiles...)
 
 	if len(baseFiles) > 0 {
-		fmt.Printf("    Selective Base: %d stack manifest(s), %d service template(s), %d config dir(s)\n",
-			len(inspector.StackFiles), len(inspector.ServiceFiles), len(inspector.ConfigFiles))
+		fmt.Printf("    Selective Base: %d stack manifest(s), %d config dir(s)\n",
+			len(inspector.StackFiles), len(inspector.ConfigFiles))
 		if err := remote.StreamTarFilesSSH(workDirAbs, baseFiles, cfg.Host, cfg.Path); err != nil {
 			return fmt.Errorf("base manifest streaming failed: %w", err)
 		}

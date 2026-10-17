@@ -9,89 +9,32 @@ import (
 )
 
 const defaultComposeExample = `# ==============================================================================
-# Oops Remote Base Manifest Blueprint (compose.yaml.example)
+# Oops Base Manifest Blueprint (compose.yaml.example)
 # ==============================================================================
-# Minimal infrastructure skeleton used to initialize /@<remote>/compose.yaml
-# Defines lifecycle service groups and shared infrastructure networks.
+# Defines stack/service auto-start order (x-oops-stack) and default network.
+# Services or stacks omitted from x-oops-stack will not auto-start on 'oops up'.
 # ==============================================================================
 # name: oops
 
-# Targetable service groups for batch operations (e.g. oops up +db, oops stop +edge)
-# Use service name directly (e.g. caddy-proxy, mysql) or project/stack with leading slash (e.g. /tools)
-x-oops-groups:
-  edge:
-    - caddy-proxy
-  db:
-    - mysql
-    - postgres
-    - redis
-  # lab:
-  #   - caddy-proxy
-  #   - mysql
-  #   - /tools
-  #   - /tools2/redis
-
-# Runtime dependencies: services that must be auto-started along with this stack
-# (use name for services/, or /<stack>/<service> / /<stack> for cross-stack)
-# x-oops-depends:
-#   - mysql
-#   - /tools2/redis
-
-# Service templates or stacks bundled into compose chain without auto-starting
-# x-oops-services:
-#   - mailpit
-#   - /tools
+x-oops-stack:
+  - /edge
+  - /db
+  # - /storage
+  # - /tools
+  # - /db/mysql
+  # - /db/redis
+  # - /crm
 
 networks:
   default:
     name: oops_default
-  oops_edge:
-    name: oops_edge
-    driver: bridge
-  oops_db:
-    name: oops_db
-    driver: bridge
-  oops_storage:
-    name: oops_storage
-    driver: bridge
 `
 
 const defaultOopsExample = `# ==============================================================================
-# Oops Orchestrator Compose Manifest Blueprint (oops.yaml.example)
+# Oops System-Level Orchestrator Settings Blueprint (oops.yaml.example)
 # ==============================================================================
-services:
-  oops:
-    image: ghcr.io/noyzilla/oops:latest
-    container_name: oops
-    hostname: oops.oops
-    restart: unless-stopped
-    entrypoint: [ "oops" ]
-    command: [ "server" ]
-    environment:
-      OOPS_SECRET: ${OOPS_SECRET:?OOPS_SECRET must be set}
-      OOPS_DB_MYSQL_PASSWORD: ${OOPS_DB_MYSQL_PASSWORD:-}
-      OOPS_DB_POSTGRES_PASSWORD: ${OOPS_DB_POSTGRES_PASSWORD:-}
-      OOPS_DB_REDIS_PASSWORD: ${OOPS_DB_REDIS_PASSWORD:-}
-    labels:
-      caddy: "${OOPS_DOMAIN:-oops.web.oops}"
-      caddy.reverse_proxy: "{{upstreams 8080}}"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./:/oopsbox
-    working_dir: /oopsbox
-    networks:
-      - oops_edge
-    healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/healthz" ]
-      interval: 10s
-      timeout: 3s
-      start_period: 3s
-      retries: 3
-
-networks:
-  oops_edge:
-    external: true
-
+# Pure configuration file for the Oops CLI and Orchestrator daemon.
+# ==============================================================================
 x-oops:
   secret: ${OOPS_SECRET:-}
 
@@ -133,7 +76,7 @@ const defaultOopsAllowExample = `# =============================================
 /.env
 /compose.yaml
 /oops.yaml
-/compose*.local.yaml
+/compose*.yaml
 /config/**
 `
 

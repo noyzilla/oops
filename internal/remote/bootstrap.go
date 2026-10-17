@@ -318,7 +318,7 @@ func ExecuteRemoteSSH(sshTarget, script string) (string, error) {
 
 // EnsureRemoteWorkspaceDirs ensures standard Oopsbox directory hierarchy exists on remote host.
 func EnsureRemoteWorkspaceDirs(sshTarget, remotePath string) error {
-	mkdirCmd := fmt.Sprintf("mkdir -p %s/services %s/config %s/data %s/backups", remotePath, remotePath, remotePath, remotePath)
+	mkdirCmd := fmt.Sprintf("mkdir -p %s/config %s/data %s/backups", remotePath, remotePath, remotePath)
 	_, err := ExecuteRemoteSSH(sshTarget, mkdirCmd)
 	return err
 }

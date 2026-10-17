@@ -74,7 +74,7 @@ func TestResolveRequiredDependencies_RemoteLocalPrecedence(t *testing.T) {
 
 	// 2. Workspace root service templates: mysql (8.0), redis
 	_ = os.MkdirAll(filepath.Join(tempDir, "services"), 0755)
-	_ = os.WriteFile(filepath.Join(tempDir, "services", "mysql.yaml"), []byte("services: { mysql: { image: 'mysql:8.0' } }\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "services", "mysql.yaml"), []byte("services: { mysql: { image: 'mysql:8.4' } }\n"), 0644)
 	_ = os.WriteFile(filepath.Join(tempDir, "services", "redis.yaml"), []byte("services: { redis: {} }\n"), 0644)
 
 	// 3. Capsule @prod defines custom redis in capsule services/
@@ -112,7 +112,7 @@ func TestResolveRequiredDependencies_Case1_RemoteCapsuleService(t *testing.T) {
 	_ = os.MkdirAll(capsuleDir, 0755)
 	_ = os.WriteFile(filepath.Join(capsuleDir, "compose.yaml"), []byte(`services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.4
 `), 0644)
 
 	inspector, err := ResolveRequiredDependencies(tempDir, "app", "remote")
@@ -131,7 +131,7 @@ func TestResolveRequiredDependencies_Case2_CrossStackDependency(t *testing.T) {
 
 	_ = os.WriteFile(filepath.Join(tempDir, "compose.db.yaml"), []byte(`services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.4
 `), 0644)
 
 	_ = os.WriteFile(filepath.Join(tempDir, "compose.app.yaml"), []byte(`x-oops-services:
@@ -267,24 +267,17 @@ services:
 	}
 }
 
-func TestResolveRequiredDependencies_OopsGroupsAndServiceAlias(t *testing.T) {
+func TestResolveRequiredDependencies_XOopsStackAndServiceAlias(t *testing.T) {
 	tempDir := t.TempDir()
 
-	_ = os.MkdirAll(filepath.Join(tempDir, "services"), 0755)
-	_ = os.WriteFile(filepath.Join(tempDir, "services", "caddy.yaml"), []byte("services:\n  caddy-proxy:\n    image: lucaslorentz/caddy-docker-proxy:alpine\n"), 0644)
-	_ = os.WriteFile(filepath.Join(tempDir, "services", "mysql.yaml"), []byte("services:\n  mysql:\n    image: mysql:8.0\n"), 0644)
-	_ = os.WriteFile(filepath.Join(tempDir, "services", "postgres.yaml"), []byte("services:\n  postgres:\n    image: postgres:16-alpine\n"), 0644)
-	_ = os.WriteFile(filepath.Join(tempDir, "services", "redis.yaml"), []byte("services:\n  redis:\n    image: redis:7-alpine\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "compose.edge.yaml"), []byte("services:\n  caddy-proxy:\n    image: lucaslorentz/caddy-docker-proxy:alpine\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "compose.db.yaml"), []byte("services:\n  mysql:\n    image: mysql:8.4\n  postgres:\n    image: postgres:16-alpine\n  redis:\n    image: redis:7-alpine\n"), 0644)
 
 	capsuleDir := filepath.Join(tempDir, "@b9tpe")
 	_ = os.MkdirAll(capsuleDir, 0755)
-	_ = os.WriteFile(filepath.Join(capsuleDir, "compose.yaml"), []byte(`x-oops-groups:
-  edge:
-    - caddy-proxy
-  db:
-    - mysql
-    - postgres
-    - redis
+	_ = os.WriteFile(filepath.Join(capsuleDir, "compose.yaml"), []byte(`x-oops-stack:
+  - /edge
+  - /db
 `), 0644)
 
 	inspector, err := ResolveRequiredDependencies(tempDir, "", "b9tpe")
@@ -293,19 +286,17 @@ func TestResolveRequiredDependencies_OopsGroupsAndServiceAlias(t *testing.T) {
 	}
 
 	expectedFiles := map[string]bool{
-		filepath.Join("services", "caddy.yaml"):    false,
-		filepath.Join("services", "mysql.yaml"):    false,
-		filepath.Join("services", "postgres.yaml"): false,
-		filepath.Join("services", "redis.yaml"):    false,
+		"compose.edge.yaml": false,
+		"compose.db.yaml":   false,
 	}
-	for _, sf := range inspector.ServiceFiles {
+	for _, sf := range inspector.StackFiles {
 		if _, ok := expectedFiles[sf]; ok {
 			expectedFiles[sf] = true
 		}
 	}
 	for file, found := range expectedFiles {
 		if !found {
-			t.Errorf("expected %s in ServiceFiles, got: %v", file, inspector.ServiceFiles)
+			t.Errorf("expected %s in StackFiles, got: %v", file, inspector.StackFiles)
 		}
 	}
 }
@@ -360,3 +351,51 @@ func TestResolveRequiredDependencies_OmittedStackCapsuleScope(t *testing.T) {
 	}
 }
 
+func TestResolveRequiredDependencies_XOopsStackAndDependsOnWarning(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Root workspace stacks: compose.edge.yaml, compose.db.yaml, compose.app.yaml, compose.unused.yaml
+	_ = os.WriteFile(filepath.Join(tempDir, "compose.edge.yaml"), []byte("services:\n  caddy-proxy:\n    image: caddy:latest\n  oops:\n    image: oops:latest\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "compose.db.yaml"), []byte("services:\n  mysql:\n    image: mysql:8.4\n  redis:\n    image: redis:7\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "compose.app.yaml"), []byte(`services:
+  app1:
+    image: app1:latest
+    depends_on:
+      - mysql
+`), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "compose.unused.yaml"), []byte("services:\n  unused:\n    image: unused:latest\n"), 0644)
+
+	// Capsule compose.yaml declares x-oops-stack with /edge and /app, but omits /db!
+	capsuleDir := filepath.Join(tempDir, "@prod")
+	_ = os.MkdirAll(capsuleDir, 0755)
+	_ = os.WriteFile(filepath.Join(capsuleDir, "compose.yaml"), []byte(`x-oops-stack:
+  - /edge
+  - /app
+`), 0644)
+
+	inspector, err := ResolveRequiredDependencies(tempDir, "", "prod")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should include compose.edge.yaml, compose.app.yaml, and transitive compose.db.yaml, but NOT compose.unused.yaml
+	for _, sf := range inspector.StackFiles {
+		if sf == "compose.unused.yaml" {
+			t.Errorf("compose.unused.yaml should not be included in StackFiles")
+		}
+	}
+
+	// Because app1 has depends_on: [mysql] and /db (or /db/mysql) is NOT in x-oops-stack, a warning MUST be generated!
+	if len(inspector.Warnings) == 0 {
+		t.Fatalf("expected pre-flight warning for undeclared depends_on 'mysql' in x-oops-stack, got 0 warnings")
+	}
+	foundWarn := false
+	for _, w := range inspector.Warnings {
+		if strings.Contains(w, "mysql") && strings.Contains(w, "x-oops-stack") {
+			foundWarn = true
+		}
+	}
+	if !foundWarn {
+		t.Errorf("expected warning mentioning mysql and x-oops-stack, got: %v", inspector.Warnings)
+	}
+}

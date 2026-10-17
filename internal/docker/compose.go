@@ -12,9 +12,18 @@ import (
 type ComposeConfig struct {
 	Version       string                    `yaml:"version,omitempty"`
 	Services      map[string]ComposeService `yaml:"services"`
-	XOopsGroups   map[string][]string       `yaml:"x-oops-groups,omitempty"`
+	XOopsStack    []string                  `yaml:"x-oops-stack,omitempty"`
+	XOopsStacks   []string                  `yaml:"x-oops-stacks,omitempty"`
 	XOopsServices []string                  `yaml:"x-oops-services,omitempty"`
 	XOopsDepends  []string                  `yaml:"x-oops-depends,omitempty"`
+}
+
+// GetXOopsStack returns the unified ordered stack/service entries from x-oops-stack (or x-oops-stacks).
+func (c *ComposeConfig) GetXOopsStack() []string {
+	var list []string
+	list = append(list, c.XOopsStack...)
+	list = append(list, c.XOopsStacks...)
+	return list
 }
 
 // ComposeService represents a service inside docker-compose.yml

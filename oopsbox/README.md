@@ -8,14 +8,17 @@ Oopsbox is the production-ready, turnkey Infrastructure as Code (IaC) blueprint 
 ~/oopsbox/                # Standard Root Directory (or /opt/oopsbox on production)
 ├── .env                  # Environment variables & secrets (copy from .env.example)
 ├── .env.example          # Credentials template (Committed)
-├── oops.yaml             # Daemon orchestrator compose manifest & x-oops config (Committed)
-├── oops.yaml.example     # Daemon orchestrator blueprint for remote /@<remote>/oops.yaml
+├── oops.yaml             # Pure Oops system configuration (x-oops:) (Committed)
+├── oops.yaml.example     # Pure Oops config blueprint for remote /@<remote>/oops.yaml
 ├── oopsbox.yaml          # Local Workstation Engine & DNS settings (git-ignored)
 ├── oopsbox.yaml.example  # Workstation configuration template (Committed)
-├── compose.yaml          # Local Root Base Manifest
+├── compose.yaml          # Local Root Base Manifest (x-oops-stack & oops_default network)
 ├── compose.yaml.example  # Blueprint for remote /@<remote>/compose.yaml
+├── compose.edge.yaml     # Edge stack (caddy-proxy, oops daemon, oops_edge network)
+├── compose.db.yaml       # Database stack (mysql, postgres, redis, oops_db network)
+├── compose.storage.yaml  # Object Storage stack (seaweedfs, oops_storage network)
+├── compose.tools.yaml    # Developer tools stack (httpbin, mailpit)
 ├── .oopsallow.example    # Whitelist blueprint for capsule sync
-├── services/             # Atomic service definitions (caddy, mysql, postgres, redis, etc.)
 ├── config/               # Version-controlled service configuration (e.g., caddy/Caddyfile)
 ├── data/                 # Live realtime container storage (High-IOPS persistent volume)
 │   ├── mysql/            # MySQL storage
@@ -34,16 +37,16 @@ Oops Stack enforces the **Principle of Least Privilege & Network Isolation**:
 
 ```mermaid
 graph TD
-    Internet((Internet / Clients)) -->|Ports 80/443| Edge["Edge Group (Caddy + Oops Daemon)"]
+    Internet((Internet / Clients)) -->|Ports 80/443| Edge["Edge Stack (Caddy + Oops Daemon)"]
     
     subgraph "oops_edge (Ingress Only)"
         Edge -->|Reverse Proxy| WebApp["apps: web-app"]
-        Edge -->|Reverse Proxy| Tools["tool: httpbin / mailpit"]
+        Edge -->|Reverse Proxy| Tools["tools: httpbin / mailpit"]
     end
     
     subgraph "oops_db (Internal & Isolated)"
         WebApp -->|SQL / Cache| DB["db: MySQL / Postgres / Redis"]
-        Worker["apps: worker (Isolated / NO Internet)"] -->|Queue / DB| DB
+        Worker["apps: worker (Isolated / NO Ingress)"] -->|Queue / DB| DB
     end
     
     style Edge fill:#3b82f6,stroke:#1d4ed8,color:#fff
@@ -51,9 +54,10 @@ graph TD
     style Worker fill:#f59e0b,stroke:#b45309,color:#fff
 ```
 
-- **`oops_edge`**: Public Ingress traffic only. Databases and background workers are **never** joined to this network.
-- **`oops_db`**: Internal private network for persistence and cache. Completely isolated from the internet and Reverse Proxy.
-- **Private Services (e.g. `worker`)**: Joined strictly to `oops_db`. Cannot be accessed or probed from the external web.
+- **`oops_default`**: Declared in `compose.yaml` as the default network. Untrusted or third-party containers without an explicit `networks:` block are isolated here and cannot reach `oops_db`.
+- **`oops_edge`**: Declared in `compose.edge.yaml` for public Ingress traffic only. Databases and background workers are **never** joined to this network.
+- **`oops_db`**: Declared in `compose.db.yaml` for internal persistence and cache. Completely isolated from the internet and untrusted containers.
+- **`oops_storage`**: Declared in `compose.storage.yaml` for internal object storage (`seaweedfs`).
 
 ---
 
@@ -88,59 +92,57 @@ oops box switch ~/Workspaces/another-org/oopsbox
 
 ## Unified Configuration (`oops.yaml`)
 
-`oops.yaml` is a Docker Compose manifest holding the `oops` daemon service alongside orchestrator settings under `x-oops:` (registries, backups, DNS):
+`oops.yaml` is a pure system configuration file holding orchestrator settings under `x-oops:` (`secret`, `db`, `orchestrator`, `backup`, `dns`, `volume`, `registries`):
 
 ```yaml
-services:
-  oops:
-    image: ghcr.io/noyzilla/oops:edge
-    restart: unless-stopped
-    networks:
-      - oops_edge
-    # ...
-
 x-oops:
+  secret: ${OOPS_SECRET:-}
+
+  db:
+    mysql_password: ${OOPS_DB_MYSQL_PASSWORD:-}
+    postgres_password: ${OOPS_DB_POSTGRES_PASSWORD:-}
+    redis_password: ${OOPS_DB_REDIS_PASSWORD:-}
+
   registries:
     gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
     my_org: ghcr.io/my_org
     hub: docker.io/myorg
 
   dns:
+    tld: oops
     upstreams:
       - 1.1.1.1:53
       - 8.8.8.8:53
-    records:
-      # - api.internal 10.0.0.5
-      # - .staging.oops 10.0.0.10
 ```
 
-Use the `/<stack>` target syntax with any `oops` command:
+Use the `/<stack>` or `/<stack>/<service>` target syntax with any `oops` command:
 ```bash
-oops up                     # Starts the root base stack and its dependencies
-oops up /edge-caddy         # Starts Edge Perimeter only
-oops up /db                 # Starts Databases
-oops up /storage            # Starts Object Storage (SeaweedFS)
-oops restart /edge-caddy
+oops up                     # Starts stacks/services listed in compose.yaml x-oops-stack in order
+oops up /edge               # Starts Edge Stack (caddy-proxy, oops)
+oops up /db                 # Starts Database Stack (mysql, postgres, redis)
+oops up /db/mysql           # Starts only MySQL inside the /db stack
+oops up /storage            # Starts Object Storage Stack (SeaweedFS)
+oops up /tools              # Starts Dev Tools Stack (httpbin, mailpit)
+oops restart /edge
 
 # Switch active stack (starts target stack & stops all other running services):
 oops switch /apps
 
 # Stop all services except specified exclusions:
-oops stop -x /edge-caddy
-oops stop -x /edge-caddy -x redis
+oops stop -x /edge
+oops stop -x /edge -x redis
 ```
 
 ---
 
-## Compose Extension Fields
+## Compose Extension Fields (`x-oops-stack`)
 
-Oops manifests use standardized extension keys for service resolution and lifecycle grouping:
+Oops manifests use `x-oops-stack:` to control both **selective auto-start** and **top-to-bottom boot order**:
 
 | Extension Field | Placement | Purpose & Behavior |
 | :--- | :--- | :--- |
-| **`x-oops-groups:`** | `compose.yaml` | Groups services and stacks for batch targeting (`+<group>`), e.g. `oops up +db` |
-| **`x-oops-depends:`** | `compose.<stack>.yaml` | Runtime dependencies auto-started along with target stack (`oops up /<stack>`) |
-| **`x-oops-services:`** | `compose.<stack>.yaml` | Bundles service templates into the compose chain without auto-starting |
+| **`x-oops-stack:`** | `compose.yaml` & `compose.<stack>.yaml` | Explicit auto-start whitelist and execution order. Services or stacks omitted from `x-oops-stack:` do NOT auto-start on `oops up`. |
+| **`x-oops-depends:`** | `compose.<stack>.yaml` | Additional runtime dependencies auto-started along with target stack (`oops up /<stack>`). |
 
 ---
 
@@ -186,12 +188,12 @@ oops pull --all
 oops pull /apps
 oops pull gar/my-app:v1.0.0
 
-# Start service groups or stacks
-oops up                     # Starts default root stack (/. mapping to compose.yaml)
-oops up /edge-caddy         # Starts Edge Perimeter (Caddy + Oops DNS)
+# Start stacks or specific services
+oops up                     # Starts stacks/services in compose.yaml x-oops-stack
+oops up /edge               # Starts Edge Perimeter (Caddy + Oops Daemon)
 oops up /db                 # Starts Databases (MySQL, Postgres, Redis)
 oops up /storage            # Starts Object Storage (SeaweedFS)
-oops up /tool               # Starts Dev Tools (httpbin, mailpit)
+oops up /tools              # Starts Dev Tools (httpbin, mailpit)
 oops up /apps               # Starts Applications
 
 # Target specific services or wildcard
@@ -202,8 +204,8 @@ oops up mailpit
 oops up app..
 
 # Switch profiles and stop other services
-oops switch /edge-caddy
-oops stop -x /edge-caddy
+oops switch /edge
+oops stop -x /edge
 ```
 
 ---

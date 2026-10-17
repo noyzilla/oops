@@ -36,11 +36,11 @@ Uses `lucaslorentz/caddy-docker-proxy` to dynamically generate Caddy configurati
 
 ### Setup & Usage
 ```bash
-# Start default Caddy edge proxy & oops daemon (if configured in compose.yaml)
+# Start default Caddy edge proxy & oops daemon (via x-oops-stack in compose.yaml)
 oops up
 
 # Or target the edge stack directly
-oops up /edge-caddy
+oops up /edge
 ```
 
 ### Application Container Labels (`compose.apps.yaml`)

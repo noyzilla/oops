@@ -1,3 +1,6 @@
+x-oops-stack:
+  - seaweedfs
+
 services:
   seaweedfs:
     image: chrislusf/seaweedfs
@@ -12,4 +15,6 @@ services:
 
 networks:
   oops_storage:
-    external: true
+    name: oops_storage
+    driver: bridge
+

@@ -71,8 +71,8 @@ func DiscoverStacks(workDir string) ([]string, map[string]string, error) {
 			continue
 		}
 
-		// Ignore untracked local override files
-		if strings.HasSuffix(name, ".local.yaml") {
+		// Ignore untracked local override files and example files
+		if strings.HasSuffix(name, ".local.yaml") || strings.HasSuffix(name, ".example") {
 			continue
 		}
 
@@ -93,15 +93,6 @@ func DiscoverStacks(workDir string) ([]string, map[string]string, error) {
 		}
 	}
 
-	// Fallback to oops.yaml for "." stack if compose.yaml is not present
-	if !discovered["."] {
-		oopsFile := filepath.Join(workDir, "oops.yaml")
-		if _, err := os.Stat(oopsFile); err == nil {
-			composeMap["."] = oopsFile
-			discovered["."] = true
-		}
-	}
-
 	var orderedStacks []string
 	for s := range discovered {
 		orderedStacks = append(orderedStacks, s)
@@ -116,43 +107,6 @@ func DiscoverLayers(workDir string) ([]string, map[string]string, error) {
 	return DiscoverStacks(workDir)
 }
 
-// DiscoverServiceTemplates finds all atomic templates in workDir/services/<service>.yaml
-func DiscoverServiceTemplates(workDir string) map[string]string {
-	templates := make(map[string]string)
-	servicesDir := filepath.Join(workDir, "services")
-	entries, err := os.ReadDir(servicesDir)
-	if err != nil {
-		return templates
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".local.yaml") {
-			svc := strings.TrimSuffix(name, ".yaml")
-			templates[svc] = filepath.Join(servicesDir, name)
-		}
-	}
-	return templates
-}
-
-// DiscoverGroups reads x-oops-groups from root compose.yaml (and oops.yaml fallback)
-func DiscoverGroups(workDir string) map[string][]string {
-	groups := make(map[string][]string)
-	for _, fname := range []string{"compose.yaml", "oops.yaml"} {
-		composePath := filepath.Join(workDir, fname)
-		cfg, err := ParseComposeFile(composePath)
-		if err == nil && cfg != nil && cfg.XOopsGroups != nil {
-			for k, v := range cfg.XOopsGroups {
-				groups[k] = v
-			}
-		}
-	}
-	return groups
-}
-
 // BuildComposeChain constructs the multi -f chain with strict tail local overrides
 func BuildComposeChain(workDir string, baseFiles []string, project string) []string {
 	var chain []string
@@ -165,14 +119,7 @@ func BuildComposeChain(workDir string, baseFiles []string, project string) []str
 		seen[rootCompose] = true
 	}
 
-	// 2. Orchestrator oops.yaml anchor (if exists)
-	oopsCompose := filepath.Join(workDir, "oops.yaml")
-	if _, err := os.Stat(oopsCompose); err == nil && !seen[oopsCompose] {
-		chain = append(chain, oopsCompose)
-		seen[oopsCompose] = true
-	}
-
-	// 3. Base files (templates, projects)
+	// 2. Base files (stack manifests)
 	for _, f := range baseFiles {
 		if f != "" && !seen[f] {
 			chain = append(chain, f)
@@ -199,20 +146,18 @@ func BuildComposeChain(workDir string, baseFiles []string, project string) []str
 	return chain
 }
 
-// ResolveTargets resolves target patterns to matching services in the workDir
+// ResolveTargets resolves target patterns to matching services in the workDir preserving x-oops-stack order.
 func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) {
 	orderedStacks, composeMap, err := DiscoverStacks(workDir)
 	if err != nil {
 		return nil, err
 	}
 
-	templates := DiscoverServiceTemplates(workDir)
-	groups := DiscoverGroups(workDir)
-
 	type stackData struct {
 		stackName   string
 		composePath string
 		services    map[string]ComposeService
+		xStack      []string
 		xServices   []string
 		xDepends    []string
 	}
@@ -229,42 +174,9 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 			stackName:   s,
 			composePath: cPath,
 			services:    cfg.Services,
+			xStack:      cfg.GetXOopsStack(),
 			xServices:   cfg.XOopsServices,
 			xDepends:    cfg.XOopsDepends,
-		}
-	}
-
-	// Also index standalone templates from services/ as atomic stacks so they can be discovered
-	for tmplName, tmplPath := range templates {
-		cfg, err := ParseComposeFile(tmplPath)
-		if err == nil && cfg != nil {
-			// If service template has no explicitly named service or single service, index it
-			stacks["services/"+tmplName] = &stackData{
-				stackName:   "services/" + tmplName,
-				composePath: tmplPath,
-				services:    cfg.Services,
-			}
-		}
-	}
-
-	// Index services from oops.yaml into root "." stack so orchestrator daemon service is discoverable
-	oopsPath := filepath.Join(workDir, "oops.yaml")
-	if _, err := os.Stat(oopsPath); err == nil {
-		if oopsCfg, err := ParseComposeFile(oopsPath); err == nil && oopsCfg != nil && len(oopsCfg.Services) > 0 {
-			if dotStack, ok := stacks["."]; ok {
-				if dotStack.services == nil {
-					dotStack.services = make(map[string]ComposeService)
-				}
-				for k, v := range oopsCfg.Services {
-					dotStack.services[k] = v
-				}
-			} else {
-				stacks["."] = &stackData{
-					stackName:   ".",
-					composePath: oopsPath,
-					services:    oopsCfg.Services,
-				}
-			}
 		}
 	}
 
@@ -273,139 +185,189 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		oopsCfg = &OopsConfig{Registries: make(map[string]string)}
 	}
 
-	// If no targets supplied: target . stack (compose.yaml)
+	// If no targets supplied: target "." stack (compose.yaml)
 	if len(targets) == 0 {
 		targets = []string{"/."}
 	}
 
-	// Expand group targets (+<group>)
-	var expandedTargets []string
-	for _, target := range targets {
-		if strings.HasPrefix(target, "+") {
-			groupName := strings.TrimPrefix(target, "+")
-			memberServices, ok := groups[groupName]
-			if !ok || len(memberServices) == 0 {
-				return nil, fmt.Errorf("service group +%s not found or empty in compose.yaml", groupName)
-			}
-			for _, m := range memberServices {
-				expandedTargets = append(expandedTargets, m)
-			}
-		} else {
-			expandedTargets = append(expandedTargets, target)
+	// Ordered list of resolved service paths ("/<stack>/<service>")
+	var orderedServicePaths []string
+	inTargetSet := make(map[string]bool)
+	inProgress := make(map[string]bool)
+
+	addServicePath := func(srvPath string) {
+		if !inTargetSet[srvPath] {
+			inTargetSet[srvPath] = true
+			orderedServicePaths = append(orderedServicePaths, srvPath)
 		}
 	}
 
-	targetStacksMap := make(map[string]bool)
-	targetServicesMap := make(map[string]bool)
+	// resolveCrossStackService searches for a service name across stacks (preferring db, edge, storage, tools, then alphabetical)
+	resolveCrossStackService := func(srvName string) (string, string) {
+		preferredOrder := []string{"db", "edge", "storage", "tools"}
+		for _, pStack := range preferredOrder {
+			if sd, ok := stacks[pStack]; ok {
+				if _, hasSrv := sd.services[srvName]; hasSrv {
+					return pStack, srvName
+				}
+			}
+		}
+		for _, sName := range orderedStacks {
+			if sd, ok := stacks[sName]; ok {
+				if _, hasSrv := sd.services[srvName]; hasSrv {
+					return sName, srvName
+				}
+			}
+		}
+		return "", ""
+	}
 
-	for _, target := range expandedTargets {
-		if strings.HasPrefix(target, "/") {
-			trimmed := strings.TrimPrefix(target, "/")
+	// expandTargetItem expands a target token or x-oops-stack entry into orderedServicePaths
+	var expandTargetItem func(item string, currentStack string) error
+	expandTargetItem = func(item string, currentStack string) error {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			return nil
+		}
+
+		// Case 1: Leading slash "/<stack>" or "/<stack>/<service>"
+		if strings.HasPrefix(item, "/") {
+			trimmed := strings.TrimPrefix(item, "/")
 			parts := strings.SplitN(trimmed, "/", 2)
 			targetStack := parts[0]
-			targetStacksMap[targetStack] = true
-			if len(parts) == 2 {
-				targetServicesMap[target] = true
+
+			sd, ok := stacks[targetStack]
+			if !ok {
+				return fmt.Errorf("stack not found: /%s", targetStack)
 			}
-		} else {
-			found := false
-			isImageQuery := strings.HasPrefix(target, "img:") || strings.HasPrefix(target, "image:")
-			if !isImageQuery {
-				// 1. First, check if exact service template exists in services/<target>.yaml
-				if _, ok := templates[target]; ok {
-					sName := "services/" + target
-					targetStacksMap[sName] = true
-					// Match all services inside this template, or the service with same name
-					if sd, hasSd := stacks[sName]; hasSd {
-						for srvName := range sd.services {
-							targetServicesMap["/"+sName+"/"+srvName] = true
+
+			// Specific service inside stack: "/<stack>/<service>"
+			if len(parts) == 2 {
+				srvName := parts[1]
+				if _, hasSrv := sd.services[srvName]; !hasSrv {
+					return fmt.Errorf("service %q not found in stack /%s", srvName, targetStack)
+				}
+				addServicePath("/" + targetStack + "/" + srvName)
+				return nil
+			}
+
+			// Whole stack: "/<stack>"
+			stackKey := "stack:/" + targetStack
+			if inProgress[stackKey] {
+				return fmt.Errorf("circular x-oops-stack reference involving /%s", targetStack)
+			}
+			inProgress[stackKey] = true
+			defer func() { inProgress[stackKey] = false }()
+
+			// If the stack defines x-oops-stack, expand strictly those items in declared order!
+			if len(sd.xStack) > 0 {
+				for _, subItem := range sd.xStack {
+					if err := expandTargetItem(subItem, targetStack); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+
+			// Otherwise, include all services defined in this stack (sorted by name for determinism)
+			var srvNames []string
+			for srvName := range sd.services {
+				srvNames = append(srvNames, srvName)
+			}
+			sort.Strings(srvNames)
+			for _, srvName := range srvNames {
+				addServicePath("/" + targetStack + "/" + srvName)
+			}
+			return nil
+		}
+
+		// Case 2: Bare item inside a stack's x-oops-stack (e.g. "mysql" inside compose.db.yaml)
+		if currentStack != "" {
+			if sd, ok := stacks[currentStack]; ok {
+				if _, hasLocal := sd.services[item]; hasLocal {
+					addServicePath("/" + currentStack + "/" + item)
+					return nil
+				}
+			}
+			// Fallback: if bare name matches another stack name (e.g. "edge" or "db")
+			if _, isStack := stacks[item]; isStack {
+				return expandTargetItem("/"+item, "")
+			}
+		}
+
+		// Case 3: CLI bare service name, wildcard, or image query
+		found := false
+		isImageQuery := strings.HasPrefix(item, "img:") || strings.HasPrefix(item, "image:")
+		if !isImageQuery {
+			for _, sName := range orderedStacks {
+				sd := stacks[sName]
+				if _, ok := sd.services[item]; ok {
+					addServicePath("/" + sName + "/" + item)
+					found = true
+				}
+				if MatchWildcard(item, "dummy") || strings.Contains(item, "..") {
+					var srvNames []string
+					for srvName := range sd.services {
+						srvNames = append(srvNames, srvName)
+					}
+					sort.Strings(srvNames)
+					for _, srvName := range srvNames {
+						if MatchWildcard(item, srvName) {
+							addServicePath("/" + sName + "/" + srvName)
 							found = true
 						}
 					}
-					if !found {
-						targetServicesMap["/"+sName+"/"+target] = true
+				}
+			}
+			// Also allow bare stack name on CLI if no service matched
+			if !found {
+				if _, isStack := stacks[item]; isStack {
+					return expandTargetItem("/"+item, "")
+				}
+			}
+		}
+
+		if !found {
+			expandedImage := ExpandImageAlias(item, oopsCfg.Registries)
+			cleanImageQuery := strings.TrimPrefix(strings.TrimPrefix(item, "image:"), "img:")
+
+			for _, sName := range orderedStacks {
+				sd := stacks[sName]
+				var srvNames []string
+				for srvName := range sd.services {
+					srvNames = append(srvNames, srvName)
+				}
+				sort.Strings(srvNames)
+				for _, srvName := range srvNames {
+					s := sd.services[srvName]
+					isImageMatch := s.Image == expandedImage ||
+						s.Image == cleanImageQuery ||
+						strings.HasSuffix(s.Image, "/"+cleanImageQuery) ||
+						strings.HasSuffix(s.Image, ":"+cleanImageQuery) ||
+						MatchWildcard(item, s.Image)
+
+					if isImageMatch {
+						addServicePath("/" + sName + "/" + srvName)
 						found = true
 					}
 				}
-
-				// 2. Search across loaded stacks for this service name
-				if !found {
-					for sName, sd := range stacks {
-						if _, ok := sd.services[target]; ok {
-							targetStacksMap[sName] = true
-							targetServicesMap["/"+sName+"/"+target] = true
-							found = true
-						}
-						// Wildcard matching
-						if MatchWildcard(target, "dummy") || strings.Contains(target, "..") {
-							for srvName := range sd.services {
-								if MatchWildcard(target, srvName) {
-									targetStacksMap[sName] = true
-									targetServicesMap["/"+sName+"/"+srvName] = true
-									found = true
-								}
-							}
-						}
-					}
-				}
 			}
+		}
 
-			if !found {
-				// Try as image query
-				expandedImage := ExpandImageAlias(target, oopsCfg.Registries)
-				cleanImageQuery := strings.TrimPrefix(strings.TrimPrefix(target, "image:"), "img:")
+		if !found {
+			return fmt.Errorf("target service not found: %s", item)
+		}
+		return nil
+	}
 
-				for sName, sd := range stacks {
-					for srvName, s := range sd.services {
-						isImageMatch := s.Image == expandedImage ||
-							s.Image == cleanImageQuery ||
-							strings.HasSuffix(s.Image, "/"+cleanImageQuery) ||
-							strings.HasSuffix(s.Image, ":"+cleanImageQuery) ||
-							MatchWildcard(target, s.Image)
-
-						if isImageMatch {
-							targetStacksMap[sName] = true
-							targetServicesMap["/"+sName+"/"+srvName] = true
-							found = true
-						}
-					}
-				}
-			}
-
-			if !found {
-				return nil, fmt.Errorf("target service not found: %s", target)
-			}
+	for _, t := range targets {
+		if err := expandTargetItem(t, ""); err != nil {
+			return nil, err
 		}
 	}
 
-	// Map service names to their stack for cross-stack dependency resolution
-	serviceToStack := make(map[string]string)
-	for sName, sd := range stacks {
-		for srvName := range sd.services {
-			serviceToStack[srvName] = sName
-		}
-	}
-
-	// Convert any full stack targets into individual services
-	for sName := range targetStacksMap {
-		hasSpecificServiceTargets := false
-		for tgt := range targetServicesMap {
-			if strings.HasPrefix(tgt, "/"+sName+"/") {
-				hasSpecificServiceTargets = true
-				break
-			}
-		}
-		if !hasSpecificServiceTargets {
-			if sd, ok := stacks[sName]; ok {
-				for srvName := range sd.services {
-					targetServicesMap["/"+sName+"/"+srvName] = true
-				}
-			}
-		}
-	}
-
-	// resolveDep resolves a dependency reference (starts with / for stack/service, or template name in services/)
-	resolveDep := func(dep string) (string, string) {
+	// resolveDep resolves a dependency reference ("/<stack>/<service>", "/<stack>", or bare service name)
+	resolveDep := func(dep string, fromStack string) (string, string) {
 		if strings.HasPrefix(dep, "/") {
 			trimmed := strings.TrimPrefix(dep, "/")
 			parts := strings.SplitN(trimmed, "/", 2)
@@ -414,116 +376,18 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 			}
 			return parts[0], ""
 		}
-		// No slash: refers to services/ template
-		if _, ok := templates[dep]; ok {
-			sName := "services/" + dep
-			if tSd, hasTSd := stacks[sName]; hasTSd {
-				for srvName := range tSd.services {
-					return sName, srvName
-				}
-			}
-			return sName, dep
-		}
-		// Search if dep is a service name inside any service template
-		for tmplName := range templates {
-			sName := "services/" + tmplName
-			if tSd, hasTSd := stacks[sName]; hasTSd {
-				if _, hasSrv := tSd.services[dep]; hasSrv {
-					return sName, dep
-				}
-			}
-		}
-		return "", ""
-	}
-
-	// Recursively resolve native depends_on dependencies
-	var expandDeps func(srvPath string)
-	expandDeps = func(srvPath string) {
-		trimmed := strings.TrimPrefix(srvPath, "/")
-		lastSlash := strings.LastIndex(trimmed, "/")
-		if lastSlash == -1 {
-			return
-		}
-		stackName, srvName := trimmed[:lastSlash], trimmed[lastSlash+1:]
-		sd, ok := stacks[stackName]
-		if !ok {
-			return
-		}
-		srv, ok := sd.services[srvName]
-		if !ok {
-			return
-		}
-
-		for _, dep := range srv.ParsedDependsOn {
-			// Local Definition Takes Precedence (Mental Model 1):
-			// If dependency is defined locally within this stack, use local service!
-			if _, isLocal := sd.services[dep]; isLocal {
-				depPath := "/" + stackName + "/" + dep
-				if !targetServicesMap[depPath] {
-					targetServicesMap[depPath] = true
-					expandDeps(depPath)
-				}
-				continue
-			}
-
-			depStack, depSrv := resolveDep(dep)
-			if depStack != "" && depSrv != "" {
-				depPath := "/" + depStack + "/" + depSrv
-				if !targetServicesMap[depPath] {
-					targetServicesMap[depPath] = true
-					targetStacksMap[depStack] = true
-					expandDeps(depPath)
-				}
-			}
-		}
-	}
-
-	var initialTargets []string
-	for tgt := range targetServicesMap {
-		initialTargets = append(initialTargets, tgt)
-	}
-	for _, tgt := range initialTargets {
-		expandDeps(tgt)
-	}
-
-	// Also expand stack-level x-oops-depends for targeted stacks
-	for sName := range targetStacksMap {
-		if sd, ok := stacks[sName]; ok {
-			for _, dep := range sd.xDepends {
+		if fromStack != "" {
+			if sd, ok := stacks[fromStack]; ok {
 				if _, isLocal := sd.services[dep]; isLocal {
-					depPath := "/" + sName + "/" + dep
-					if !targetServicesMap[depPath] {
-						targetServicesMap[depPath] = true
-						expandDeps(depPath)
-					}
-					continue
-				}
-				depStack, depSrv := resolveDep(dep)
-				if depStack == "" {
-					continue
-				}
-				targetStacksMap[depStack] = true
-				if depSrv != "" {
-					depPath := "/" + depStack + "/" + depSrv
-					if !targetServicesMap[depPath] {
-						targetServicesMap[depPath] = true
-						expandDeps(depPath)
-					}
-				} else if depSd, ok := stacks[depStack]; ok {
-					for srvName := range depSd.services {
-						depPath := "/" + depStack + "/" + srvName
-						if !targetServicesMap[depPath] {
-							targetServicesMap[depPath] = true
-							expandDeps(depPath)
-						}
-					}
+					return fromStack, dep
 				}
 			}
 		}
+		return resolveCrossStackService(dep)
 	}
 
-	// Topological sort
-	var sortedResults []ResolvedTarget
+	// Build final ResolvedTarget list respecting dependency order while preserving x-oops-stack sequence
+	var finalPaths []string
 	visited := make(map[string]bool)
 	visiting := make(map[string]bool)
 
@@ -547,32 +411,39 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		if !ok {
 			return fmt.Errorf("stack not found: %s", stackName)
 		}
-		srv := sd.services[srvName]
+		srv, hasSrv := sd.services[srvName]
+		if !hasSrv {
+			return fmt.Errorf("service %s not found in stack %s", srvName, stackName)
+		}
 
-		// Visit stack-level x-oops-depends first
+		// Visit stack-level x-oops-depends if present
 		for _, dep := range sd.xDepends {
-			if _, isLocal := sd.services[dep]; isLocal {
-				depPath := "/" + stackName + "/" + dep
-				if depPath != srvPath && targetServicesMap[depPath] {
-					if err := visit(depPath); err != nil {
-						return err
-					}
-				}
-				continue
-			}
-			depStack, depSrv := resolveDep(dep)
+			depStack, depSrv := resolveDep(dep, stackName)
 			if depStack != "" {
 				if depSrv != "" {
 					depPath := "/" + depStack + "/" + depSrv
-					if depPath != srvPath && targetServicesMap[depPath] {
+					if depPath != srvPath {
 						if err := visit(depPath); err != nil {
 							return err
 						}
 					}
 				} else if depSd, ok := stacks[depStack]; ok {
-					for srvName := range depSd.services {
-						depPath := "/" + depStack + "/" + srvName
-						if depPath != srvPath && targetServicesMap[depPath] {
+					var depSrvNames []string
+					if len(depSd.xStack) > 0 {
+						for _, item := range depSd.xStack {
+							if _, has := depSd.services[item]; has {
+								depSrvNames = append(depSrvNames, item)
+							}
+						}
+					} else {
+						for s := range depSd.services {
+							depSrvNames = append(depSrvNames, s)
+						}
+						sort.Strings(depSrvNames)
+					}
+					for _, s := range depSrvNames {
+						depPath := "/" + depStack + "/" + s
+						if depPath != srvPath {
 							if err := visit(depPath); err != nil {
 								return err
 							}
@@ -582,22 +453,12 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 			}
 		}
 
-		// Visit service depends_on dependencies
+		// Visit service-level depends_on
 		for _, dep := range srv.ParsedDependsOn {
-			if _, isLocal := sd.services[dep]; isLocal {
-				depPath := "/" + stackName + "/" + dep
-				if depPath != srvPath && targetServicesMap[depPath] {
-					if err := visit(depPath); err != nil {
-						return err
-					}
-				}
-				continue
-			}
-
-			depStack, depSrv := resolveDep(dep)
+			depStack, depSrv := resolveDep(dep, stackName)
 			if depStack != "" && depSrv != "" {
 				depPath := "/" + depStack + "/" + depSrv
-				if targetServicesMap[depPath] {
+				if depPath != srvPath {
 					if err := visit(depPath); err != nil {
 						return err
 					}
@@ -607,23 +468,35 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 
 		visiting[srvPath] = false
 		visited[srvPath] = true
+		finalPaths = append(finalPaths, srvPath)
+		return nil
+	}
 
-		// Build multi -f compose files chain
+	for _, srvPath := range orderedServicePaths {
+		if err := visit(srvPath); err != nil {
+			return nil, err
+		}
+	}
+
+	var results []ResolvedTarget
+	for _, srvPath := range finalPaths {
+		trimmed := strings.TrimPrefix(srvPath, "/")
+		lastSlash := strings.LastIndex(trimmed, "/")
+		stackName, srvName := trimmed[:lastSlash], trimmed[lastSlash+1:]
+		sd := stacks[stackName]
+		srv := sd.services[srvName]
+
 		var baseFiles []string
 		projectName := stackName
 
-		if strings.HasPrefix(stackName, "services/") {
-			projectName = ""
-			baseFiles = append(baseFiles, sd.composePath)
-		} else if stackName != "." {
-			// Stack: prepend any service template dependencies
+		if stackName != "." {
+			// Prepend cross-stack dependency compose files if needed so Docker Compose validates depends_on
 			for _, dep := range srv.ParsedDependsOn {
-				// Local definition takes precedence: never pull in template if defined in stack!
 				if _, isLocal := sd.services[dep]; isLocal {
 					continue
 				}
-				depStack, _ := resolveDep(dep)
-				if depStack != "" {
+				depStack, _ := resolveDep(dep, stackName)
+				if depStack != "" && depStack != stackName {
 					if depSd, ok := stacks[depStack]; ok && depSd.composePath != "" {
 						baseFiles = append(baseFiles, depSd.composePath)
 					}
@@ -633,8 +506,8 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 				if _, isLocal := sd.services[dep]; isLocal {
 					continue
 				}
-				depStack, _ := resolveDep(dep)
-				if depStack != "" {
+				depStack, _ := resolveDep(dep, stackName)
+				if depStack != "" && depStack != stackName {
 					if depSd, ok := stacks[depStack]; ok && depSd.composePath != "" {
 						baseFiles = append(baseFiles, depSd.composePath)
 					}
@@ -644,8 +517,8 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 				if _, isLocal := sd.services[s]; isLocal {
 					continue
 				}
-				depStack, _ := resolveDep(s)
-				if depStack != "" {
+				depStack, _ := resolveDep(s, stackName)
+				if depStack != "" && depStack != stackName {
 					if depSd, ok := stacks[depStack]; ok && depSd.composePath != "" {
 						baseFiles = append(baseFiles, depSd.composePath)
 					}
@@ -655,13 +528,12 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 		}
 
 		composeChain := BuildComposeChain(workDir, baseFiles, projectName)
-
 		primaryPath := sd.composePath
 		if len(composeChain) > 0 {
 			primaryPath = composeChain[0]
 		}
 
-		sortedResults = append(sortedResults, ResolvedTarget{
+		results = append(results, ResolvedTarget{
 			StackName:     stackName,
 			ComposePath:   primaryPath,
 			ComposeFiles:  composeChain,
@@ -670,22 +542,9 @@ func ResolveTargets(workDir string, targets []string) ([]ResolvedTarget, error) 
 			Image:         srv.Image,
 			Labels:        srv.ParsedLabels,
 		})
-		return nil
 	}
 
-	var targetPaths []string
-	for tgt := range targetServicesMap {
-		targetPaths = append(targetPaths, tgt)
-	}
-	sort.Strings(targetPaths)
-
-	for _, tgt := range targetPaths {
-		if err := visit(tgt); err != nil {
-			return nil, err
-		}
-	}
-
-	return sortedResults, nil
+	return results, nil
 }
 
 // ResolveTargetsByImage resolves targets matching a container image

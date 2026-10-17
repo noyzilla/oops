@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ComposeDependencyInspector inspects compose YAML files for service dependencies.
+// ComposeDependencyInspector inspects compose YAML files for stack and service dependencies.
 type ComposeDependencyInspector struct {
 	Services          map[string]struct{}
 	StackFiles        []string
@@ -18,6 +18,7 @@ type ComposeDependencyInspector struct {
 	ServiceFiles      []string
 	ConfigFiles       []string
 	RequiredStacks    []string
+	Warnings          []string
 }
 
 // ParseStackTargets splits a comma-separated or single stack argument into clean stack names.
@@ -31,6 +32,10 @@ func ParseStackTargets(stack string) []string {
 	for _, p := range parts {
 		clean := strings.TrimSpace(p)
 		clean = strings.TrimPrefix(clean, "/")
+		// If someone passed /db/mysql, stack is db
+		if idx := strings.Index(clean, "/"); idx != -1 {
+			clean = clean[:idx]
+		}
 		clean = strings.TrimSpace(clean)
 		if clean != "" && !seen[clean] {
 			seen[clean] = true
@@ -45,7 +50,9 @@ type stackManifestInfo struct {
 	isCapsule   bool
 	path        string
 	definedSvcs map[string]struct{}
+	xStack      []string
 	rawDeps     map[string]struct{}
+	dependsOn   map[string]struct{}
 }
 
 func parseStackManifest(filePath string, name string, isCapsule bool) *stackManifestInfo {
@@ -63,15 +70,24 @@ func parseStackManifest(filePath string, name string, isCapsule bool) *stackMani
 		path:        filePath,
 		definedSvcs: make(map[string]struct{}),
 		rawDeps:     make(map[string]struct{}),
+		dependsOn:   make(map[string]struct{}),
+	}
+	for _, key := range []string{"x-oops-stack", "x-oops-stacks"} {
+		if v, ok := raw[key]; ok {
+			temp := make(map[string]struct{})
+			extractServiceNames(v, temp)
+			for k := range temp {
+				info.xStack = append(info.xStack, k)
+				info.rawDeps[k] = struct{}{}
+			}
+		}
 	}
 	if v, ok := raw["x-oops-services"]; ok {
 		extractServiceNames(v, info.rawDeps)
 	}
 	if v, ok := raw["x-oops-depends"]; ok {
 		extractServiceNames(v, info.rawDeps)
-	}
-	if v, ok := raw["x-oops-groups"]; ok {
-		extractGroupServiceNames(v, info.rawDeps)
+		extractServiceNames(v, info.dependsOn)
 	}
 	if svcs, ok := raw["services"].(map[string]interface{}); ok {
 		for sName, sDef := range svcs {
@@ -82,6 +98,7 @@ func parseStackManifest(filePath string, name string, isCapsule bool) *stackMani
 			if sMap, ok := sDef.(map[string]interface{}); ok {
 				if deps, ok := sMap["depends_on"]; ok {
 					extractServiceNames(deps, info.rawDeps)
+					extractServiceNames(deps, info.dependsOn)
 				}
 			}
 		}
@@ -128,6 +145,87 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 		}
 	}
 
+	// Parse capsule compose.yaml and compose.local.yaml first to know capsule's x-oops-stack entries
+	capsuleXStackItems := make(map[string]bool)
+	capsuleDefinedServices := make(map[string]struct{})
+	capsuleDepSet := make(map[string]struct{})
+
+	baseCapsuleManifests := []string{
+		filepath.Join(capsule, "compose.yaml"),
+		filepath.Join(capsule, "compose.local.yaml"),
+	}
+	for _, mPath := range baseCapsuleManifests {
+		if data, err := os.ReadFile(mPath); err == nil {
+			var raw map[string]interface{}
+			if err := yaml.Unmarshal(data, &raw); err == nil {
+				for _, key := range []string{"x-oops-stack", "x-oops-stacks"} {
+					if v, ok := raw[key]; ok {
+						temp := make(map[string]struct{})
+						extractServiceNames(v, temp)
+						for k := range temp {
+							capsuleXStackItems[k] = true
+							capsuleDepSet[k] = struct{}{}
+						}
+					}
+				}
+				if v, ok := raw["x-oops-services"]; ok {
+					extractServiceNames(v, capsuleDepSet)
+				}
+				if v, ok := raw["x-oops-depends"]; ok {
+					extractServiceNames(v, capsuleDepSet)
+				}
+				if svcs, ok := raw["services"].(map[string]interface{}); ok {
+					for sName, sDef := range svcs {
+						clean := strings.TrimSpace(sName)
+						if clean != "" {
+							capsuleDefinedServices[clean] = struct{}{}
+						}
+						if sMap, ok := sDef.(map[string]interface{}); ok {
+							if deps, ok := sMap["depends_on"]; ok {
+								extractServiceNames(deps, capsuleDepSet)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Helper to resolve which stack a reference ("/<stack>", "/<stack>/<service>", or bare service) belongs to
+	resolveStackForRef := func(ref string, currentStack string) (string, string) {
+		if strings.HasPrefix(ref, "/") {
+			trimmed := strings.TrimPrefix(ref, "/")
+			parts := strings.SplitN(trimmed, "/", 2)
+			sName := parts[0]
+			srvName := ""
+			if len(parts) == 2 {
+				srvName = parts[1]
+			}
+			return sName, srvName
+		}
+		if currentStack != "" {
+			if sInfo, ok := allStacks[currentStack]; ok {
+				if _, isLocal := sInfo.definedSvcs[ref]; isLocal {
+					return currentStack, ref
+				}
+			}
+		}
+		// Check preferred stacks first (db, edge, storage, tools)
+		for _, pref := range []string{"db", "edge", "storage", "tools"} {
+			if sInfo, ok := allStacks[pref]; ok {
+				if _, has := sInfo.definedSvcs[ref]; has {
+					return pref, ref
+				}
+			}
+		}
+		for otherName, otherInfo := range allStacks {
+			if _, has := otherInfo.definedSvcs[ref]; has {
+				return otherName, ref
+			}
+		}
+		return "", ref
+	}
+
 	// 3. Determine required stacks starting from target stack(s)
 	targets := ParseStackTargets(stack)
 	pushedStacks := make(map[string]bool)
@@ -141,7 +239,9 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 			stackQueue = append(stackQueue, t)
 		}
 	} else {
-		// When no stack target is specified, scope strictly to stacks defined in capsule.
+		// When no stack target is specified, scope strictly to:
+		// 1) Stacks defined directly in capsule (compose.<stack>.yaml)
+		// 2) Stacks referenced in capsule compose.yaml (via x-oops-stack, etc.)
 		for sName, sInfo := range allStacks {
 			if sInfo.isCapsule {
 				pushedStacks[sName] = true
@@ -149,9 +249,47 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 				stackQueue = append(stackQueue, sName)
 			}
 		}
+		for item := range capsuleXStackItems {
+			refStack, _ := resolveStackForRef(item, "")
+			if refStack != "" {
+				if _, exists := allStacks[refStack]; exists && !requiredStacksMap[refStack] {
+					pushedStacks[refStack] = true
+					requiredStacksMap[refStack] = true
+					stackQueue = append(stackQueue, refStack)
+				}
+			}
+		}
 	}
 
-	// Traverse cross-stack dependencies (with Strict Remote Boundary Check)
+	var warnings []string
+	seenWarnings := make(map[string]bool)
+	addWarning := func(msg string) {
+		if !seenWarnings[msg] {
+			seenWarnings[msg] = true
+			warnings = append(warnings, msg)
+		}
+	}
+
+	// Helper to check if a dependency stack/service is declared in capsule compose.yaml x-oops-stack or parent stack x-oops-stack
+	isDeclaredInCapsuleXStack := func(depStack, depSvc string, parentInfo *stackManifestInfo) bool {
+		// Check if declared in parent stack's own x-oops-stack
+		if parentInfo != nil {
+			for _, entry := range parentInfo.xStack {
+				if entry == "/"+depStack || entry == "/"+depStack+"/"+depSvc || entry == depSvc {
+					return true
+				}
+			}
+		}
+		// Check if declared in capsule compose.yaml x-oops-stack
+		for entry := range capsuleXStackItems {
+			if entry == "/"+depStack || entry == "/"+depStack+"/"+depSvc || entry == depSvc {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Traverse cross-stack dependencies (with Strict Remote Boundary Check & depends_on Warnings)
 	for len(stackQueue) > 0 {
 		curr := stackQueue[0]
 		stackQueue = stackQueue[1:]
@@ -161,23 +299,45 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 			continue
 		}
 
-		for dep := range sInfo.rawDeps {
-			var depStack string
-			if strings.HasPrefix(dep, "/") {
-				trimmed := strings.TrimPrefix(dep, "/")
-				parts := strings.Split(trimmed, "/")
-				depStack = parts[0]
-			} else {
-				// Bare service name: if not defined in current stack, check other stacks
-				if _, isLocal := sInfo.definedSvcs[dep]; !isLocal {
-					for otherName, otherInfo := range allStacks {
-						if _, hasSvc := otherInfo.definedSvcs[dep]; hasSvc {
-							depStack = otherName
+		// Check depends_on entries for undeclared x-oops-stack warnings
+		for dep := range sInfo.dependsOn {
+			if _, isLocal := sInfo.definedSvcs[dep]; isLocal {
+				// If stack has x-oops-stack, check if local dependency is included
+				if len(sInfo.xStack) > 0 {
+					foundLocal := false
+					for _, xs := range sInfo.xStack {
+						if xs == dep || xs == "/"+curr+"/"+dep {
+							foundLocal = true
 							break
 						}
 					}
+					if !foundLocal {
+						addWarning(fmt.Sprintf("stack '/%s' service depends_on '%s', which is omitted from x-oops-stack in compose.%s.yaml", curr, dep, curr))
+					}
+				}
+				continue
+			}
+			if _, inCap := capsuleDefinedServices[dep]; inCap {
+				continue
+			}
+
+			depStack, depSvc := resolveStackForRef(dep, curr)
+			if depStack != "" && depStack != curr {
+				if !isDeclaredInCapsuleXStack(depStack, depSvc, sInfo) {
+					targetRef := "/" + depStack
+					if depSvc != "" {
+						targetRef = "/" + depStack + "/" + depSvc
+					}
+					addWarning(fmt.Sprintf("stack '/%s' depends on '%s' (%s), which is not declared in x-oops-stack of compose.%s.yaml or /@%s/compose.yaml", curr, dep, targetRef, curr, remoteName))
 				}
 			}
+		}
+
+		for dep := range sInfo.rawDeps {
+			if _, isLocal := sInfo.definedSvcs[dep]; isLocal {
+				continue
+			}
+			depStack, _ := resolveStackForRef(dep, curr)
 
 			if depStack != "" && depStack != curr {
 				if !requiredStacksMap[depStack] {
@@ -186,13 +346,12 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 						continue
 					}
 
-					// Strict Remote Boundary Check:
-					// If depStack is not in pushed targets, verify it exists in remote capsule.
-					// If it only exists in root workspace and not in capsule -> ERROR!
-					if len(pushedStacks) > 0 && !pushedStacks[depStack] {
-						if !otherInfo.isCapsule {
-							return nil, fmt.Errorf("stack '/%s' depends on '%s', but stack '/%s' is not in push targets and does not exist in capsule '/@%s'. Hint: push '/%s,/%s' or provide '/@%s/compose.%s.yaml'",
-								curr, dep, depStack, remoteName, curr, depStack, remoteName, depStack)
+					// Strict Remote Boundary Check when explicit stack target was given:
+					// If depStack is not in pushed targets and not in capsule and not in capsule's x-oops-stack -> ERROR!
+					if len(targets) > 0 && !pushedStacks[depStack] {
+						if !otherInfo.isCapsule && !isDeclaredInCapsuleXStack(depStack, "", sInfo) {
+							return nil, fmt.Errorf("stack '/%s' depends on '%s', but stack '/%s' is not in push targets and does not exist in capsule '/@%s'. Hint: push '/%s,/%s' or declare '/%s' in x-oops-stack",
+								curr, dep, depStack, remoteName, curr, depStack, depStack)
 						}
 					}
 
@@ -206,26 +365,23 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 	definedServices := make(map[string]struct{})
 	depSet := make(map[string]struct{})
 
-	// 4. Record services from remote capsule compose.yaml, compose.local.yaml, and compose.<stack>.local.yaml
-	capsuleManifests := []string{
-		filepath.Join(capsule, "compose.yaml"),
-		filepath.Join(capsule, "compose.local.yaml"),
+	for s := range capsuleDefinedServices {
+		definedServices[s] = struct{}{}
 	}
+	for d := range capsuleDepSet {
+		depSet[d] = struct{}{}
+	}
+
+	// 4. Record services from remote capsule compose.<stack>.local.yaml
 	for _, t := range targets {
-		capsuleManifests = append(capsuleManifests, filepath.Join(capsule, "compose."+t+".local.yaml"))
-	}
-	for _, mPath := range capsuleManifests {
+		mPath := filepath.Join(capsule, "compose."+t+".local.yaml")
 		if data, err := os.ReadFile(mPath); err == nil {
 			var raw map[string]interface{}
 			if err := yaml.Unmarshal(data, &raw); err == nil {
-				if v, ok := raw["x-oops-services"]; ok {
-					extractServiceNames(v, depSet)
-				}
-				if v, ok := raw["x-oops-depends"]; ok {
-					extractServiceNames(v, depSet)
-				}
-				if v, ok := raw["x-oops-groups"]; ok {
-					extractGroupServiceNames(v, depSet)
+				for _, key := range []string{"x-oops-stack", "x-oops-stacks", "x-oops-services", "x-oops-depends"} {
+					if v, ok := raw[key]; ok {
+						extractServiceNames(v, depSet)
+					}
 				}
 				if svcs, ok := raw["services"].(map[string]interface{}); ok {
 					for sName, sDef := range svcs {
@@ -244,7 +400,7 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 		}
 	}
 
-	// 5. Remote capsule service templates (/@<remote>/services/*.yaml)
+	// 5. Remote capsule service templates (/@<remote>/services/*.yaml) for backward compatibility
 	capsuleServicesDir := filepath.Join(capsule, "services")
 	if entries, err := os.ReadDir(capsuleServicesDir); err == nil {
 		for _, e := range entries {
@@ -260,6 +416,7 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 
 	inspector := &ComposeDependencyInspector{
 		Services: depSet,
+		Warnings: warnings,
 	}
 
 	var reqStacksList []string
@@ -283,20 +440,27 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 		}
 
 		if sInfo.isCapsule {
-			// Case 3: Defined in capsule -> streamed from capsule overlay, NOT from root workspace!
 			inspector.CapsuleStackFiles = append(inspector.CapsuleStackFiles, "compose."+sName+".yaml")
 		} else {
-			// Case 2: Defined in root workspace -> streamed in Step 1
 			inspector.StackFiles = append(inspector.StackFiles, "compose."+sName+".yaml")
 		}
 	}
 
-	// 7. Locate service templates (Case 1 & 2: Local & Remote Precedence)
+	// 7. Locate config/<service> directories (and optional legacy services/<service>.yaml if present)
 	templateMap := mapWorkspaceServiceTemplates(filepath.Join(workDir, "services"))
 	seenServiceFiles := make(map[string]bool)
 	seenConfigDirs := make(map[string]bool)
 
+	// Collect all service names from required stacks + depSet to check config/<service>
+	configCandidates := make(map[string]struct{})
 	for dep := range depSet {
+		configCandidates[dep] = struct{}{}
+	}
+	for s := range definedServices {
+		configCandidates[s] = struct{}{}
+	}
+
+	for dep := range configCandidates {
 		cleanDep := dep
 		if strings.HasPrefix(cleanDep, "/") {
 			parts := strings.Split(strings.TrimPrefix(cleanDep, "/"), "/")
@@ -307,29 +471,29 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 			}
 		}
 
-		// If service is already declared in any required stack or capsule, skip template!
-		if _, isDefined := definedServices[cleanDep]; isDefined {
-			continue
-		}
-
-		templateBase := cleanDep
-		if mapped, ok := templateMap[cleanDep]; ok {
-			templateBase = mapped
-		}
-		if _, isDefined := definedServices[templateBase]; isDefined {
-			continue
-		}
-
-		svcFile := filepath.Join("services", templateBase+".yaml")
-		if !seenServiceFiles[svcFile] {
-			if _, err := os.Stat(filepath.Join(workDir, svcFile)); err == nil {
-				seenServiceFiles[svcFile] = true
-				inspector.ServiceFiles = append(inspector.ServiceFiles, svcFile)
+		// Legacy service template support if workspace still has services/
+		if _, isDefined := definedServices[cleanDep]; !isDefined {
+			templateBase := cleanDep
+			if mapped, ok := templateMap[cleanDep]; ok {
+				templateBase = mapped
+			}
+			if _, isTmplDefined := definedServices[templateBase]; !isTmplDefined {
+				svcFile := filepath.Join("services", templateBase+".yaml")
+				if !seenServiceFiles[svcFile] {
+					if _, err := os.Stat(filepath.Join(workDir, svcFile)); err == nil {
+						seenServiceFiles[svcFile] = true
+						inspector.ServiceFiles = append(inspector.ServiceFiles, svcFile)
+					}
+				}
 			}
 		}
 
-		configDir := filepath.Join("config", templateBase)
+		configDir := filepath.Join("config", cleanDep)
 		if !seenConfigDirs[configDir] {
+			// Skip root config/<service> if capsule already overrides config/<service>
+			if fi, err := os.Stat(filepath.Join(capsule, configDir)); err == nil && fi.IsDir() {
+				continue
+			}
 			if fi, err := os.Stat(filepath.Join(workDir, configDir)); err == nil && fi.IsDir() {
 				seenConfigDirs[configDir] = true
 				inspector.ConfigFiles = append(inspector.ConfigFiles, configDir)
@@ -385,16 +549,6 @@ func mapWorkspaceServiceTemplates(servicesDir string) map[string]string {
 		}
 	}
 	return result
-}
-
-func extractGroupServiceNames(v interface{}, depSet map[string]struct{}) {
-	groups, ok := v.(map[string]interface{})
-	if !ok {
-		return
-	}
-	for _, groupMembers := range groups {
-		extractServiceNames(groupMembers, depSet)
-	}
 }
 
 func extractServiceNames(v interface{}, depSet map[string]struct{}) {

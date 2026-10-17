@@ -83,7 +83,7 @@ func printRxHelp() {
 	fmt.Println("  oops rx ps                         Runs 'oops ps' on default remote server")
 	fmt.Println("  oops rx status                     Runs 'oops status' on default remote server")
 	fmt.Println("  oops rx logs app -f                Follows app container logs on default remote server")
-	fmt.Println("  oops rx @prod up +db               Runs 'oops up +db' on '@prod'")
+	fmt.Println("  oops rx @prod up /db               Runs 'oops up /db' on '@prod'")
 }
 
 func newRxCmd() *cobra.Command {

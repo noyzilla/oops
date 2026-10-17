@@ -55,7 +55,7 @@ services:
 	_ = os.WriteFile(filepath.Join(tmpDir, "compose.db.yaml"), []byte(`
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.4
   redis:
     image: redis:alpine
 `), 0644)
@@ -130,7 +130,7 @@ services:
     image: redis:7-alpine
 `), 0644)
 
-	// Create oops.yaml at root
+	// Create oops.yaml at root (pure config)
 	_ = os.WriteFile(filepath.Join(tmpDir, "oops.yaml"), []byte(`
 registries:
   gar: asia-southeast1-docker.pkg.dev/my-project/my-repo
@@ -185,7 +185,7 @@ services:
 	_ = os.WriteFile(filepath.Join(tmpDir, "compose.db.yaml"), []byte(`
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.4
   redis:
     image: redis:7-alpine
 `), 0644)
@@ -222,404 +222,134 @@ services:
 	}
 }
 
-func TestComposeGroupsAndServiceTemplatesMultiF(t *testing.T) {
+func TestXOopsStackOrderingAndSelectiveAutoStart(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// 1. Root compose.yaml with x-groups
+	// 1. Root compose.yaml with x-oops-stack specifying order: /edge, then /db/redis, then /db/mysql
+	// Notice /tools is NOT in x-oops-stack, and /db/postgres is NOT in x-oops-stack!
 	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yaml"), []byte(`
-services:
-  gateway:
-    image: caddy:latest
-
-x-oops-groups:
-  db:
-    - mysql
-    - redis
+x-oops-stack:
+  - /edge
+  - /db/redis
+  - /db/mysql
+networks:
+  default:
+    name: oops_default
 `), 0644)
 
-	// 2. Service templates in services/
-	servicesDir := filepath.Join(tmpDir, "services")
-	_ = os.MkdirAll(servicesDir, 0755)
-
-	_ = os.WriteFile(filepath.Join(servicesDir, "mysql.yaml"), []byte(`
-services:
-  mysql:
-    image: mysql:8.4
-`), 0644)
-
-	_ = os.WriteFile(filepath.Join(servicesDir, "redis.yaml"), []byte(`
-services:
-  redis:
-    image: redis:alpine
-`), 0644)
-
-	// 3. Local machine override: compose.local.yaml
-	_ = os.WriteFile(filepath.Join(tmpDir, "compose.local.yaml"), []byte(`
-services:
-  mysql:
-    ports:
-      - "3306:3306"
-`), 0644)
-
-	// Test 1: Resolve +db group
-	groupTargets, err := docker.ResolveTargets(tmpDir, []string{"+db"})
-	if err != nil {
-		t.Fatalf("unexpected error resolving +db: %v", err)
-	}
-	if len(groupTargets) != 2 {
-		t.Fatalf("expected 2 targets for +db, got %d", len(groupTargets))
-	}
-
-	// Verify tail-chaining in ComposeFiles:
-	// 1: compose.yaml, 2: services/mysql.yaml, 3: compose.local.yaml
-	for _, gt := range groupTargets {
-		if len(gt.ComposeFiles) < 3 {
-			t.Fatalf("expected at least 3 files in chain, got %+v", gt.ComposeFiles)
-		}
-		// First must be compose.yaml
-		if filepath.Base(gt.ComposeFiles[0]) != "compose.yaml" {
-			t.Errorf("expected first file compose.yaml, got %s", gt.ComposeFiles[0])
-		}
-		// Last must be compose.local.yaml
-		lastFile := filepath.Base(gt.ComposeFiles[len(gt.ComposeFiles)-1])
-		if lastFile != "compose.local.yaml" {
-			t.Errorf("expected tail file compose.local.yaml, got %s", lastFile)
-		}
-	}
-
-	// Test 2: Resolve single service mysql (auto-detects services/mysql.yaml)
-	singleTargets, err := docker.ResolveTargets(tmpDir, []string{"mysql"})
-	if err != nil {
-		t.Fatalf("unexpected error resolving single service mysql: %v", err)
-	}
-	if len(singleTargets) != 1 || singleTargets[0].ServiceName != "mysql" {
-		t.Fatalf("expected 1 mysql target, got %+v", singleTargets)
-	}
-	if filepath.Base(singleTargets[0].ComposeFiles[len(singleTargets[0].ComposeFiles)-1]) != "compose.local.yaml" {
-		t.Errorf("expected tail local override in single target chain")
-	}
-
-	// Test 3: Legacy .yml and docker-compose.* are ignored
-	_ = os.WriteFile(filepath.Join(tmpDir, "compose.legacy.yml"), []byte(`
-services:
-  legacy:
-    image: legacy:1.0
-`), 0644)
-	stacks, _, err := docker.DiscoverStacks(tmpDir)
-	if err != nil {
-		t.Fatalf("DiscoverStacks failed: %v", err)
-	}
-	for _, s := range stacks {
-		if s == "legacy" {
-			t.Errorf("legacy .yml file should not be discovered as a stack")
-		}
-	}
-}
-
-func TestBuildComposeChainAndResolveTargetsWithOopsYaml(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Root compose.yaml with base networks and app service
-	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yaml"), []byte(`
-services:
-  web:
-    image: nginx:alpine
-`), 0644)
-
-	// oops.yaml with oops daemon service and x-oops config
-	_ = os.WriteFile(filepath.Join(tmpDir, "oops.yaml"), []byte(`
+	// 2. Stack compose.edge.yaml with its own x-oops-stack order: caddy-proxy, then oops
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.edge.yaml"), []byte(`
+x-oops-stack:
+  - caddy-proxy
+  - oops
 services:
   oops:
-    image: ghcr.io/noyzilla/oops:edge
-x-oops:
-  registries:
-    gh: ghcr.io/myorg
-`), 0644)
-
-	// 1. Verify BuildComposeChain includes oops.yaml as second anchor
-	chain := docker.BuildComposeChain(tmpDir, nil, ".")
-	if len(chain) < 2 {
-		t.Fatalf("expected at least 2 files in chain, got %v", chain)
-	}
-	if filepath.Base(chain[0]) != "compose.yaml" {
-		t.Errorf("expected first file compose.yaml, got %s", chain[0])
-	}
-	if filepath.Base(chain[1]) != "oops.yaml" {
-		t.Errorf("expected second file oops.yaml, got %s", chain[1])
-	}
-
-	// 2. Resolve target 'oops' service directly
-	oopsTargets, err := docker.ResolveTargets(tmpDir, []string{"oops"})
-	if err != nil {
-		t.Fatalf("unexpected error resolving oops target: %v", err)
-	}
-	if len(oopsTargets) != 1 || oopsTargets[0].ServiceName != "oops" {
-		t.Fatalf("expected 1 oops target, got %+v", oopsTargets)
-	}
-	if oopsTargets[0].StackName != "." {
-		t.Errorf("expected oops target stack to be '.', got %q", oopsTargets[0].StackName)
-	}
-
-	// 3. Resolve all (nil targets) -> should include both 'web' and 'oops'
-	allTargets, err := docker.ResolveTargets(tmpDir, nil)
-	if err != nil {
-		t.Fatalf("unexpected error resolving all targets: %v", err)
-	}
-	if len(allTargets) != 2 {
-		t.Fatalf("expected 2 targets (web, oops), got %d: %+v", len(allTargets), allTargets)
-	}
-	names := []string{allTargets[0].ServiceName, allTargets[1].ServiceName}
-	hasWeb := names[0] == "web" || names[1] == "web"
-	hasOops := names[0] == "oops" || names[1] == "oops"
-	if !hasWeb || !hasOops {
-		t.Errorf("expected web and oops targets, got %v", names)
-	}
-}
-
-func TestXOopsGroupsWithDirectServicesAndProjects(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// 1. Root compose.yaml with x-oops-groups
-	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yaml"), []byte(`
-x-oops-groups:
-  lab:
-    - caddy-proxy
-    - mysql
-    - /tools
-`), 0644)
-
-	// 2. Service templates in services/
-	servicesDir := filepath.Join(tmpDir, "services")
-	_ = os.MkdirAll(servicesDir, 0755)
-
-	_ = os.WriteFile(filepath.Join(servicesDir, "caddy.yaml"), []byte(`
-services:
+    image: ghcr.io/noyzilla/oops:latest
   caddy-proxy:
     image: caddy:latest
 `), 0644)
 
-	_ = os.WriteFile(filepath.Join(servicesDir, "mysql.yaml"), []byte(`
-services:
-  mysql:
-    image: mysql:8.4
-`), 0644)
-
-	// 3. Stack file compose.tools.yaml
-	_ = os.WriteFile(filepath.Join(tmpDir, "compose.tools.yaml"), []byte(`
-services:
-  httpbin:
-    image: kennethreitz/httpbin
-`), 0644)
-
-	// Resolve +lab group
-	targets, err := docker.ResolveTargets(tmpDir, []string{"+lab"})
-	if err != nil {
-		t.Fatalf("unexpected error resolving +lab: %v", err)
-	}
-
-	if len(targets) != 3 {
-		t.Fatalf("expected 3 targets for +lab, got %d: %+v", len(targets), targets)
-	}
-
-	serviceMap := make(map[string]string)
-	for _, tgt := range targets {
-		serviceMap[tgt.ServiceName] = tgt.StackName
-	}
-
-	if serviceMap["caddy-proxy"] != "services/caddy" {
-		t.Errorf("expected caddy-proxy in services/caddy, got %s", serviceMap["caddy-proxy"])
-	}
-	if serviceMap["mysql"] != "services/mysql" {
-		t.Errorf("expected mysql in services/mysql, got %s", serviceMap["mysql"])
-	}
-	if serviceMap["httpbin"] != "tools" {
-		t.Errorf("expected httpbin in stack tools, got %s", serviceMap["httpbin"])
-	}
-}
-
-func TestXOopsDependsVsXOopsServices(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	servicesDir := filepath.Join(tmpDir, "services")
-	_ = os.MkdirAll(servicesDir, 0755)
-
-	_ = os.WriteFile(filepath.Join(servicesDir, "mysql.yaml"), []byte(`
-services:
-  mysql:
-    image: mysql:8.4
-`), 0644)
-
-	_ = os.WriteFile(filepath.Join(servicesDir, "redis.yaml"), []byte(`
-services:
-  redis:
-    image: redis:alpine
-`), 0644)
-
-	// compose.app.yaml defines:
-	// x-oops-depends: [mysql] (must auto-start mysql when /app is targeted)
-	// x-oops-services: [redis] (compose chain includes redis.yaml, but redis is not auto-started)
-	_ = os.WriteFile(filepath.Join(tmpDir, "compose.app.yaml"), []byte(`
-x-oops-depends:
+	// 3. Stack compose.db.yaml with mysql, postgres, redis
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.db.yaml"), []byte(`
+x-oops-stack:
   - mysql
-x-oops-services:
   - redis
 services:
-  api:
-    image: my-api:latest
+  mysql:
+    image: mysql:8.4
+  postgres:
+    image: postgres:16-alpine
+  redis:
+    image: redis:7-alpine
 `), 0644)
 
-	targets, err := docker.ResolveTargets(tmpDir, []string{"/app"})
+	// 4. Stack compose.tools.yaml (unlisted in root compose.yaml)
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.tools.yaml"), []byte(`
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+`), 0644)
+
+	// Test A: Default 'oops up' (nil targets) must strictly follow compose.yaml x-oops-stack order
+	// Expected: caddy-proxy, oops, redis, mysql (4 services, NO postgres, NO mailpit)
+	targets, err := docker.ResolveTargets(tmpDir, nil)
 	if err != nil {
-		t.Fatalf("unexpected error resolving /app: %v", err)
+		t.Fatalf("unexpected error resolving default targets: %v", err)
 	}
-
-	// Should resolve 2 targets to run: mysql (dependency) and api
-	if len(targets) != 2 {
-		t.Fatalf("expected 2 targets (mysql and api), got %d: %+v", len(targets), targets)
+	if len(targets) != 4 {
+		t.Fatalf("expected 4 targets from x-oops-stack, got %d: %+v", len(targets), targets)
 	}
-
-	// First should be mysql dependency, second api
-	if targets[0].ServiceName != "mysql" || targets[1].ServiceName != "api" {
-		t.Errorf("unexpected target order or members: %+v", targets)
-	}
-
-	// Verify compose files for api include both mysql and redis in the chain
-	apiTarget := targets[1]
-	hasMysqlTmpl := false
-	hasRedisTmpl := false
-	for _, f := range apiTarget.ComposeFiles {
-		if filepath.Base(f) == "mysql.yaml" {
-			hasMysqlTmpl = true
-		}
-		if filepath.Base(f) == "redis.yaml" {
-			hasRedisTmpl = true
+	expectedOrder := []string{"caddy-proxy", "oops", "redis", "mysql"}
+	for i, exp := range expectedOrder {
+		if targets[i].ServiceName != exp {
+			t.Errorf("at index %d: expected %s, got %s", i, exp, targets[i].ServiceName)
 		}
 	}
-	if !hasMysqlTmpl || !hasRedisTmpl {
-		t.Errorf("expected api compose chain to include mysql.yaml and redis.yaml, got %v", apiTarget.ComposeFiles)
+
+	// Test B: Targeting '/db' uses compose.db.yaml's x-oops-stack (mysql, redis -> omits postgres)
+	dbTargets, err := docker.ResolveTargets(tmpDir, []string{"/db"})
+	if err != nil {
+		t.Fatalf("unexpected error resolving /db: %v", err)
+	}
+	if len(dbTargets) != 2 {
+		t.Fatalf("expected 2 targets for /db (mysql, redis), got %d: %+v", len(dbTargets), dbTargets)
+	}
+	if dbTargets[0].ServiceName != "mysql" || dbTargets[1].ServiceName != "redis" {
+		t.Errorf("expected [mysql, redis], got [%s, %s]", dbTargets[0].ServiceName, dbTargets[1].ServiceName)
+	}
+
+	// Test C: Explicitly targeting '/db/postgres' starts postgres even though it is omitted from x-oops-stack
+	pgTargets, err := docker.ResolveTargets(tmpDir, []string{"/db/postgres"})
+	if err != nil {
+		t.Fatalf("unexpected error resolving /db/postgres: %v", err)
+	}
+	if len(pgTargets) != 1 || pgTargets[0].ServiceName != "postgres" {
+		t.Fatalf("expected postgres target, got %+v", pgTargets)
 	}
 }
 
-func TestLocalPrecedenceAndCrossStackResolution(t *testing.T) {
+func TestBuildComposeChainPureConfigOopsYaml(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	servicesDir := filepath.Join(tmpDir, "services")
-	_ = os.MkdirAll(servicesDir, 0755)
-
-	// Global template services/mysql.yaml
-	_ = os.WriteFile(filepath.Join(servicesDir, "mysql.yaml"), []byte(`
-services:
-  mysql:
-    image: mysql:8.0-template
-`), 0644)
-
-	// Stack 1: compose.crm.yaml with local mysql definition
-	_ = os.WriteFile(filepath.Join(tmpDir, "compose.crm.yaml"), []byte(`
-services:
-  mysql:
-    image: mysql:8.4-crm-local
-  crm-api:
-    image: crm:latest
-    depends_on:
-      - mysql
-`), 0644)
-
-	// Stack 2: compose.tools2.yaml with redis
-	_ = os.WriteFile(filepath.Join(tmpDir, "compose.tools2.yaml"), []byte(`
-services:
-  redis:
-    image: redis:alpine
-  worker:
-    image: worker:latest
-`), 0644)
-
-	// Test 1: oops up mysql (no slash) targets services/mysql template, NOT crm's local mysql
-	tmplTargets, err := docker.ResolveTargets(tmpDir, []string{"mysql"})
-	if err != nil {
-		t.Fatalf("unexpected error resolving mysql: %v", err)
-	}
-	if len(tmplTargets) != 1 || tmplTargets[0].StackName != "services/mysql" {
-		t.Errorf("expected services/mysql target, got %+v", tmplTargets)
-	}
-
-	// Test 2: oops up /crm/mysql targets crm's local mysql
-	crmMysqlTargets, err := docker.ResolveTargets(tmpDir, []string{"/crm/mysql"})
-	if err != nil {
-		t.Fatalf("unexpected error resolving /crm/mysql: %v", err)
-	}
-	if len(crmMysqlTargets) != 1 || crmMysqlTargets[0].StackName != "crm" {
-		t.Errorf("expected crm stack target, got %+v", crmMysqlTargets)
-	}
-
-	// Test 3: oops up /crm resolves crm-api and local mysql, NEVER pulling services/mysql.yaml into chain
-	crmTargets, err := docker.ResolveTargets(tmpDir, []string{"/crm"})
-	if err != nil {
-		t.Fatalf("unexpected error resolving /crm: %v", err)
-	}
-	if len(crmTargets) != 2 {
-		t.Fatalf("expected 2 targets for /crm, got %d", len(crmTargets))
-	}
-	for _, tgt := range crmTargets {
-		if tgt.StackName != "crm" {
-			t.Errorf("expected target to belong to crm stack, got %s", tgt.StackName)
-		}
-		for _, f := range tgt.ComposeFiles {
-			if filepath.Base(f) == "mysql.yaml" {
-				t.Errorf("local definition violated: services/mysql.yaml was pulled into compose chain: %v", tgt.ComposeFiles)
-			}
-		}
-	}
-
-	// Test 4: Root compose.yaml with group referencing /tools2/redis
 	_ = os.WriteFile(filepath.Join(tmpDir, "compose.yaml"), []byte(`
-x-oops-groups:
-  lab:
-    - mysql
-    - /tools2/redis
+networks:
+  default:
+    name: oops_default
 `), 0644)
 
-	groupTargets, err := docker.ResolveTargets(tmpDir, []string{"+lab"})
-	if err != nil {
-		t.Fatalf("unexpected error resolving +lab: %v", err)
-	}
-	if len(groupTargets) != 2 {
-		t.Fatalf("expected 2 targets for +lab, got %d: %+v", len(groupTargets), groupTargets)
-	}
+	// Pure config oops.yaml must NOT be added to docker compose -f chain
+	_ = os.WriteFile(filepath.Join(tmpDir, "oops.yaml"), []byte(`
+x-oops:
+  secret: test
+`), 0644)
 
-	// First should be services/mysql, second tools2/redis (not worker!)
-	serviceMap := make(map[string]string)
-	for _, tgt := range groupTargets {
-		serviceMap[tgt.ServiceName] = tgt.StackName
-	}
-	if serviceMap["mysql"] != "services/mysql" {
-		t.Errorf("expected mysql in services/mysql, got %s", serviceMap["mysql"])
-	}
-	if serviceMap["redis"] != "tools2" {
-		t.Errorf("expected redis in tools2, got %s", serviceMap["redis"])
-	}
-	if _, hasWorker := serviceMap["worker"]; hasWorker {
-		t.Errorf("worker should not be targeted when /tools2/redis was specified in group")
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.edge.yaml"), []byte(`
+services:
+  oops:
+    image: ghcr.io/noyzilla/oops:latest
+`), 0644)
+
+	chain := docker.BuildComposeChain(tmpDir, []string{filepath.Join(tmpDir, "compose.edge.yaml")}, "edge")
+	for _, f := range chain {
+		if filepath.Base(f) == "oops.yaml" {
+			t.Errorf("pure config oops.yaml should not be included in compose -f chain: %v", chain)
+		}
 	}
 }
 
 func TestLocalServiceVersionDiscrepancyAndPrecedence(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	servicesDir := filepath.Join(tmpDir, "services")
-	_ = os.MkdirAll(servicesDir, 0755)
-
-	// Global default template: services/mysql.yaml (MySQL 8.0)
-	_ = os.WriteFile(filepath.Join(servicesDir, "mysql.yaml"), []byte(`
+	// Shared stack: compose.db.yaml (MySQL 8.0)
+	_ = os.WriteFile(filepath.Join(tmpDir, "compose.db.yaml"), []byte(`
 services:
   mysql:
     image: mysql:8.0
     container_name: mysql
 `), 0644)
 
-	// Legacy project: compose.legacy.yaml using MySQL 5.7
+	// Legacy project: compose.legacy.yaml using local MySQL 5.7
 	_ = os.WriteFile(filepath.Join(tmpDir, "compose.legacy.yaml"), []byte(`
-x-oops-depends:
-  - mysql
 services:
   mysql:
     image: mysql:5.7
@@ -630,7 +360,7 @@ services:
       - mysql
 `), 0644)
 
-	// 1. Resolve /legacy: must use local mysql 5.7, never pull services/mysql.yaml (8.0)
+	// 1. Resolve /legacy: must use local mysql 5.7, never pull compose.db.yaml (8.0)
 	legacyTargets, err := docker.ResolveTargets(tmpDir, []string{"/legacy"})
 	if err != nil {
 		t.Fatalf("failed to resolve /legacy: %v", err)
@@ -647,8 +377,8 @@ services:
 			t.Errorf("expected mysql:5.7 in legacy stack, got %s", tgt.Image)
 		}
 		for _, f := range tgt.ComposeFiles {
-			if filepath.Base(f) == "mysql.yaml" {
-				t.Errorf("services/mysql.yaml (8.0) was illegally pulled into compose chain for legacy stack: %v", tgt.ComposeFiles)
+			if filepath.Base(f) == "compose.db.yaml" {
+				t.Errorf("compose.db.yaml (8.0) was illegally pulled into compose chain for legacy stack: %v", tgt.ComposeFiles)
 			}
 		}
 	}
@@ -658,22 +388,7 @@ services:
 	if err != nil {
 		t.Fatalf("failed to resolve /legacy/mysql: %v", err)
 	}
-	if len(specificTargets) != 1 {
-		t.Fatalf("expected 1 target for /legacy/mysql, got %d", len(specificTargets))
-	}
-	if specificTargets[0].StackName != "legacy" || specificTargets[0].Image != "mysql:5.7" {
-		t.Errorf("expected legacy mysql 5.7, got %+v", specificTargets[0])
-	}
-
-	// 3. Resolve standalone 'mysql': targets shared services/mysql.yaml (8.0)
-	sharedTargets, err := docker.ResolveTargets(tmpDir, []string{"mysql"})
-	if err != nil {
-		t.Fatalf("failed to resolve mysql: %v", err)
-	}
-	if len(sharedTargets) != 1 {
-		t.Fatalf("expected 1 target for shared mysql, got %d", len(sharedTargets))
-	}
-	if sharedTargets[0].StackName != "services/mysql" || sharedTargets[0].Image != "mysql:8.0" {
-		t.Errorf("expected shared mysql 8.0, got %+v", sharedTargets[0])
+	if len(specificTargets) != 1 || specificTargets[0].StackName != "legacy" || specificTargets[0].Image != "mysql:5.7" {
+		t.Errorf("expected legacy mysql 5.7, got %+v", specificTargets)
 	}
 }

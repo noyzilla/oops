@@ -1,44 +1,8 @@
 # ==============================================================================
-# Oops Orchestrator Compose Manifest & System Settings (oops.yaml)
+# Oops System-Level Orchestrator Settings (oops.yaml)
 # ==============================================================================
-# Runs the Oops webhook daemon and declares system-level orchestrator settings.
+# Pure configuration file for the Oops CLI and Orchestrator daemon.
 # ==============================================================================
-services:
-  oops:
-    image: ghcr.io/noyzilla/oops:latest
-    container_name: oops
-    hostname: oops.oops
-    restart: unless-stopped
-    entrypoint: [ "oops" ]
-    command: [ "server" ]
-    environment:
-      OOPS_SECRET: ${OOPS_SECRET:?OOPS_SECRET must be set}
-      OOPS_DB_MYSQL_PASSWORD: ${OOPS_DB_MYSQL_PASSWORD:-}
-      OOPS_DB_POSTGRES_PASSWORD: ${OOPS_DB_POSTGRES_PASSWORD:-}
-      OOPS_DB_REDIS_PASSWORD: ${OOPS_DB_REDIS_PASSWORD:-}
-    labels:
-      caddy: "${OOPS_DOMAIN:-oops.web.oops}"
-      caddy.reverse_proxy: "{{upstreams 8080}}"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./:/oopsbox
-    working_dir: /oopsbox
-    networks:
-      - oops_edge
-    healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/healthz" ]
-      interval: 10s
-      timeout: 3s
-      start_period: 3s
-      retries: 3
-
-networks:
-  oops_edge:
-    external: true
-
-# ------------------------------------------------------------------------------
-# System-Level Orchestrator Settings (x-oops)
-# ------------------------------------------------------------------------------
 x-oops:
   secret: ${OOPS_SECRET:-}
 

@@ -6,6 +6,14 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Added
+- **`x-oops-stack` Ordering & Selective Auto-Start**: Added `x-oops-stack:` support in both `compose.yaml` and `compose.<stack>.yaml` (`internal/docker/compose.go`, `internal/docker/resolver.go`) to control exact top-to-bottom boot order and selective service auto-start on `oops up`. Services or stacks omitted from `x-oops-stack:` do not auto-start unless explicitly targeted.
+- **Pre-Flight `depends_on` Warnings on Deploy**: Added pre-flight validation in `ResolveRequiredDependencies` (`internal/remote/resolve.go`, `cmd/remote.go`) to warn operators during `oops deploy` / `oops remote push` when a service declares `depends_on:` for a local or cross-stack service that is omitted from `x-oops-stack:`.
+
+### Changed
+- **Pure Stack Architecture**: Replaced `oopsbox/services/` and `x-oops-groups:` with self-contained stack manifests (`oopsbox/compose.edge.yaml`, `oopsbox/compose.db.yaml`, `oopsbox/compose.storage.yaml`, `oopsbox/compose.tools.yaml`) that declare their own stack-scoped bridge networks (`oops_edge`, `oops_db`, `oops_storage`), while `compose.yaml` defines the default untrusted sandbox network (`oops_default`).
+- **Pure Configuration `oops.yaml`**: Moved the `oops` daemon container definition into `compose.edge.yaml` so `oops.yaml` and `oops.yaml.example` act strictly as pure `x-oops:` system configuration files and are no longer chained via `-f` into `docker compose`.
+
 ## [v1.6.0] - 2026-10-17
 
 ### Added

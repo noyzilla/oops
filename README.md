@@ -34,15 +34,18 @@ Oops and Oopsbox eliminate DevOps complexity through three foundational principl
 oopsbox/
 ├── .env                  # Environment variables & secrets (copy from .env.example)
 ├── .env.example          # Credentials template
-├── compose.yaml          # Local Root Base Manifest
+├── compose.yaml          # Local Root Base Manifest (x-oops-stack & oops_default network)
 ├── compose.yaml.example  # Blueprint for remote /@<remote>/compose.yaml
-├── oops.yaml             # Daemon orchestrator compose manifest
+├── compose.edge.yaml     # Edge stack (caddy-proxy, oops daemon, oops_edge network)
+├── compose.db.yaml       # Database stack (mysql, postgres, redis, oops_db network)
+├── compose.storage.yaml  # Object Storage stack (seaweedfs, oops_storage network)
+├── compose.tools.yaml    # Developer tools stack (httpbin, mailpit)
+├── oops.yaml             # Pure Oops system configuration (x-oops:)
 ├── oops.yaml.example     # Blueprint for remote /@<remote>/oops.yaml
 ├── oopsbox.yaml          # Workstation VM engine settings (OrbStack/Colima)
 ├── oopsbox.yaml.example  # Workstation settings blueprint
 ├── .oopsallow.example    # Whitelist blueprint for capsule sync
-├── services/             # Atomic service definitions (caddy, mysql, postgres, redis, etc.)
-├── config/               # Service configurations (e.g. caddy/Caddyfile)
+├── config/               # Service configurations (e.g. caddy/Caddyfile, mysql/my.cnf)
 ├── data/                 # Live container storage (High-IOPS persistent host volumes)
 └── backups/              # Automated database dumps & filesystem data archives
 ```
@@ -52,7 +55,7 @@ oopsbox/
 - **1-Command Workstation Setup**: Run `oops box init ~/oopsbox` and `oops box start` to boot the VM, set up host networking, register the macOS/Linux DNS resolver, and trust root SSL certificates.
 - **Automated Local HTTPS**: Caddy Edge Proxy automatically issues and serves valid TLS certificates with green locks for `https://*.web.oops`.
 - **Embedded Zero-Config DNS**: Containers are instantly resolvable by hostname (e.g. `mysql.oops`, `redis.oops`, `host.oops`, `vm.oops`) through the embedded Oops DNS engine.
-- **Strict Network Isolation**: Enforces least privilege across `oops_edge` (public ingress) and `oops_db` (isolated backend).
+- **Strict Network Isolation**: Enforces least privilege across `oops_default` (untrusted default sandbox), `oops_edge` (public ingress), `oops_db` (isolated databases), and `oops_storage` (object storage).
 - **Single Source of Truth (`oops.yaml`)**: Configure project profiles, image registry aliases (`registries:`), and automated backups in one clean YAML file.
 
 [Read the Full Oopsbox Blueprint Guide](oopsbox/README.md)
@@ -61,16 +64,19 @@ oopsbox/
 
 ## The Engine: Oops CLI & Daemon
 
-The `oops` CLI binary manages multi-group containers, performs safe rolling updates, automates database provisioning, and executes backups.
+The `oops` CLI binary manages multi-stack containers, performs safe rolling updates, automates database provisioning, and executes backups.
 
 ### Smart Target Selectors
 ```bash
-# Start default root stack (/. mapped to compose.yaml) and its dependencies
+# Start stacks/services listed in compose.yaml x-oops-stack in exact top-to-bottom order
 oops up
 
-# Start specific stack
-oops up /edge-caddy
+# Start specific stack or scoped service
+oops up /edge
 oops up /db
+oops up /db/mysql
+oops up /storage
+oops up /tools
 
 # Switch active stack (starts target stack & gracefully stops others)
 oops switch /apps

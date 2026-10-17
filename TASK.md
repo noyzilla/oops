@@ -3,8 +3,7 @@
 This file tracks the active focus, immediate next actions, and backlog deliverables for the repository.
 
 ## Active Focus
-- Maintain living specifications, documentation, and stability following `v1.5.0` release.
+- Pure Stack Architecture (`compose.<stack>.yaml`), pure config `oops.yaml`, `x-oops-stack:` auto-start ordering, and pre-flight `depends_on` deploy warnings (`internal/docker/`, `internal/remote/`, `oopsbox/`).
 
 ## Immediate Next Actions
-- Ready for next development milestone.
-
+- Ready for review and commit of Pure Stack Architecture and `x-oops-stack` orchestration (`cmd/`, `internal/docker/`, `internal/remote/`, `oopsbox/`, `docs/specs/`).

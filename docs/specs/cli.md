@@ -20,9 +20,9 @@ The `oops` CLI is an ergonomic orchestrator over Docker Compose. It abstracts co
 ## Domain Context & Ubiquitous Language
 
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
-- **Group (`+<group>`)**: Logical aggregation of service templates defined in root `compose.yaml` under `x-oops-groups:` (e.g. `+db`, `+monitoring`).
-- **Stack (`/<stack>`)**: Dedicated application stack composition defined in `compose.<stack>.yaml` (e.g. `/myapp`, `/crm`).
-- **Service Template**: Reusable atomic service definitions located in `services/<service>.yaml` (e.g. `services/mysql.yaml`, `services/redis.yaml`).
+- **Stack (`/<stack>`)**: Dedicated infrastructure or application stack composition defined in `compose.<stack>.yaml` (e.g. `/edge`, `/db`, `/tools`, `/myapp`).
+- **Stack Order & Auto-Start (`x-oops-stack`)**: Ordered list declared in `compose.yaml` (or inside `compose.<stack>.yaml`) defining which stacks or services automatically start on `oops up` and their exact top-to-bottom boot sequence.
+- **Scoped Service (`/<stack>/<service>` or `<service>`)**: Specific container service inside a stack (e.g. `/db/mysql` or `mysql` resolved from `compose.db.yaml`).
 - **Remote Overlay (`@<remote>`)**: Environment specialization capsule located in `/@<remote>/` (e.g. `/@prod/`).
 - **Config**: Version-controlled service configurations residing modularly inside `config/<service>/` (e.g. `config/caddy/Caddyfile`, `config/mysql/my.cnf`).
 - **Rolling Update**: Sequential pull -> stop hook -> recreate -> health poll workflow.
@@ -34,35 +34,39 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
 
 | Target Syntax | Target Type | Resolution & `-f` Execution Chain |
 | :--- | :--- | :--- |
-| `(none)` | Base Default | `-f compose.yaml [-f compose.local.yaml] up` |
-| `<service>` | Single Service | Auto-detects `services/<service>.yaml`, executing `-f compose.yaml -f services/<service>.yaml [-f compose.local.yaml] up <service>` |
-| `+<group>` | Service Group | Resolves members from `x-oops-groups.<group>` in `compose.yaml`, chaining member templates + `[-f compose.local.yaml]` |
-| `/<stack>` | Application Stack | Resolves dependencies (`depends_on` / `x-oops-depends` / `x-oops-services`), chaining `-f compose.yaml [dependencies] -f compose.<stack>.yaml [-f compose.<stack>.local.yaml] [-f compose.local.yaml] up` |
-| `/<stack>/<service>` | Stack Service | Targets a specific service within an application stack, resolving dependencies locally without pulling conflicting service templates |
+| `(none)` | Base Default (`x-oops-stack`) | Resolves ordered entries from `x-oops-stack:` in `compose.yaml`, chaining `-f compose.yaml -f compose.<stack>.yaml [-f compose.<stack>.local.yaml] [-f compose.local.yaml] up` for each entry in sequence |
+| `/<stack>` | Infrastructure / Application Stack | Resolves `x-oops-stack:` (if declared in `compose.<stack>.yaml`) and dependencies (`depends_on` / `x-oops-depends`), chaining `-f compose.yaml [dependencies] -f compose.<stack>.yaml [-f compose.<stack>.local.yaml] [-f compose.local.yaml] up` |
+| `/<stack>/<service>` | Scoped Stack Service | Targets a specific service within `compose.<stack>.yaml`, resolving dependencies within the stack |
+| `<service>` | Bare Service Name | Searches `compose.<stack>.yaml` files (prioritizing `edge`, `db`, `tools`), executing `-f compose.yaml -f compose.<stack>.yaml [-f compose.<stack>.local.yaml] [-f compose.local.yaml] up <service>` |
 | `@<remote>` | Remote Host Capsule | Resolves capsule `/@<remote>/` and deploys via Direct SSH Streaming (`oops deploy`) |
 | `..wildcard..` | Wildcard Pattern | Matches service names matching prefix (`app..`), suffix (`..worker`), or substring (`..api..`). |
+
+### `x-oops-stack` Ordering & Selective Auto-Start Invariant
+Both root `compose.yaml` and individual `compose.<stack>.yaml` files support `x-oops-stack:`:
+- **Explicit Auto-Start Whitelist**: Only stacks or services listed in `x-oops-stack:` are started automatically when running `oops up` (for `compose.yaml`) or `oops up /<stack>` (for `compose.<stack>.yaml`). Services defined in `services:` but omitted from `x-oops-stack:` remain dormant until explicitly targeted (e.g. `oops up /tools/seaweedfs`).
+- **Deterministic Top-to-Bottom Execution Order**: Entries in `x-oops-stack:` are resolved and started strictly in top-to-bottom array order (e.g. `/edge` before `/db`, or `mysql` before `app`).
+- **Recursive Resolution**: When `/<stack>` is referenced in `compose.yaml` `x-oops-stack:`, the resolver inspects `compose.<stack>.yaml` and honors its internal `x-oops-stack:` list if present.
 
 ### Local Service Precedence Invariant
 When resolving dependencies (`depends_on`, `x-oops-depends`, `x-oops-services`) within a stack (`compose.<stack>.yaml`), any dependency whose name matches a service defined locally within that same stack takes absolute precedence:
 - The local service definition is used directly within the stack.
-- The shared template `services/<service>.yaml` is strictly NOT chained into the compose `-f` pipeline.
-- Shared templates under `services/` are only resolved if no local service definition with the matching name exists in the active stack.
-- CLI target `<service>` (without leading slash) targets the shared template in `services/<service>.yaml`, while `/<stack>/<service>` targets the specific service defined within that application stack.
+- Cross-stack resolution is only triggered if no local service definition with the matching name exists in the active stack.
+- CLI target `/<stack>/<service>` targets the specific service defined within that stack, while bare `<service>` searches across workspace stack files.
 
 #### CLI Argument Bracketing & Sigil-Outside Invariant [มาตรฐานการใช้วงเล็บอาร์กิวเมนต์]
 All command signatures adhere to the ubiquitous language defined in [CONTEXT.md](../../CONTEXT.md):
-- **Required**: `sigil<placeholder>` (e.g. `@<remote>`, `/<stack>`, `+<group>`, `<service>`).
-- **Optional**: `[sigil<placeholder>]` (e.g. `[@<remote>]`, `[/<stack>]`, `[+<group>]`, `[<service>]`).
-- **Sigil-Outside Invariant**: Sigils (`@`, `/`, `+`) strictly stay outside `<...>` to prevent collision with HTML/XML tags (e.g. `</stack>`).
+- **Required**: `sigil<placeholder>` (e.g. `@<remote>`, `/<stack>`, `/<stack>/<service>`, `<service>`).
+- **Optional**: `[sigil<placeholder>]` (e.g. `[@<remote>]`, `[/<stack>]`, `[<service>]`).
+- **Sigil-Outside Invariant**: Sigils (`@`, `/`) strictly stay outside `<...>` to prevent collision with HTML/XML tags (e.g. `</stack>`).
 
 ### Tail-Chaining Invariant (Left-to-Right Precedence)
 All machine-specific overrides (`*.local.yaml`) are strictly appended to the tail of the `-f` flag pipeline:
-- `-f compose.yaml` (Root anchor for working directory)
-- `-f oops.yaml` (Orchestrator compose anchor holding daemon service & `x-oops:` config)
-- `-f services/<service>.yaml` (Atomic templates)
-- `-f compose.<stack>.yaml` (Stack configuration)
+- `-f compose.yaml` (Root anchor for working directory and `oops_default` network)
+- `-f compose.<dep-stack>.yaml` (Cross-stack dependencies if applicable)
+- `-f compose.<stack>.yaml` (Target stack configuration and stack-scoped networks)
 - `-f compose.<stack>.local.yaml` (Stack-specific machine override)
 - `-f compose.local.yaml` (Global machine override — tailmost position)
+- Note: `oops.yaml` is a pure Oops CLI/daemon configuration file (`x-oops:`) and is never passed via `-f` to `docker compose`.
 
 ### Strict `.yaml` Validation & Legacy Deprecation
 - Only manifests ending with `.yaml` are recognized by discovery and execution engines.
@@ -120,7 +124,7 @@ For each matched service in target order:
 | Command | Arguments / Flags | Description |
 | :--- | :--- | :--- |
 | `oops` | `[-C, --dir <path>]` | Displays help menu and available subcommands |
-| `oops up` | `[targets...] [-d 0s]` | Starts services, groups (`+<group>`), or stacks (`/<stack>`) with optional delay |
+| `oops up` | `[targets...] [-d 0s]` | Starts stacks (`/<stack>`), scoped services (`/<stack>/<service>`), or bare services with optional delay |
 | `oops stop` | `[targets...] [-x, --except <tgt>] [-d 0s]` | Gracefully stops target services |
 | `oops restart`| `[targets...] [-d 0s] [-i <img/alias>]` | Restarts target services with stop hooks and delay |
 | `oops down` | `[-d 0s] [--wipe-all] [-y]` | Tears down running containers |
@@ -149,7 +153,7 @@ For each matched service in target order:
 | `oops remote setup` | `[@<remote>]` | Installs or upgrades `docker-compose-plugin` and `oops` CLI to latest version on remote server |
 | `oops remote list` | *(none)* | Lists registered remotes discovered in `/@*/remote.yaml` |
 | `oops remote remove` | `@<remote>` | Removes registered remote directory `/@<remote>/` |
-| `oops rx` | `[@<remote>] <oops-cmd> [args...]` | Remote Execute: Forwards oops command over SSH to remote target (e.g. `oops rx ps` -> `oops ps`) |
+| `oops rx` | `[@<remote>] <oops-cmd> [args...]` | Remote Execute: Forwards oops command over SSH to remote target (e.g. `oops ps` -> `oops ps`) |
 | `oops version` | `[-v, --version]` | Displays Oops version and build information |
 | `oops selfupdate` | `[-c, --check] [-f, --force]` | Self-updates binary from GitHub release |
 | `oops server` | `[-p, --port 8080] [-c <path>]` | Starts webhook deployment and DNS discovery daemon |
@@ -174,7 +178,8 @@ For each matched service in target order:
 
 - **Targeted Test Command**: `go test -v -race ./...`
 - **Acceptance Scenarios**:
-  - `oops up +db` locates member templates declared in `x-oops-groups.db` and chains them with `-f compose.yaml`.
-  - `oops up mysql` locates `services/mysql.yaml` and executes cleanly.
-  - `oops up /myapp` locates `compose.myapp.yaml` and chains dependencies.
+  - `oops up` reads `x-oops-stack` from `compose.yaml` and starts listed stacks/services in exact top-to-bottom order.
+  - `oops up /db` locates `compose.db.yaml` and starts only services listed in `x-oops-stack` (or all services if `x-oops-stack` is omitted).
+  - `oops up /db/mysql` or `oops up mysql` resolves `mysql` inside `compose.db.yaml` and starts that specific service.
+  - `oops up /myapp` locates `compose.myapp.yaml` and chains cross-stack dependencies.
   - Non-existent files or `.yml` files produce immediate actionable errors.

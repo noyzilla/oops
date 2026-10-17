@@ -1,46 +1,20 @@
 # ==============================================================================
-# Oops Remote Base Manifest Blueprint (compose.yaml.example)
+# Oops Base Manifest Blueprint (compose.yaml.example)
 # ==============================================================================
-# Minimal infrastructure skeleton used to initialize /@<remote>/compose.yaml
-# Defines lifecycle service groups and shared infrastructure networks.
+# Defines stack/service auto-start order (x-oops-stack) and default network.
+# Services or stacks omitted from x-oops-stack will not auto-start on 'oops up'.
 # ==============================================================================
 # name: oops
 
-# Targetable service groups for batch operations (e.g. oops up +db, oops stop +edge)
-# Use service name directly (e.g. caddy-proxy, mysql) or project/stack with leading slash (e.g. /tools)
-x-oops-groups:
-  edge:
-    - caddy-proxy
-  db:
-    - mysql
-    - postgres
-    - redis
-  # lab:
-  #   - caddy-proxy
-  #   - mysql
-  #   - /tools
-  #   - /tools2/redis
-
-# Runtime dependencies: services that must be auto-started along with this stack
-# (use name for services/, or /<stack>/<service> / /<stack> for cross-stack)
-# x-oops-depends:
-#   - mysql
-#   - /tools2/redis
-
-# Service templates or stacks bundled into compose chain without auto-starting
-# x-oops-services:
-#   - mailpit
-#   - /tools
+x-oops-stack:
+  - /edge
+  - /db
+  # - /storage
+  # - /tools
+  # - /db/mysql
+  # - /db/redis
+  # - /crm
 
 networks:
   default:
     name: oops_default
-  oops_edge:
-    name: oops_edge
-    driver: bridge
-  oops_db:
-    name: oops_db
-    driver: bridge
-  oops_storage:
-    name: oops_storage
-    driver: bridge
