@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+### Fixed
+- Suppressed false-positive `Found orphan containers (...) for this project` warnings during `oops up`, `oops update`, and webhook recreation by injecting `COMPOSE_IGNORE_ORPHANS=True` into `docker compose` execution environments (`internal/orchestrator/updater.go`, `internal/docker/client.go`).
+- Fixed `oops pull` and webhook container recreation/restart passing only the root `compose.yaml` anchor instead of the full `ComposeFiles` `-f` chain (`cmd/pull.go`, `internal/docker/client.go`).
+
 ## [v1.8.0] - 2026-10-17
 
 ### Added

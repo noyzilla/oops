@@ -35,10 +35,16 @@ func newPullCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
+					var baseFiles []string
+					if s != "." {
+						baseFiles = []string{cPath}
+					}
+					cChain := docker.BuildComposeChain(workDir, baseFiles, s)
 					for sName, srv := range cfg.Services {
 						targets = append(targets, docker.ResolvedTarget{
 							StackName:     s,
 							ComposePath:   cPath,
+							ComposeFiles:  cChain,
 							ServiceName:   sName,
 							ContainerName: srv.ContainerName,
 							Image:         srv.Image,
@@ -58,26 +64,41 @@ func newPullCmd() *cobra.Command {
 				return nil
 			}
 
-			// Group targets by stack to execute pull per compose file
+			// Group targets by stack to execute pull per compose file chain
 			stackServiceMap := make(map[string][]string)
-			stackComposeMap := make(map[string]string)
+			stackComposeFilesMap := make(map[string][]string)
 			var orderedStacks []string
 
 			for _, t := range targets {
 				if _, exists := stackServiceMap[t.StackName]; !exists {
 					orderedStacks = append(orderedStacks, t.StackName)
-					stackComposeMap[t.StackName] = t.ComposePath
+				}
+				cFiles := t.ComposeFiles
+				if len(cFiles) == 0 && t.ComposePath != "" {
+					cFiles = []string{t.ComposePath}
+				}
+				for _, f := range cFiles {
+					hasFile := false
+					for _, existing := range stackComposeFilesMap[t.StackName] {
+						if existing == f {
+							hasFile = true
+							break
+						}
+					}
+					if !hasFile {
+						stackComposeFilesMap[t.StackName] = append(stackComposeFilesMap[t.StackName], f)
+					}
 				}
 				stackServiceMap[t.StackName] = append(stackServiceMap[t.StackName], t.ServiceName)
 			}
 
 			for _, stack := range orderedStacks {
 				services := stackServiceMap[stack]
-				composePath := stackComposeMap[stack]
+				composeFiles := stackComposeFilesMap[stack]
 
 				log.Printf("==> Pulling images for stack /%s (Services: %v)...", stack, services)
 				cmdArgs := append([]string{"pull"}, services...)
-				if err := orchestrator.RunComposeCommand(composePath, cmdArgs...); err != nil {
+				if err := orchestrator.RunComposeFiles(composeFiles, cmdArgs...); err != nil {
 					return err
 				}
 			}
