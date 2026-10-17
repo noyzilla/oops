@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.5.0] - 2026-10-17
+
 ### Added
 - Introduced `oops remote repair [@<remote>]` (alias: `oops remote doctor`) to audit and repair directory structures and missing blueprint files across local capsules and remote hosts.
 - Enforced Self-Healing Workspace Invariant across remote operations (`push`, `pull`, `connect`, `deploy`), ensuring standard Oopsbox directories (`services/`, `config/`, `data/`, `backups/`) and core blueprint manifests exist prior to file streaming.

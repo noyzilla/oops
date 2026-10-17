@@ -3,7 +3,7 @@
 This file tracks the active focus, immediate next actions, and backlog deliverables for the repository.
 
 ## Active Focus
-- Maintain living specifications, documentation, and stability following `v1.4.0` release.
+- Maintain living specifications, documentation, and stability following `v1.5.0` release.
 
 ## Immediate Next Actions
 - Ready for next development milestone.
