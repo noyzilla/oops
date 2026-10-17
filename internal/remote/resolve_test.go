@@ -321,3 +321,42 @@ func TestBuildLocalTarArgs(t *testing.T) {
 		t.Errorf("expected no darwin flags on linux, got: %v", linuxArgs)
 	}
 }
+
+func TestResolveRequiredDependencies_OmittedStackCapsuleScope(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Root workspace stacks (crm and billing) that do NOT exist in capsule
+	_ = os.WriteFile(filepath.Join(tempDir, "compose.crm.yaml"), []byte("services:\n  crm:\n    image: crm:latest\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "compose.billing.yaml"), []byte("services:\n  billing:\n    image: billing:latest\n"), 0644)
+
+	// Capsule has compose.edge.yaml
+	capsuleDir := filepath.Join(tempDir, "@remote")
+	_ = os.MkdirAll(capsuleDir, 0755)
+	_ = os.WriteFile(filepath.Join(capsuleDir, "compose.edge.yaml"), []byte("services:\n  caddy:\n    image: caddy:latest\n"), 0644)
+	_ = os.WriteFile(filepath.Join(capsuleDir, "compose.yaml"), []byte("name: oops\n"), 0644)
+
+	// Resolve with stack == ""
+	inspector, err := ResolveRequiredDependencies(tempDir, "", "remote")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Root stacks compose.crm.yaml and compose.billing.yaml must NOT be included in StackFiles!
+	for _, sf := range inspector.StackFiles {
+		if sf == "compose.crm.yaml" || sf == "compose.billing.yaml" {
+			t.Errorf("omitted stack must not include root workspace stack %s", sf)
+		}
+	}
+
+	// Capsule stack compose.edge.yaml MUST be in CapsuleStackFiles
+	foundEdge := false
+	for _, csf := range inspector.CapsuleStackFiles {
+		if csf == "compose.edge.yaml" {
+			foundEdge = true
+		}
+	}
+	if !foundEdge {
+		t.Errorf("expected compose.edge.yaml in CapsuleStackFiles, got: %v", inspector.CapsuleStackFiles)
+	}
+}
+
