@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/noyzilla/oops/internal/box"
 )
 
 const defaultComposeExample = `# ==============================================================================
@@ -184,6 +186,38 @@ func InitCapsuleBlueprints(workDir, remoteName string) ([]string, error) {
 			return created, fmt.Errorf("failed to create %s: %w", targetPath, err)
 		}
 		created = append(created, item.targetName)
+	}
+
+	// Initialize config/ directory
+	configDir := filepath.Join(capsule, "config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return created, fmt.Errorf("failed to create capsule config dir %s: %w", configDir, err)
+	}
+
+	// Initialize .env with strong credentials if missing
+	envPath := filepath.Join(capsule, ".env")
+	if _, err := os.Stat(envPath); os.IsNotExist(err) {
+		// Try to read .env.example from workspace root or oopsbox/.env.example
+		var exampleEnvData []byte
+		for _, ep := range []string{filepath.Join(workDir, ".env.example"), filepath.Join(workDir, "oopsbox", ".env.example")} {
+			if data, err := os.ReadFile(ep); err == nil && len(data) > 0 {
+				exampleEnvData = data
+				break
+			}
+		}
+
+		// Write .env.example into capsule temporarily if needed for InitWorkspaceEnv or interpolate directly
+		if len(exampleEnvData) > 0 {
+			_ = os.WriteFile(filepath.Join(capsule, ".env.example"), exampleEnvData, 0644)
+		}
+
+		if err := box.InitWorkspaceEnv(capsule); err != nil {
+			return created, fmt.Errorf("failed initializing capsule .env: %w", err)
+		}
+		// Clean up temporary .env.example in capsule
+		_ = os.Remove(filepath.Join(capsule, ".env.example"))
+
+		created = append(created, ".env")
 	}
 
 	return created, nil

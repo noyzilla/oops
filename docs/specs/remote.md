@@ -58,6 +58,11 @@ When executing `oops remote connect @<remote>[:<path>]`:
     - `/@<host>/compose.yaml` initialized from `compose.yaml.example` (clean shared network base).
     - `/@<host>/oops.yaml` initialized from `oops.yaml.example` (daemon orchestrator compose manifest).
     - `/@<host>/.oopsallow` initialized from `.oopsallow.example` (bidirectional sync whitelist).
+    - `/@<host>/.env` initialized from `.env.example` with cryptographically secure random `OOPS_SECRET` and `OOPS_DB_*_PASSWORD` credentials.
+    - `/@<host>/config/` initialized for host-specific configuration overlays.
+- **Remote Server Oopsbox Provisioning**:
+  - Automatically ensures standard Oopsbox directory hierarchy exists on the remote host (`<remotePath>/{services,config,data,backups}`).
+  - When connecting to a fresh remote host (`!remoteHasWorkspace`), performs initial streaming delivery of required service templates and capsule overlay manifests directly to the remote server so the Oopsbox workspace is fully initialized and operational immediately upon connection.
 - **Capsule Isolation Invariant**: All remote host manifests (`.env`, `compose.yaml`, `oops.yaml`, `compose*.local.yaml`, `config/`) remain strictly inside `/@<host>/` and never mutate root workspace files.
 
 #### Automated Prerequisite Bootstrap [การติดตั้ง Prerequisite อัตโนมัติ]
