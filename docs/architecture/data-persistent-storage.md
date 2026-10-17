@@ -22,7 +22,7 @@ This document defines how persistent data and backups are placed so that the sam
 
 > Configuration describes logical locations. The host decides physical locations.
 
-- Compose files reference only repository-relative paths such as `../../data/mysql`.
+- Compose files reference only repository-relative paths such as `./data/mysql`.
 - No compose file, `.env`, or `oops.yaml` contains a physical disk path such as `/mnt/disks/data-1`.
 - The mapping from logical path to physical disk lives in one place: the `data` link created by the host bootstrap layer (`oops volume link`). Backup location is a host-local setting (`OOPS_BACKUP_DIR`). [ผูก logical -> physical ที่จุดเดียว]
 
@@ -30,7 +30,7 @@ This document defines how persistent data and backups are placed so that the sam
 
 ```mermaid
 graph TD
-    Git[(Git Repository)] --> Box[oopsbox: stacks, oops.yaml]
+    Git[(Git Repository)] --> Box[oopsbox: compose.*.yaml, oops.yaml]
     Box --> DataLink[data/ symlink]
     Bootstrap[Host Bootstrap] --> DataLink
     DataLink --> DataDisk[(Persistent Data Disk)]
@@ -40,7 +40,7 @@ graph TD
 ```
 
 Responsibility boundaries:
-- **Git (configuration)**: stacks, service definitions, `oops.yml`, priority. Never contains data or machine paths.
+- **Git (configuration)**: stack manifests (`compose.<stack>.yaml`), service definitions, `oops.yaml`, priority. Never contains data or machine paths.
 - **Persistent data disk (application data)**: database files, uploads, stateful volumes. Survives OS disk replacement.
 - **Backup storage (backups)**: dumps and archives on storage physically separate from the data disk, selected per host by `OOPS_BACKUP_DIR`. It does not have to live inside the oopsbox and is never mounted into compose. [คนละ disk กับ data และไม่ต้องอยู่ใน oopsbox]
 - **Host bootstrap (physical paths)**: formats and mounts disks, creates the `data` link. Owned by the host layer, not by the repository.

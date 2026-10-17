@@ -37,13 +37,13 @@ Target strings are resolved using an explicit, shell-safe notation that eliminat
 | `(none)` | Base Default (`x-oops-stack`) | Resolves ordered entries from `x-oops-stack:` in `compose.yaml`, chaining `-f compose.yaml -f compose.<stack>.yaml [-f compose.<stack>.local.yaml] [-f compose.local.yaml] up` for each entry in sequence |
 | `/<stack>` | Infrastructure / Application Stack | Resolves `x-oops-stack:` (if declared in `compose.<stack>.yaml`) and dependencies (`depends_on` / `x-oops-depends`), chaining `-f compose.yaml [dependencies] -f compose.<stack>.yaml [-f compose.<stack>.local.yaml] [-f compose.local.yaml] up` |
 | `/<stack>/<service>` | Scoped Stack Service | Targets a specific service within `compose.<stack>.yaml`, resolving dependencies within the stack |
-| `<service>` | Bare Service Name | Searches `compose.<stack>.yaml` files (prioritizing `edge`, `db`, `tools`), executing `-f compose.yaml -f compose.<stack>.yaml [-f compose.<stack>.local.yaml] [-f compose.local.yaml] up <service>` |
+| `<service>` | Bare Service Name | Searches `compose.<stack>.yaml` files (prioritizing `db`, `edge`, `storage`, `tools`), executing `-f compose.yaml -f compose.<stack>.yaml [-f compose.<stack>.local.yaml] [-f compose.local.yaml] up <service>` |
 | `@<remote>` | Remote Host Capsule | Resolves capsule `/@<remote>/` and deploys via Direct SSH Streaming (`oops deploy`) |
 | `..wildcard..` | Wildcard Pattern | Matches service names matching prefix (`app..`), suffix (`..worker`), or substring (`..api..`). |
 
 ### `x-oops-stack` Ordering & Selective Auto-Start Invariant
 Both root `compose.yaml` and individual `compose.<stack>.yaml` files support `x-oops-stack:`:
-- **Explicit Auto-Start Whitelist**: Only stacks or services listed in `x-oops-stack:` are started automatically when running `oops up` (for `compose.yaml`) or `oops up /<stack>` (for `compose.<stack>.yaml`). Services defined in `services:` but omitted from `x-oops-stack:` remain dormant until explicitly targeted (e.g. `oops up /tools/seaweedfs`).
+- **Explicit Auto-Start Whitelist**: Only stacks or services listed in `x-oops-stack:` are started automatically when running `oops up` (for `compose.yaml`) or `oops up /<stack>` (for `compose.<stack>.yaml`). Services defined in `services:` but omitted from `x-oops-stack:` remain dormant until explicitly targeted (e.g. `oops up /storage/seaweedfs`).
 - **Deterministic Top-to-Bottom Execution Order**: Entries in `x-oops-stack:` are resolved and started strictly in top-to-bottom array order (e.g. `/edge` before `/db`, or `mysql` before `app`).
 - **Recursive Resolution**: When `/<stack>` is referenced in `compose.yaml` `x-oops-stack:`, the resolver inspects `compose.<stack>.yaml` and honors its internal `x-oops-stack:` list if present.
 
@@ -66,6 +66,7 @@ All machine-specific overrides (`*.local.yaml`) are strictly appended to the tai
 - `-f compose.<stack>.yaml` (Target stack configuration and stack-scoped networks)
 - `-f compose.<stack>.local.yaml` (Stack-specific machine override)
 - `-f compose.local.yaml` (Global machine override — tailmost position)
+- **Orphan Warning Suppression (`COMPOSE_IGNORE_ORPHANS=True`)**: Because all stacks share the root `compose.yaml` project namespace (`oopsbox`), `docker compose` invocations automatically inject `COMPOSE_IGNORE_ORPHANS=True` into the process environment so running containers from sibling stacks are never flagged as orphans.
 - Note: `oops.yaml` is a pure Oops CLI/daemon configuration file (`x-oops:`) and is never passed via `-f` to `docker compose`.
 
 ### Strict `.yaml` Validation & Legacy Deprecation
@@ -137,8 +138,9 @@ For each matched service in target order:
 | `oops backup-db` | `[targets...] [-r 7d]` | DB dump and retention prune |
 | `oops backup-data` | `[targets...] [-r 7d]` | Data volume tar archives and retention prune |
 | `oops dns` | `[list]` | Inspects active DNS records and discovery routes |
-| `oops dns add` | `<domain> <ip>` | Adds static DNS record in `config/oops/dns` |
-| `oops dns del` | `<domain>` | Deletes static DNS record from `config/oops/dns` |
+| `oops dns get` | `<domain>` | Resolves and outputs IP address for domain |
+| `oops dns set` | `<domain> <ip>` | Adds or updates static DNS record in `data/oops/dns.records` |
+| `oops dns del` | `<domain>` | Deletes static DNS record from `data/oops/dns.records` |
 | `oops dns reload` | *(none)* | Atomically reloads DNS daemon |
 | `oops ip` | `[service]` | Displays IP address of container |
 | `oops box init` | `[path]` | Initializes Oopsbox workspace from blueprint, sets active box |

@@ -4,7 +4,7 @@
 > *Because "Oops, sorry!" is the most common phrase when DevOps breaks production.*
 
 **Oops** is a zero-overhead DevOps orchestration engine, native DNS daemon, and multi-stack CLI written in Go.
-**Oopsbox** is the flagship turnkey infrastructure blueprint that delivers an instant, production-grade Docker Compose workstation and server environment with automated local HTTPS (`*.web.oops`), embedded DNS resolution (`:53`), and multi-group stack isolation.
+**Oopsbox** is the flagship turnkey infrastructure blueprint that delivers an instant, production-grade Docker Compose workstation and server environment with automated local HTTPS (`*.web.oops`), embedded DNS resolution (`:53`), and modular stack isolation (`compose.<stack>.yaml`).
 
 ---
 
@@ -14,14 +14,14 @@ Oops and Oopsbox eliminate DevOps complexity through three foundational principl
 
 - **1:1 Dev-to-Prod Parity (Zero "Works on my machine" Surprises)**:
   - The exact same infrastructure blueprint (`oopsbox/`) runs seamlessly on local workstations (macOS / Linux) and production servers.
-  - Standardizes network segmentation (`oops_edge`, `oops_db`), storage paths (`data/`, `backups/`), and local DNS resolution across all machines.
+  - Standardizes network segmentation (`oops_default`, `oops_edge`, `oops_db`, `oops_storage`), storage paths (`data/`, `backups/`), and local DNS resolution across all machines.
 
-- **Git-Driven Infrastructure (No More SSH Snowflake Configs)**:
-  - Git is the single source of truth for all stack definitions and service configurations (`stacks/<group>/<service>/`).
-  - Push config updates or new service versions to Git, and let the Oops Webhook Daemon reconcile, pull, and reload containers automatically without ever SSHing into the server to manually edit configs.
+- **Git-Driven Infrastructure & Direct SSH Streaming (No More SSH Snowflake Configs)**:
+  - Git and local remote capsules (`/@<remote>/`) act as the single source of truth for all stack definitions (`compose.<stack>.yaml`) and service configurations (`config/<service>/`).
+  - Stream stack updates via `oops deploy` or trigger the Oops Webhook Daemon to pull and recreate containers automatically without manually editing server configs over SSH.
 
-- **Effortless Tech Stack Upgrades (Zero-Downtime Multi-Group Architecture)**:
-  - Independent modular groups (`stacks/edge`, `stacks/db`, `stacks/tool`, `stacks/apps`) allow updating language runtimes, database engines, or mock tools with zero blast-radius on unrelated services.
+- **Effortless Tech Stack Upgrades (Zero-Downtime Pure Stack Architecture)**:
+  - Independent self-contained stack manifests (`compose.edge.yaml`, `compose.db.yaml`, `compose.storage.yaml`, `compose.tools.yaml`, `compose.<app>.yaml`) allow updating language runtimes, database engines, or developer tools with zero blast-radius on unrelated services.
   - Sequential rolling updates (`oops update /apps -d 5s`) ensure zero downtime with pre-stop hooks and automated healthcheck polling.
 
 ---
@@ -259,6 +259,8 @@ alias oops='docker run --rm -i \
 - [Oopsbox Master Blueprint Guide](oopsbox/README.md)
 - [CLI Orchestration Specification](docs/specs/cli.md)
 - [Oopsbox Workstation Tooling Specification](docs/specs/oopsbox.md)
+- [Remote Server Management & SSH Streaming Specification](docs/specs/remote.md)
+- [Volume Guard Specification](docs/specs/volume-guard.md)
 - [Native DNS Daemon Specification](docs/specs/dns.md)
 - [Webhook Daemon Specification](docs/specs/webhook.md)
 - [System Documentation Taxonomy](docs/README.md)

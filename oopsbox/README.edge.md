@@ -1,8 +1,8 @@
-# Edge Group — Reverse Proxy & Auto-SSL Guide
+# Edge Stack (`compose.edge.yaml`) — Reverse Proxy & Auto-SSL Guide
 
-The Edge group terminates public HTTP/HTTPS traffic, handles automatic SSL certificates (Let's Encrypt / ZeroSSL / Local Root CA), and routes incoming requests to internal container workloads.
+The Edge stack (`compose.edge.yaml`) terminates public HTTP/HTTPS traffic, handles automatic SSL certificates (Let's Encrypt / ZeroSSL / Local Root CA), and routes incoming requests to internal container workloads over `oops_edge`.
 
-This template provides 3 production-ready options. Choose the proxy technology that best matches your workflow:
+This guide compares the 3 reverse proxy options you can run in `compose.edge.yaml`:
 
 ---
 
@@ -73,10 +73,8 @@ Uses `traefik:v3.1` as a cloud-native dynamic reverse proxy with built-in metric
 
 ### Setup & Usage
 ```bash
-# Start Traefik edge proxy
-oops up /edge-traefik
-
-# Note: You can set this as default by updating `include` in compose.yaml
+# Define traefik service in compose.edge.yaml (or compose.edge.local.yaml) and add to x-oops-stack:
+oops up /edge
 ```
 
 ### Application Container Labels (`compose.apps.yaml`)
@@ -110,10 +108,8 @@ Uses the classic `nginxproxy/nginx-proxy` paired with `nginxproxy/acme-companion
 
 ### Setup & Usage
 ```bash
-# Start Nginx edge proxy
-oops up /edge-nginx
-
-# Note: You can set this as default by updating `include` in compose.yaml
+# Define nginx-proxy and acme-companion in compose.edge.yaml and add to x-oops-stack:
+oops up /edge
 ```
 
 ### Application Container Environment (`compose.apps.yaml`)
