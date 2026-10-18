@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/noyzilla/oops/internal/db"
 	"github.com/noyzilla/oops/internal/docker"
 )
 
@@ -26,6 +27,9 @@ func DumpMySQL(ctx context.Context, containerTarget string, dbName string, w io.
 	})
 
 	rootPass := os.Getenv("OOPS_DB_MYSQL_PASSWORD")
+	if rootPass == "" {
+		rootPass = db.InspectContainerEnv(ctx, containerTarget, "MYSQL_ROOT_PASSWORD")
+	}
 	var cmdArgs []string
 	if dbName != "" {
 		if rootPass != "" {
@@ -55,16 +59,29 @@ func DumpPostgres(ctx context.Context, containerTarget string, dbName string, w 
 		Database:  dbName,
 	})
 
-	pgUser := os.Getenv("POSTGRES_USER")
+	pgUser := db.InspectContainerEnv(ctx, containerTarget, "POSTGRES_USER")
+	if pgUser == "" {
+		pgUser = os.Getenv("POSTGRES_USER")
+	}
 	if pgUser == "" {
 		pgUser = "postgres"
 	}
 
+	pgPass := os.Getenv("OOPS_DB_POSTGRES_PASSWORD")
+	if pgPass == "" {
+		pgPass = db.InspectContainerEnv(ctx, containerTarget, "POSTGRES_PASSWORD")
+	}
+
 	var cmdArgs []string
-	if dbName != "" {
-		cmdArgs = []string{"exec", "-i", containerTarget, "pg_dump", "-U", pgUser, "-d", dbName}
+	if pgPass != "" {
+		cmdArgs = []string{"exec", "-i", "-e", "PGPASSWORD=" + pgPass, containerTarget}
 	} else {
-		cmdArgs = []string{"exec", "-i", containerTarget, "pg_dumpall", "-U", pgUser}
+		cmdArgs = []string{"exec", "-i", containerTarget}
+	}
+	if dbName != "" {
+		cmdArgs = append(cmdArgs, "pg_dump", "-U", pgUser, "-d", dbName)
+	} else {
+		cmdArgs = append(cmdArgs, "pg_dumpall", "-U", pgUser)
 	}
 
 	cmd := exec.CommandContext(ctx, "docker", cmdArgs...)
@@ -79,6 +96,9 @@ func DumpRedis(ctx context.Context, containerTarget string, w io.Writer) error {
 		containerTarget = "redis"
 	}
 	pass := os.Getenv("OOPS_DB_REDIS_PASSWORD")
+	if pass == "" {
+		pass = db.InspectContainerEnv(ctx, containerTarget, "REDIS_PASSWORD")
+	}
 
 	var saveArgs []string
 	var rdbArgs []string

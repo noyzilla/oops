@@ -3,9 +3,12 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/noyzilla/oops/internal/backup"
+	"github.com/noyzilla/oops/internal/docker"
 	"github.com/spf13/cobra"
 )
 
@@ -37,8 +40,8 @@ func newRestoreDBCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "restore-db <engine>[:target] <db_name> [backup_file]",
 		Short: "Restores database dump into container with confirmation guard",
-		Long:    "Restores .sql or .sql.gz database dump into a running database container (mysql, postgres).",
-		Args:    cobra.MinimumNArgs(2),
+		Long:  "Restores .sql or .sql.gz database dump into a running database container (mysql, postgres).",
+		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			engineSpec := args[0]
 			dbName := args[1]
@@ -47,8 +50,11 @@ func newRestoreDBCmd() *cobra.Command {
 				backupFile = args[2]
 			}
 
-			_, backupDir, err := resolveBackupConfig("")
+			workDir, _, backupDir, err := resolveBackupConfig("")
 			if err != nil {
+				return err
+			}
+			if err := ValidateActiveBox(workDir); err != nil {
 				return err
 			}
 
@@ -69,17 +75,19 @@ func newRestoreDataCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "restore-data <target_name|backup_file>",
 		Short: "Restores filesystem data volume archive with dry-run preview and confirmation",
-		Long:    "Extracts compressed tar archive into workspace root based on manifest or relative paths.",
-		Args:    cobra.ExactArgs(1),
+		Long:  "Extracts compressed tar archive into workspace root based on manifest or relative paths.",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			targetOrFile := args[0]
 
-			_, backupDir, err := resolveBackupConfig("")
+			workDir, _, backupDir, err := resolveBackupConfig("")
 			if err != nil {
 				return err
 			}
+			if err := ValidateActiveBox(workDir); err != nil {
+				return err
+			}
 
-			workDir := ResolveWorkDir(targetDir)
 			return backup.ExecuteRestoreData(context.Background(), workDir, backupDir, targetOrFile, dryRun, force)
 		},
 	}
@@ -98,6 +106,17 @@ func newBackupInspectCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			filePath := args[0]
+			if _, err := os.Stat(filePath); err != nil {
+				workDir := ResolveWorkDir(targetDir)
+				cfg, _ := docker.LoadOopsConfig(workDir)
+				backupDir := resolveBackupDirForWorkDir(workDir, cfg)
+				if _, err2 := os.Stat(filepath.Join(backupDir, filePath)); err2 == nil {
+					filePath = filepath.Join(backupDir, filePath)
+				} else if _, err3 := os.Stat(filepath.Join(workDir, filePath)); err3 == nil {
+					filePath = filepath.Join(workDir, filePath)
+				}
+			}
+
 			if strings.HasSuffix(filePath, ".tar.gz") {
 				m, err := backup.ReadDataManifestFromArchive(filePath)
 				if err != nil {

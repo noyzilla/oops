@@ -39,10 +39,7 @@ func newRemoteCmd() *cobra.Command {
 }
 
 func RequireOopsboxWorkspace(customDir string) (string, error) {
-	dir := customDir
-	if dir == "" {
-		dir = "."
-	}
+	dir := ResolveWorkDir(customDir)
 	expanded := expandHome(dir)
 	if !hasComposeContent(expanded) {
 		return "", fmt.Errorf("not inside a valid oopsbox workspace directory (must contain 'services/' or compose.yaml)")

@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
+	"github.com/noyzilla/oops/internal/docker"
 	"github.com/noyzilla/oops/internal/orchestrator"
 	"github.com/noyzilla/oops/internal/volume"
 	"github.com/spf13/cobra"
@@ -30,10 +30,8 @@ func newVolumeCheckCmd() *cobra.Command {
 				return err
 			}
 
-			backupDir := os.Getenv("OOPS_BACKUP_DIR")
-			if backupDir == "" {
-				backupDir = "./backups"
-			}
+			cfg, _ := docker.LoadOopsConfig(workDir)
+			backupDir := resolveBackupDirForWorkDir(workDir, cfg)
 
 			findings, err := orchestrator.InspectBox(workDir, backupDir)
 			if err != nil {

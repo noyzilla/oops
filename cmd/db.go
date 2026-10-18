@@ -23,6 +23,11 @@ func newDBCmd() *cobra.Command {
 				return cmd.Help()
 			}
 
+			workDir := ResolveWorkDir(targetDir)
+			if err := ValidateActiveBox(workDir); err != nil {
+				return err
+			}
+
 			engineSpec := args[0]
 			action := strings.ToLower(args[1])
 			remainingArgs := args[2:]
@@ -88,7 +93,7 @@ func newDBCmd() *cobra.Command {
 				fmt.Printf("Database: %s\nUser: %s\nPassword: %s\n", dbName, userName, password)
 				
 				if !noExport {
-					if err := writeEnvFile(engine, containerTarget, dbName, userName, password); err != nil {
+					if err := writeEnvFile(workDir, engine, containerTarget, dbName, userName, password); err != nil {
 						fmt.Printf("Warning: failed to export env file: %v\n", err)
 					}
 				}
@@ -145,7 +150,7 @@ func newDBCmd() *cobra.Command {
 				fmt.Printf("Readonly User: %s\nTarget DB: %s\nPassword: %s\n", userName, dbName, password)
 				
 				if !noExport {
-					if err := writeEnvFile(engine, containerTarget, dbName, userName, password); err != nil {
+					if err := writeEnvFile(workDir, engine, containerTarget, dbName, userName, password); err != nil {
 						fmt.Printf("Warning: failed to export env file: %v\n", err)
 					}
 				}
@@ -193,7 +198,7 @@ func newDBCmd() *cobra.Command {
 				fmt.Printf("User: %s\nNew Password: %s\n", userName, newPassword)
 
 				if !noExport {
-					if err := writePasswdEnvFile(engine, containerTarget, userName, newPassword); err != nil {
+					if err := writePasswdEnvFile(workDir, engine, containerTarget, userName, newPassword); err != nil {
 						fmt.Printf("Warning: failed to export env file: %v\n", err)
 					}
 				}
@@ -262,8 +267,11 @@ func newDBCmd() *cobra.Command {
 	return cmd
 }
 
-func writeEnvFile(engine, containerTarget, dbName, userName, password string) error {
-	envDir := filepath.Join("config", "env")
+func writeEnvFile(workDir, engine, containerTarget, dbName, userName, password string) error {
+	if workDir == "" {
+		workDir = "."
+	}
+	envDir := filepath.Join(workDir, "config", "env")
 	if err := os.MkdirAll(envDir, 0755); err != nil {
 		return err
 	}
@@ -299,8 +307,11 @@ DATABASE_URL=%s
 	return err
 }
 
-func writePasswdEnvFile(engine, containerTarget, userName, password string) error {
-	envDir := filepath.Join("config", "env")
+func writePasswdEnvFile(workDir, engine, containerTarget, userName, password string) error {
+	if workDir == "" {
+		workDir = "."
+	}
+	envDir := filepath.Join(workDir, "config", "env")
 	if err := os.MkdirAll(envDir, 0755); err != nil {
 		return err
 	}
@@ -321,7 +332,7 @@ func writePasswdEnvFile(engine, containerTarget, userName, password string) erro
 							// Found the matching user, extract dbName from filename
 							dbName := strings.TrimSuffix(strings.TrimPrefix(entry.Name(), prefix), ".env")
 							// Overwrite the original full file
-							if err := writeEnvFile(engine, containerTarget, dbName, userName, password); err == nil {
+							if err := writeEnvFile(workDir, engine, containerTarget, dbName, userName, password); err == nil {
 								updatedCount++
 							}
 							break // break inner loop, move to next file

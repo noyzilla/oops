@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/noyzilla/oops/internal/db"
 	"github.com/noyzilla/oops/internal/docker"
 )
 
@@ -37,6 +38,11 @@ func ExecuteRestoreDB(ctx context.Context, backupDir string, engineSpec string, 
 		backupFilePath, err = FindLatestDBBackup(backupDir, engine, dbName)
 		if err != nil {
 			return err
+		}
+	} else if _, err := os.Stat(backupFilePath); err != nil {
+		candidate := filepath.Join(backupDir, backupFilePath)
+		if _, err2 := os.Stat(candidate); err2 == nil {
+			backupFilePath = candidate
 		}
 	}
 
@@ -112,6 +118,9 @@ func ExecuteRestoreDB(ctx context.Context, backupDir string, engineSpec string, 
 	var cmd *exec.Cmd
 	if engine == "mysql" {
 		rootPass := os.Getenv("OOPS_DB_MYSQL_PASSWORD")
+		if rootPass == "" {
+			rootPass = db.InspectContainerEnv(ctx, containerTarget, "MYSQL_ROOT_PASSWORD")
+		}
 		var args []string
 		if rootPass != "" {
 			args = []string{"exec", "-i", containerTarget, "mysql", "-u", "root", "-p" + rootPass, dbName}
@@ -120,11 +129,23 @@ func ExecuteRestoreDB(ctx context.Context, backupDir string, engineSpec string, 
 		}
 		cmd = exec.CommandContext(ctx, "docker", args...)
 	} else if engine == "pg" || engine == "postgres" {
-		pgUser := os.Getenv("POSTGRES_USER")
+		pgUser := db.InspectContainerEnv(ctx, containerTarget, "POSTGRES_USER")
+		if pgUser == "" {
+			pgUser = os.Getenv("POSTGRES_USER")
+		}
 		if pgUser == "" {
 			pgUser = "postgres"
 		}
-		args := []string{"exec", "-i", containerTarget, "psql", "-U", pgUser, "-d", dbName}
+		pgPass := os.Getenv("OOPS_DB_POSTGRES_PASSWORD")
+		if pgPass == "" {
+			pgPass = db.InspectContainerEnv(ctx, containerTarget, "POSTGRES_PASSWORD")
+		}
+		var args []string
+		if pgPass != "" {
+			args = []string{"exec", "-i", "-e", "PGPASSWORD=" + pgPass, containerTarget, "psql", "-U", pgUser, "-d", dbName}
+		} else {
+			args = []string{"exec", "-i", containerTarget, "psql", "-U", pgUser, "-d", dbName}
+		}
 		cmd = exec.CommandContext(ctx, "docker", args...)
 	} else if engine == "redis" {
 		// For Redis: stream decompressed RDB into /data/dump.rdb inside the container and restart

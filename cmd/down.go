@@ -77,8 +77,9 @@ func newDownCmd() *cobra.Command {
 
 			for i, stack := range reverseStacks {
 				composePath := composeMap[stack]
+				composeFiles := docker.BuildComposeChain(workDir, []string{composePath}, stack)
 				log.Printf("==> Tearing down stack /%s...", stack)
-				if err := orchestrator.RunComposeCommand(composePath, "down"); err != nil {
+				if err := orchestrator.RunComposeFiles(composeFiles, "down"); err != nil {
 					log.Printf("Warning: down failed for /%s: %v", stack, err)
 				}
 

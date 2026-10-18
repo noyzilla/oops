@@ -3,9 +3,11 @@ package cmd
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/noyzilla/oops/internal/backup"
+	"github.com/noyzilla/oops/internal/docker"
 	"github.com/noyzilla/oops/internal/orchestrator"
 	"github.com/spf13/cobra"
 )
@@ -19,12 +21,10 @@ func newBackupCmd() *cobra.Command {
 		Short: "Executes full backup (database dumps + data volumes) and retention prune",
 		Long:  "Executes full system backup for all database containers and filesystem data paths configured in oops.yaml.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ret, backupDir, err := resolveBackupConfig(retention)
+			workDir, ret, backupDir, err := resolveBackupConfig(retention)
 			if err != nil {
 				return err
 			}
-
-			workDir := ResolveWorkDir(targetDir)
 			if err := ValidateActiveBox(workDir); err != nil {
 				return err
 			}
@@ -38,8 +38,11 @@ func newBackupCmd() *cobra.Command {
 		Use:   "prune",
 		Short: "Prunes all expired database and data backup archives based on retention policy",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ret, backupDir, err := resolveBackupConfig(retention)
+			workDir, ret, backupDir, err := resolveBackupConfig(retention)
 			if err != nil {
+				return err
+			}
+			if err := ValidateActiveBox(workDir); err != nil {
 				return err
 			}
 
@@ -73,8 +76,11 @@ func newBackupDBCmd() *cobra.Command {
 		Short: "Executes database dump and retention prune (mysql, postgres)",
 		Long:  "Executes compressed database backups for mysql, postgres, and redis containers, and prunes old archives.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ret, backupDir, err := resolveBackupConfig(retention)
+			workDir, ret, backupDir, err := resolveBackupConfig(retention)
 			if err != nil {
+				return err
+			}
+			if err := ValidateActiveBox(workDir); err != nil {
 				return err
 			}
 
@@ -88,8 +94,11 @@ func newBackupDBCmd() *cobra.Command {
 		Use:   "prune",
 		Short: "Prunes old database backup archives based on retention policy",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ret, backupDir, err := resolveBackupConfig(retention)
+			workDir, ret, backupDir, err := resolveBackupConfig(retention)
 			if err != nil {
+				return err
+			}
+			if err := ValidateActiveBox(workDir); err != nil {
 				return err
 			}
 
@@ -120,12 +129,14 @@ func newBackupDataCmd() *cobra.Command {
 		Short: "Executes data volume and filesystem archives (uploads, storage) and retention prune",
 		Long:  "Executes compressed tar archives for paths defined in oops.yaml (backups.data), and prunes old archives.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ret, backupDir, err := resolveBackupConfig(retention)
+			workDir, ret, backupDir, err := resolveBackupConfig(retention)
 			if err != nil {
 				return err
 			}
+			if err := ValidateActiveBox(workDir); err != nil {
+				return err
+			}
 
-			workDir := ResolveWorkDir(targetDir)
 			return backup.ExecuteDataBackup(context.Background(), workDir, backupDir, args, ret)
 		},
 	}
@@ -136,8 +147,11 @@ func newBackupDataCmd() *cobra.Command {
 		Use:   "prune",
 		Short: "Prunes old data backup archives based on retention policy",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ret, backupDir, err := resolveBackupConfig(retention)
+			workDir, ret, backupDir, err := resolveBackupConfig(retention)
 			if err != nil {
+				return err
+			}
+			if err := ValidateActiveBox(workDir); err != nil {
 				return err
 			}
 
@@ -159,9 +173,30 @@ func newBackupDataCmd() *cobra.Command {
 	return cmd
 }
 
-func resolveBackupConfig(customRetention string) (retention time.Duration, backupDir string, err error) {
+func resolveBackupDirForWorkDir(workDir string, cfg *docker.OopsConfig) string {
+	backupDir := os.Getenv("OOPS_BACKUP_DIR")
+	if backupDir == "" && cfg != nil && cfg.Backup.Dir != "" {
+		backupDir = cfg.Backup.Dir
+	}
+	if backupDir == "" {
+		backupDir = "backups"
+	}
+	backupDir = expandHome(backupDir)
+	if !filepath.IsAbs(backupDir) && workDir != "" && workDir != "." {
+		backupDir = filepath.Join(workDir, backupDir)
+	}
+	return backupDir
+}
+
+func resolveBackupConfig(customRetention string) (workDir string, retention time.Duration, backupDir string, err error) {
+	workDir = ResolveWorkDir(targetDir)
+	cfg, _ := docker.LoadOopsConfig(workDir)
+
 	if customRetention == "" {
 		customRetention = os.Getenv("OOPS_BACKUP_RETENTION")
+		if customRetention == "" && cfg != nil && cfg.Backup.Retention != "" {
+			customRetention = cfg.Backup.Retention
+		}
 		if customRetention == "" {
 			customRetention = "7d"
 		}
@@ -169,18 +204,15 @@ func resolveBackupConfig(customRetention string) (retention time.Duration, backu
 
 	ret, err := backup.ParseRetention(customRetention)
 	if err != nil {
-		return 0, "", err
+		return "", 0, "", err
 	}
 
-	backupDir = os.Getenv("OOPS_BACKUP_DIR")
-	if backupDir == "" {
-		backupDir = "./backups"
-	}
+	backupDir = resolveBackupDirForWorkDir(workDir, cfg)
 
 	// Backups are not mounted into compose, so they are validated here instead of by the container guard
-	if err := orchestrator.CheckBackupDir(ResolveWorkDir(targetDir), backupDir); err != nil {
-		return 0, "", err
+	if err := orchestrator.CheckBackupDir(workDir, backupDir); err != nil {
+		return "", 0, "", err
 	}
 
-	return ret, backupDir, nil
+	return workDir, ret, backupDir, nil
 }

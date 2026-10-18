@@ -35,6 +35,7 @@ func newStopCmd() *cobra.Command {
 				return err
 			}
 			defer orch.Close()
+			orch.WorkDir = workDir
 
 			return orch.Stop(context.Background(), targets, d)
 		},
