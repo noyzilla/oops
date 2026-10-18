@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [v1.9.1] - 2026-10-18
+
+### Added
+- **Shared Compose Extension (`oopsbox/common.yaml`)**: Extracted shared `common-logging` configuration (`driver: "json-file"`, `max-size: "10m"`, `max-file: "3"`) into `common.yaml` and `.example`, eliminating duplicate `x-logging` anchor definitions across all stack compose files via `extends: { file: common.yaml, service: common-logging }`.
+
+### Fixed
+- **CLI Workspace & Path Resolution Outside Oopsbox Directory**:
+  - `oops db`: Resolved `workDir` and `ValidateActiveBox` so credential export files are written to `<workDir>/config/env/` instead of the caller's working directory (`cmd/db.go`).
+  - `oops backup` / `restore`: Loaded `oops.yaml` from resolved `workDir` and anchored relative `backupDir` under `<workDir>/backups` (`cmd/backup.go`, `cmd/restore.go`).
+  - `oops volume check`: Anchored `backupDir` to `<workDir>/backups` (`cmd/volume.go`).
+  - `oops remote` / `deploy`: Auto-resolved active box in `RequireOopsboxWorkspace` when invoked without `-C` outside the workspace (`cmd/remote.go`).
+  - `oops down` / `box stop`: Built full `ComposeFiles` `-f` chains during stack teardown (`cmd/down.go`, `cmd/box.go`).
+  - Database container dump/restore: Added fallback to container environment for root/database passwords when env vars are unset in the host shell (`internal/backup/backup.go`, `internal/backup/restore.go`).
+
 ## [v1.9.0] - 2026-10-18
 
 ### Added

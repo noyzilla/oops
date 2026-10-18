@@ -41,9 +41,10 @@ When provisioning a new workspace via `oops box init [path]`:
 - **Automatic Active Box Registration**: Automatically writes the new workspace canonical path to `~/.oops/active_box`.
 
 ### Manifest Architecture & Stack-Scoped Network Isolation
-Oopsbox enforces a **Pure Stack Architecture** with network micro-segmentation, log rotation, and pure configuration separation:
-- **`compose.yaml`**: The primary root compose manifest defining `x-logging: &default-logging` (`json-file`, `max-size: 10m`, `max-file: 3`), `x-oops-stack:` (boot order and auto-start whitelist, e.g. `[/edge, /db, /tools]`), and the default untrusted bridge network (`default: name: oops_default`). Containers without an explicit `networks:` block fall into `oops_default` and cannot access databases or internal services.
-- **`compose.<stack>.yaml`**: Self-contained infrastructure and application stack files declaring `x-logging: &default-logging` (`logging: *default-logging` on each service), their own services, internal `x-oops-stack:` auto-start order, and stack-scoped bridge networks:
+Oopsbox enforces a **Pure Stack Architecture** with network micro-segmentation, shared service extensions, and pure configuration separation:
+- **`compose.yaml`**: The primary root compose manifest defining `x-oops-stack:` (boot order and auto-start whitelist, e.g. `[/edge, /db, /tools]`), and the default untrusted bridge network (`default: name: oops_default`). Containers without an explicit `networks:` block fall into `oops_default` and cannot access databases or internal services.
+- **`common.yaml`**: Common service extensions defining shared configurations such as `common-logging` (`json-file`, `max-size: 10m`, `max-file: 3`), inherited across stack manifests via Compose `extends: { file: common.yaml, service: common-logging }`.
+- **`compose.<stack>.yaml`**: Self-contained infrastructure and application stack files inheriting common service extensions from `common.yaml`, declaring their own services, internal `x-oops-stack:` auto-start order, and stack-scoped bridge networks:
   - `compose.edge.yaml`: Contains `caddy-proxy` and `oops` (daemon), and defines `oops_edge` bridge network.
   - `compose.db.yaml`: Contains `mysql`, `postgres`, and `redis`, and defines `oops_db` bridge network.
   - `compose.storage.yaml`: Contains `seaweedfs` object storage and defines `oops_storage` bridge network.
