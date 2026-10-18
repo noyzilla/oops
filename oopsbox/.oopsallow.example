@@ -16,6 +16,7 @@
 /.env
 /compose.yaml
 /oops.yaml
+/common.yaml
 
 # Remote Machine Overrides & Stack Overrides
 /compose*.yaml

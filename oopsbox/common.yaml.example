@@ -1,0 +1,11 @@
+# ==============================================================================
+# Oops Common Service Extensions Blueprint (common.yaml.example)
+# ==============================================================================
+services:
+  common-logging:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+

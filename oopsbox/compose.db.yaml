@@ -1,9 +1,3 @@
-x-logging: &default-logging
-  driver: "json-file"
-  options:
-    max-size: "10m"
-    max-file: "3"
-
 x-oops-stack:
   - mysql
   - postgres
@@ -15,7 +9,9 @@ services:
     container_name: mysql
     hostname: mysql.oops
     restart: unless-stopped
-    logging: *default-logging
+    extends:
+      file: common.yaml
+      service: common-logging
     environment:
       MYSQL_ROOT_PASSWORD: ${OOPS_DB_MYSQL_PASSWORD:?OOPS_DB_MYSQL_PASSWORD must be set}
     volumes:
@@ -33,7 +29,9 @@ services:
     container_name: postgres
     hostname: postgres.oops
     restart: unless-stopped
-    logging: *default-logging
+    extends:
+      file: common.yaml
+      service: common-logging
     environment:
       POSTGRES_PASSWORD: ${OOPS_DB_POSTGRES_PASSWORD:?OOPS_DB_POSTGRES_PASSWORD must be set}
     volumes:
@@ -51,7 +49,9 @@ services:
     container_name: redis
     hostname: redis.oops
     restart: unless-stopped
-    logging: *default-logging
+    extends:
+      file: common.yaml
+      service: common-logging
     command: [ "sh", "-c", "if [ -n \"$${REDIS_PASSWORD}\" ]; then exec redis-server --requirepass \"$${REDIS_PASSWORD}\"; else exec redis-server; fi" ]
     environment:
       REDIS_PASSWORD: ${OOPS_DB_REDIS_PASSWORD:-}

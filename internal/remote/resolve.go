@@ -446,6 +446,12 @@ func ResolveRequiredDependencies(workDir, stack, remoteName string) (*ComposeDep
 		}
 	}
 
+	if _, err := os.Stat(filepath.Join(capsule, "common.yaml")); err == nil {
+		inspector.CapsuleStackFiles = append(inspector.CapsuleStackFiles, "common.yaml")
+	} else if _, err := os.Stat(filepath.Join(workDir, "common.yaml")); err == nil {
+		inspector.StackFiles = append(inspector.StackFiles, "common.yaml")
+	}
+
 	// 7. Locate config/<service> directories (and optional legacy services/<service>.yaml if present)
 	templateMap := mapWorkspaceServiceTemplates(filepath.Join(workDir, "services"))
 	seenServiceFiles := make(map[string]bool)

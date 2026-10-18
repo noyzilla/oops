@@ -8,6 +8,18 @@ import (
 	"github.com/noyzilla/oops/internal/box"
 )
 
+const defaultCommonExample = `# ==============================================================================
+# Oops Common Service Extensions Blueprint (common.yaml)
+# ==============================================================================
+services:
+  common-logging:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+`
+
 const defaultComposeExample = `# ==============================================================================
 # Oops Base Manifest Blueprint (compose.yaml.example)
 # ==============================================================================
@@ -15,12 +27,6 @@ const defaultComposeExample = `# ===============================================
 # Services or stacks omitted from x-oops-stack will not auto-start on 'oops up'.
 # ==============================================================================
 # name: oops
-
-x-logging: &default-logging
-  driver: "json-file"
-  options:
-    max-size: "10m"
-    max-file: "3"
 
 x-oops-stack:
   - /edge
@@ -82,6 +88,7 @@ const defaultOopsAllowExample = `# =============================================
 /.env
 /compose.yaml
 /oops.yaml
+/common.yaml
 /compose*.yaml
 /config/**
 `
@@ -100,6 +107,7 @@ func InitCapsuleBlueprints(workDir, remoteName string) ([]string, error) {
 	}
 
 	items := []blueprintItem{
+		{"common.yaml", "common.yaml", defaultCommonExample},
 		{"compose.yaml", "compose.yaml.example", defaultComposeExample},
 		{"oops.yaml", "oops.yaml.example", defaultOopsExample},
 		{".oopsallow", ".oopsallow.example", defaultOopsAllowExample},

@@ -1,9 +1,3 @@
-x-logging: &default-logging
-  driver: "json-file"
-  options:
-    max-size: "10m"
-    max-file: "3"
-
 x-oops-stack:
   - caddy-proxy
   - oops
@@ -14,7 +8,9 @@ services:
     container_name: caddy-proxy
     hostname: .web.oops
     restart: unless-stopped
-    logging: *default-logging
+    extends:
+      file: common.yaml
+      service: common-logging
     ports:
       - "80:80"
       - "443:443"
@@ -32,7 +28,9 @@ services:
     container_name: oops
     hostname: oops.oops
     restart: unless-stopped
-    logging: *default-logging
+    extends:
+      file: common.yaml
+      service: common-logging
     entrypoint: [ "oops" ]
     command: [ "server" ]
     environment:

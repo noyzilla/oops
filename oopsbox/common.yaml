@@ -1,0 +1,11 @@
+# ==============================================================================
+# Oops Common Service Extensions (common.yaml)
+# ==============================================================================
+services:
+  common-logging:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+

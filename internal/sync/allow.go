@@ -12,6 +12,7 @@ var DefaultAllowedPatterns = []string{
 	"/.env",
 	"/compose.yaml",
 	"/oops.yaml",
+	"/common.yaml",
 	"/compose*.yaml",
 	"/config/**",
 }

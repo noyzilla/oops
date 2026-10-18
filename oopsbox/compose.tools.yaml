@@ -1,9 +1,3 @@
-x-logging: &default-logging
-  driver: "json-file"
-  options:
-    max-size: "10m"
-    max-file: "3"
-
 x-oops-stack:
   - httpbin
   - mailpit
@@ -14,7 +8,9 @@ services:
     container_name: httpbin
     hostname: httpbin.oops
     restart: unless-stopped
-    logging: *default-logging
+    extends:
+      file: common.yaml
+      service: common-logging
     labels:
       oops.enable: "true"
       caddy: "httpbin.web.oops"
@@ -27,7 +23,9 @@ services:
     container_name: mailpit
     hostname: mailpit.oops
     restart: unless-stopped
-    logging: *default-logging
+    extends:
+      file: common.yaml
+      service: common-logging
     labels:
       oops.enable: "true"
       caddy: "mailpit.web.oops"
