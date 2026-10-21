@@ -2,11 +2,14 @@ package cmd
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
+	"github.com/noyzilla/oops/internal/docker"
 )
 
 func TestFormatContainerPorts(t *testing.T) {
@@ -230,6 +233,46 @@ func TestRenderStatusTableMissingService(t *testing.T) {
 	}
 	if !strings.Contains(output, "STACK") || !strings.Contains(output, "SERVICE") {
 		t.Errorf("expected header to contain separate STACK and SERVICE columns, got:\n%s", output)
+	}
+}
+
+func TestResolveServiceImageAndPorts_Extends(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	commonYAML := `services:
+  base-app:
+    image: myrepo/base-app:1.2.3
+    ports:
+      - "8080:8080"
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "common.yaml"), []byte(commonYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	appYAML := `services:
+  web:
+    extends:
+      file: common.yaml
+      service: base-app
+    container_name: web-app
+`
+	appPath := filepath.Join(tmpDir, "compose.app.yaml")
+	if err := os.WriteFile(appPath, []byte(appYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := docker.ParseComposeFile(appPath)
+	if err != nil {
+		t.Fatalf("failed parsing compose file: %v", err)
+	}
+
+	svc := cfg.Services["web"]
+	gotImg, gotPorts := resolveServiceImageAndPorts(tmpDir, appPath, cfg, svc, 0)
+	if gotImg != "myrepo/base-app:1.2.3" {
+		t.Errorf("resolveServiceImageAndPorts() image = %q, want %q", gotImg, "myrepo/base-app:1.2.3")
+	}
+	if len(gotPorts) != 1 || gotPorts[0] != "8080:8080" {
+		t.Errorf("resolveServiceImageAndPorts() ports = %v, want ['8080:8080']", gotPorts)
 	}
 }
 

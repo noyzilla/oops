@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -108,6 +109,58 @@ func renderStatusTable(out io.Writer, items []containerStatusItem) {
 		)
 	}
 	w.Flush()
+}
+
+// resolveServiceImageAndPorts resolves image and ports traversing extends hierarchy if necessary
+func resolveServiceImageAndPorts(workDir string, composeDir string, currentCfg *docker.ComposeConfig, svc docker.ComposeService, depth int) (string, []string) {
+	image := svc.Image
+	ports := svc.Ports
+
+	if (image != "" && len(ports) > 0) || depth > 5 {
+		return image, ports
+	}
+
+	if svc.ParsedExtends != nil && svc.ParsedExtends.Service != "" {
+		targetFile := composeDir
+		if svc.ParsedExtends.File != "" {
+			if filepath.IsAbs(svc.ParsedExtends.File) {
+				targetFile = svc.ParsedExtends.File
+			} else {
+				// Try relative to composeDir first, then workDir
+				cand := filepath.Join(filepath.Dir(composeDir), svc.ParsedExtends.File)
+				if _, err := os.Stat(cand); err == nil {
+					targetFile = cand
+				} else {
+					targetFile = filepath.Join(workDir, svc.ParsedExtends.File)
+				}
+			}
+		}
+
+		var targetCfg *docker.ComposeConfig
+		if targetFile == composeDir && currentCfg != nil {
+			targetCfg = currentCfg
+		} else {
+			var err error
+			targetCfg, err = docker.ParseComposeFile(targetFile)
+			if err != nil {
+				targetCfg = nil
+			}
+		}
+
+		if targetCfg != nil {
+			if baseSvc, ok := targetCfg.Services[svc.ParsedExtends.Service]; ok {
+				baseImg, basePorts := resolveServiceImageAndPorts(workDir, targetFile, targetCfg, baseSvc, depth+1)
+				if image == "" {
+					image = baseImg
+				}
+				if len(ports) == 0 {
+					ports = basePorts
+				}
+			}
+		}
+	}
+
+	return image, ports
 }
 
 func runPs(cmd *cobra.Command, args []string, fullImage bool, showAll bool) error {
@@ -273,9 +326,11 @@ func runPs(cmd *cobra.Command, args []string, fullImage bool, showAll bool) erro
 						}
 					}
 
+					resImage, resPorts := resolveServiceImageAndPorts(workDir, composePath, cfg, svc, 0)
+
 					// Format ports from compose definition if available
 					var portStrs []string
-					for _, p := range svc.Ports {
+					for _, p := range resPorts {
 						portStrs = append(portStrs, p)
 					}
 					portsDisplay := "-"
@@ -289,7 +344,7 @@ func runPs(cmd *cobra.Command, args []string, fullImage bool, showAll bool) erro
 						Service:      svcName,
 						StackService: stackService,
 						Container:    cName,
-						Image:        formatContainerImage(svc.Image, fullImage),
+						Image:        formatContainerImage(resImage, fullImage),
 						Status:       "missing",
 						IP:           "-",
 						Ports:        portsDisplay,

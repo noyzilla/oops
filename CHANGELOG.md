@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [v1.10.1] - 2026-10-21
+
+### Fixed
+- **Resolve `extends:` Images and Ports in `oops ps -a`**: Traversed `extends:` hierarchy (both string and object forms pointing to relative files or local service anchors) to correctly display inherited container images and port mappings for uncreated services (`cmd/ps.go`, `internal/docker/compose.go`).
+
 ## [v1.10.0] - 2026-10-21
 
 ### Changed

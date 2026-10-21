@@ -26,6 +26,12 @@ func (c *ComposeConfig) GetXOopsStack() []string {
 	return list
 }
 
+// ComposeExtends represents service extension configuration
+type ComposeExtends struct {
+	File    string `yaml:"file,omitempty"`
+	Service string `yaml:"service,omitempty"`
+}
+
 // ComposeService represents a service inside docker-compose.yml
 type ComposeService struct {
 	Image           string            `yaml:"image,omitempty"`
@@ -36,6 +42,8 @@ type ComposeService struct {
 	ParsedLabels    map[string]string `yaml:"-"`
 	DependsOnNode   yaml.Node         `yaml:"depends_on,omitempty"`
 	ParsedDependsOn []string          `yaml:"-"`
+	ExtendsNode     yaml.Node         `yaml:"extends,omitempty"`
+	ParsedExtends   *ComposeExtends   `yaml:"-"`
 }
 
 // ParseComposeFile reads and parses a docker-compose.yml file
@@ -53,6 +61,7 @@ func ParseComposeFile(filePath string) (*ComposeConfig, error) {
 	for name, s := range config.Services {
 		s.ParsedLabels = parseLabelsNode(&s.Labels)
 		s.ParsedDependsOn = parseDependsOnNode(&s.DependsOnNode)
+		s.ParsedExtends = parseExtendsNode(&s.ExtendsNode)
 		config.Services[name] = s
 	}
 
@@ -105,4 +114,33 @@ func parseLabelsNode(node *yaml.Node) map[string]string {
 	}
 
 	return labels
+}
+
+// parseExtendsNode parses extends configuration (either string "service" or map with file & service)
+func parseExtendsNode(node *yaml.Node) *ComposeExtends {
+	if node == nil || node.Kind == 0 {
+		return nil
+	}
+
+	if node.Kind == yaml.ScalarNode && node.Value != "" {
+		return &ComposeExtends{Service: node.Value}
+	}
+
+	if node.Kind == yaml.MappingNode {
+		var ext ComposeExtends
+		for i := 0; i < len(node.Content); i += 2 {
+			k := node.Content[i].Value
+			v := node.Content[i+1].Value
+			if k == "file" {
+				ext.File = v
+			} else if k == "service" {
+				ext.Service = v
+			}
+		}
+		if ext.Service != "" {
+			return &ext
+		}
+	}
+
+	return nil
 }
