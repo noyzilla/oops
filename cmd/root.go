@@ -237,7 +237,7 @@ func init() {
 	rootCmd.AddCommand(newStopCmd())
 	rootCmd.AddCommand(newRestartCmd())
 	rootCmd.AddCommand(newDownCmd())
-	rootCmd.AddCommand(newStatusCmd())
+	rootCmd.AddCommand(newPsCmd())
 	rootCmd.AddCommand(newLogsCmd())
 	rootCmd.AddCommand(newPullCmd())
 	rootCmd.AddCommand(newUpdateCmd())

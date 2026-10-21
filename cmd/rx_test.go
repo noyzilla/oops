@@ -13,10 +13,10 @@ func TestParseRxInvocation(t *testing.T) {
 		wantCmds   []string
 	}{
 		{
-			name:       "Implicit default server status command",
-			args:       []string{"rx", "status"},
+			name:       "Implicit default server ps command",
+			args:       []string{"rx", "ps"},
 			wantServer: "prod",
-			wantCmds:   []string{"status"},
+			wantCmds:   []string{"ps"},
 		},
 		{
 			name:       "Explicit server @lima-debian",

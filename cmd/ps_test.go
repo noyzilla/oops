@@ -152,6 +152,8 @@ func TestRenderStatusTableAlignment(t *testing.T) {
 	items := []containerStatusItem{
 		{
 			ContainerID:  "3d285d623b64",
+			Stack:        "edge",
+			Service:      "caddy-proxy",
 			StackService: "/edge/caddy-proxy",
 			Image:        "caddy-docker-proxy:alpine",
 			Status:       "Up About a minute",
@@ -160,6 +162,8 @@ func TestRenderStatusTableAlignment(t *testing.T) {
 		},
 		{
 			ContainerID:  "64cd605d59a8",
+			Stack:        "db",
+			Service:      "mysql",
 			StackService: "/db/mysql",
 			Image:        "mysql:8.4",
 			Status:       "Up About a minute (healthy)",
@@ -183,7 +187,8 @@ func TestRenderStatusTableAlignment(t *testing.T) {
 		rowVal    string
 	}{
 		{"CONTAINER ID", "3d285d623b64"},
-		{"STACK/SERVICE", "/edge/caddy-proxy"},
+		{"STACK", "edge"},
+		{"SERVICE", "caddy-proxy"},
 		{"IMAGE", "caddy-docker-proxy:alpine"},
 		{"STATUS", "Up About a minute"},
 		{"IP", "172.18.0.2"},
@@ -197,6 +202,34 @@ func TestRenderStatusTableAlignment(t *testing.T) {
 			t.Errorf("column %q index (%d) != row value %q index (%d)\nHeader: %s\nRow 1 : %s",
 				c.headerCol, hIdx, c.rowVal, rIdx, header, row1)
 		}
+	}
+}
+
+func TestRenderStatusTableMissingService(t *testing.T) {
+	items := []containerStatusItem{
+		{
+			ContainerID:  "-",
+			Stack:        "db",
+			Service:      "redis",
+			StackService: "/db/redis",
+			Image:        "redis:alpine",
+			Status:       "missing",
+			IP:           "-",
+			Ports:        "#:6379",
+		},
+	}
+
+	var buf bytes.Buffer
+	renderStatusTable(&buf, items)
+	output := buf.String()
+	if !strings.Contains(output, "missing") {
+		t.Errorf("expected table output to contain 'missing', got:\n%s", output)
+	}
+	if !strings.Contains(output, "redis") {
+		t.Errorf("expected table output to contain 'redis', got:\n%s", output)
+	}
+	if !strings.Contains(output, "STACK") || !strings.Contains(output, "SERVICE") {
+		t.Errorf("expected header to contain separate STACK and SERVICE columns, got:\n%s", output)
 	}
 }
 

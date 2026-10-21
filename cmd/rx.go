@@ -11,7 +11,7 @@ import (
 )
 
 // HandleDynamicRxCommands handles invocations like:
-//   oops rx status
+//   oops rx ps
 //   oops rx @lima-debian logs app
 //   oops rx @prod up /db
 func HandleDynamicRxCommands(args []string) (bool, error) {
@@ -81,7 +81,6 @@ func printRxHelp() {
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  oops rx ps                         Runs 'oops ps' on default remote server")
-	fmt.Println("  oops rx status                     Runs 'oops status' on default remote server")
 	fmt.Println("  oops rx logs app -f                Follows app container logs on default remote server")
 	fmt.Println("  oops rx @prod up /db               Runs 'oops up /db' on '@prod'")
 }
@@ -90,7 +89,7 @@ func newRxCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "rx [@<remote>] <oops-cmd> [args...]",
 		Short: "Forwards an oops command directly to a remote server over SSH",
-		Long:  "Executes oops operational subcommands (status, ps, logs, up, down, db, backup, etc.) on a remote server over SSH inside the target workspace directory.",
+		Long:  "Executes oops operational subcommands (ps, logs, up, down, db, backup, etc.) on a remote server over SSH inside the target workspace directory.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			printRxHelp()
 			return nil

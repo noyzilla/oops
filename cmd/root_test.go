@@ -18,7 +18,7 @@ func TestRootCommandSubcommands(t *testing.T) {
 		"stop",
 		"restart",
 		"down",
-		"status",
+		"ps",
 		"logs",
 		"pull",
 		"update",

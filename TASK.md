@@ -3,7 +3,7 @@
 This file tracks the active focus, immediate next actions, and backlog deliverables for the repository.
 
 ## Active Focus
-- Maintain living specifications, documentation, and stability following `v1.9.1` release.
+- Refactored `oops ps` command, separated `STACK`/`SERVICE` columns, and implemented `-a` / `--all` to surface uncreated `missing` compose services.
 
 ## Immediate Next Actions
-- Ready for next development milestone (`cmd/`, `internal/`, `oopsbox/`, `docs/specs/`).
+- Verify test coverage and conclude GATE 3 review for `feat/ps-command-refactor`.
