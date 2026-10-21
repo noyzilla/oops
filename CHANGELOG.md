@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
-## [Unreleased]
+## [v1.10.0] - 2026-10-21
 
 ### Changed
 - **Consolidated `oops ps` & Deprecated `status`**: Retired `oops status` command in favor of `oops ps` as the single unified inspection command (`cmd/ps.go`, `cmd/root.go`).
