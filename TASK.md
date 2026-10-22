@@ -3,7 +3,7 @@
 This file tracks the active focus, immediate next actions, and backlog deliverables for the repository.
 
 ## Active Focus
-- Dynamic UID/GID synchronization into `.env` and `ComposeCommandEnv()`.
+- Maintain living specifications, documentation, and stability following `v1.11.0` release.
 
 ## Immediate Next Actions
-- Conclude GATE 3 review and merge `feat/sync-uid-gid-env`.
+- Ready for next development milestone (`cmd/`, `internal/`, `oopsbox/`, `docs/specs/`).
