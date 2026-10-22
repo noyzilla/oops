@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+### Added
+- **Dynamic UID/GID Subprocess Injection & Automatic `.env` Synchronization**: Auto-detects caller's `os.Getuid()` and `os.Getgid()`, injecting `UID` and `GID` into `ComposeCommandEnv()`, and automatically updates or appends them in workspace `.env` before invoking `docker compose`. This ensures containers configured with `user: "${UID:-1000}:${GID:-1000}"` execute with the exact caller credentials across both `oops` and direct `docker compose` invocations, preventing permission mismatch when deploying `.env` across disparate OS hosts (`internal/orchestrator/updater.go`).
+
 ## [v1.10.1] - 2026-10-21
 
 ### Fixed

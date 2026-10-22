@@ -1,7 +1,10 @@
 package orchestrator_test
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -76,15 +79,74 @@ func TestFindEnvFile(t *testing.T) {
 
 func TestComposeCommandEnv(t *testing.T) {
 	env := orchestrator.ComposeCommandEnv()
-	found := false
+	foundOrphans := false
+	foundUID := false
+	foundGID := false
 	for _, entry := range env {
 		if entry == "COMPOSE_IGNORE_ORPHANS=True" {
-			found = true
-			break
+			foundOrphans = true
+		}
+		if strings.HasPrefix(entry, "UID=") {
+			foundUID = true
+		}
+		if strings.HasPrefix(entry, "GID=") {
+			foundGID = true
 		}
 	}
-	if !found {
+	if !foundOrphans {
 		t.Fatalf("expected COMPOSE_IGNORE_ORPHANS=True in ComposeCommandEnv(), got %v", env)
+	}
+	if !foundUID {
+		t.Fatalf("expected UID=... in ComposeCommandEnv(), got %v", env)
+	}
+	if !foundGID {
+		t.Fatalf("expected GID=... in ComposeCommandEnv(), got %v", env)
+	}
+}
+
+func TestSyncUserUIDGIDToEnvFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	envPath := filepath.Join(tmpDir, ".env")
+
+	// 1. Initial creation when .env does not exist
+	if err := orchestrator.SyncUserUIDGIDToEnvFile(envPath); err != nil {
+		t.Fatalf("failed syncing to non-existent .env: %v", err)
+	}
+
+	content, err := os.ReadFile(envPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantUID := fmt.Sprintf("UID=%d", os.Getuid())
+	wantGID := fmt.Sprintf("GID=%d", os.Getgid())
+	if !strings.Contains(string(content), wantUID) || !strings.Contains(string(content), wantGID) {
+		t.Errorf("expected .env to contain %q and %q, got:\n%s", wantUID, wantGID, string(content))
+	}
+
+	// 2. Overwrite existing outdated UID/GID from another environment (e.g. from macOS 501/20)
+	dummyEnv := "FOO=bar\nUID=9999\nBAZ=qux\nGID=8888\n"
+	if err := os.WriteFile(envPath, []byte(dummyEnv), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := orchestrator.SyncUserUIDGIDToEnvFile(envPath); err != nil {
+		t.Fatalf("failed updating existing .env: %v", err)
+	}
+
+	updated, err := os.ReadFile(envPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updatedStr := string(updated)
+
+	if !strings.Contains(updatedStr, "FOO=bar") || !strings.Contains(updatedStr, "BAZ=qux") {
+		t.Errorf("expected preserved FOO and BAZ variables, got:\n%s", updatedStr)
+	}
+	if strings.Contains(updatedStr, "UID=9999") || strings.Contains(updatedStr, "GID=8888") {
+		t.Errorf("expected outdated UID=9999 and GID=8888 to be overwritten, got:\n%s", updatedStr)
+	}
+	if !strings.Contains(updatedStr, wantUID) || !strings.Contains(updatedStr, wantGID) {
+		t.Errorf("expected new %q and %q, got:\n%s", wantUID, wantGID, updatedStr)
 	}
 }
 

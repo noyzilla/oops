@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -90,10 +91,81 @@ func FindEnvFile(composePath string) string {
 	return ""
 }
 
-// ComposeCommandEnv returns the process environment with COMPOSE_IGNORE_ORPHANS=True
-// so multi-stack invocations sharing the root oopsbox project do not emit false-positive orphan warnings.
+// ComposeCommandEnv returns the process environment with COMPOSE_IGNORE_ORPHANS=True,
+// and ensures UID and GID of current caller are present so compose variable expansion
+// (e.g. user: "${UID:-1000}:${GID:-1000}") evaluates correctly without defaulting.
 func ComposeCommandEnv() []string {
-	return append(os.Environ(), "COMPOSE_IGNORE_ORPHANS=True")
+	env := os.Environ()
+	hasUID := false
+	hasGID := false
+	for _, e := range env {
+		if strings.HasPrefix(e, "UID=") {
+			hasUID = true
+		}
+		if strings.HasPrefix(e, "GID=") {
+			hasGID = true
+		}
+	}
+	if !hasUID {
+		env = append(env, fmt.Sprintf("UID=%d", os.Getuid()))
+	}
+	if !hasGID {
+		env = append(env, fmt.Sprintf("GID=%d", os.Getgid()))
+	}
+	return append(env, "COMPOSE_IGNORE_ORPHANS=True")
+}
+
+// SyncUserUIDGIDToEnvFile updates or appends UID and GID of the current OS caller in the given .env file.
+func SyncUserUIDGIDToEnvFile(envPath string) error {
+	uid := os.Getuid()
+	gid := os.Getgid()
+
+	content, err := os.ReadFile(envPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			newContent := fmt.Sprintf("UID=%d\nGID=%d\n", uid, gid)
+			return os.WriteFile(envPath, []byte(newContent), 0644)
+		}
+		return err
+	}
+
+	lines := strings.Split(string(content), "\n")
+	foundUID := false
+	foundGID := false
+
+	var newLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "UID=") {
+			newLines = append(newLines, fmt.Sprintf("UID=%d", uid))
+			foundUID = true
+		} else if strings.HasPrefix(trimmed, "GID=") {
+			newLines = append(newLines, fmt.Sprintf("GID=%d", gid))
+			foundGID = true
+		} else {
+			newLines = append(newLines, line)
+		}
+	}
+
+	// Remove trailing empty line if present before appending
+	if len(newLines) > 0 && strings.TrimSpace(newLines[len(newLines)-1]) == "" {
+		newLines = newLines[:len(newLines)-1]
+	}
+
+	if !foundUID {
+		newLines = append(newLines, fmt.Sprintf("UID=%d", uid))
+	}
+	if !foundGID {
+		newLines = append(newLines, fmt.Sprintf("GID=%d", gid))
+	}
+	newLines = append(newLines, "") // trailing newline
+
+	updated := strings.Join(newLines, "\n")
+	if updated == string(content) {
+		return nil // No change needed
+	}
+
+	return os.WriteFile(envPath, []byte(updated), 0644)
 }
 
 // RunComposeFiles executes docker compose with multi -f files and auto-detected .env
@@ -103,6 +175,7 @@ func RunComposeFiles(composeFiles []string, args ...string) error {
 
 	if len(composeFiles) > 0 {
 		if envFile := FindEnvFile(composeFiles[0]); envFile != "" {
+			_ = SyncUserUIDGIDToEnvFile(envFile)
 			cmdArgs = append(cmdArgs, "--env-file", envFile)
 		}
 		for _, f := range composeFiles {
