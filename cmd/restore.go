@@ -17,10 +17,59 @@ func newRestoreCmd() *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "restore",
+		Use:   "restore [target_or_file] [backup_file]",
 		Short: "Restores database dumps and filesystem data archives",
-		Long:  "Restores database tables and filesystem volumes with validation and confirmation guards.",
+		Long:  "Restores database tables and filesystem volumes with validation and confirmation guards. Directly supports engines (redis, mysql, postgres), dump files (dump.rdb, .rdb, .sql, .tar.gz), or subcommands (restore-db, restore-data).",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+
+			workDir, _, backupDir, err := resolveBackupConfig("")
+			if err != nil {
+				return err
+			}
+			if err := ValidateActiveBox(workDir); err != nil {
+				return err
+			}
+
+			target := args[0]
+			targetLower := strings.ToLower(target)
+
+			// 1. Direct Redis engine shortcut: oops restore redis [backup_file]
+			if targetLower == "redis" || strings.HasPrefix(targetLower, "redis:") {
+				var backupFile string
+				if len(args) >= 2 {
+					backupFile = args[1]
+				}
+				return backup.ExecuteRestoreDB(context.Background(), backupDir, target, "redis", backupFile, force)
+			}
+
+			// 2. Direct Redis RDB file: oops restore dump.rdb or *.rdb / *.rdb.gz
+			if targetLower == "dump.rdb" || strings.HasSuffix(targetLower, ".rdb") || strings.HasSuffix(targetLower, ".rdb.gz") {
+				return backup.ExecuteRestoreDB(context.Background(), backupDir, "redis", "redis", target, force)
+			}
+
+			// 3. Filesystem archive: oops restore <name>.tar.gz
+			if strings.HasSuffix(targetLower, ".tar.gz") {
+				return backup.ExecuteRestoreData(context.Background(), workDir, backupDir, target, false, force)
+			}
+
+			// 4. SQL archive: inspect manifest if available
+			if strings.HasSuffix(targetLower, ".sql") || strings.HasSuffix(targetLower, ".sql.gz") {
+				filePath := target
+				if _, err := os.Stat(filePath); err != nil {
+					candidate := filepath.Join(backupDir, filePath)
+					if _, err2 := os.Stat(candidate); err2 == nil {
+						filePath = candidate
+					}
+				}
+				m, err := backup.ReadDBManifestFromFile(filePath)
+				if err == nil && m != nil && m.Engine != "" {
+					return backup.ExecuteRestoreDB(context.Background(), backupDir, m.Engine, m.Database, target, force)
+				}
+			}
+
 			return cmd.Help()
 		},
 	}
@@ -38,16 +87,41 @@ func newRestoreDBCmd() *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "restore-db <engine>[:target] <db_name> [backup_file]",
+		Use:   "restore-db <engine>[:target] [db_name] [backup_file]",
 		Short: "Restores database dump into container with confirmation guard",
-		Long:  "Restores .sql or .sql.gz database dump into a running database container (mysql, postgres).",
-		Args:  cobra.MinimumNArgs(2),
+		Long:  "Restores .sql, .sql.gz, or .rdb database dump into a running database container (mysql, postgres, redis).",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			engineSpec := args[0]
-			dbName := args[1]
+			parts := strings.SplitN(engineSpec, ":", 2)
+			engine := strings.ToLower(parts[0])
+
+			var dbName string
 			var backupFile string
-			if len(args) >= 3 {
-				backupFile = args[2]
+
+			if engine == "redis" {
+				dbName = "redis"
+				if len(args) == 2 {
+					arg := args[1]
+					if arg == "dump.rdb" || strings.HasSuffix(arg, ".rdb") || strings.HasSuffix(arg, ".rdb.gz") {
+						backupFile = arg
+					} else if _, err := os.Stat(arg); err == nil {
+						backupFile = arg
+					} else {
+						dbName = arg
+					}
+				} else if len(args) >= 3 {
+					dbName = args[1]
+					backupFile = args[2]
+				}
+			} else {
+				if len(args) < 2 {
+					return fmt.Errorf("usage: oops restore-db %s <db_name> [backup_file]", engineSpec)
+				}
+				dbName = args[1]
+				if len(args) >= 3 {
+					backupFile = args[2]
+				}
 			}
 
 			workDir, _, backupDir, err := resolveBackupConfig("")

@@ -44,6 +44,18 @@ func ExecuteRestoreDB(ctx context.Context, backupDir string, engineSpec string, 
 		candidate := filepath.Join(backupDir, backupFilePath)
 		if _, err2 := os.Stat(candidate); err2 == nil {
 			backupFilePath = candidate
+		} else if engine == "redis" {
+			parentDir := filepath.Dir(backupDir)
+			candidates := []string{
+				filepath.Join(parentDir, "data", "redis", backupFilePath),
+				filepath.Join(parentDir, backupFilePath),
+			}
+			for _, c := range candidates {
+				if fi, err3 := os.Stat(c); err3 == nil && !fi.IsDir() {
+					backupFilePath = c
+					break
+				}
+			}
 		}
 	}
 
@@ -529,11 +541,33 @@ func FindLatestDBBackup(backupDir string, engine string, dbName string) (string,
 
 	for _, e := range entries {
 		name := e.Name()
-		if strings.HasPrefix(name, matchPrefix) && (strings.HasSuffix(name, ".sql.gz") || strings.HasSuffix(name, ".rdb.gz") || strings.HasSuffix(name, ".sql") || strings.HasSuffix(name, ".rdb")) {
+		matched := false
+		if strings.HasPrefix(name, matchPrefix) {
+			matched = true
+		} else if engine == "redis" && (name == "dump.rdb" || name == "dump.rdb.gz" || strings.HasPrefix(name, "redis_")) {
+			matched = true
+		}
+
+		if matched && (strings.HasSuffix(name, ".sql.gz") || strings.HasSuffix(name, ".rdb.gz") || strings.HasSuffix(name, ".sql") || strings.HasSuffix(name, ".rdb")) {
 			info, err := e.Info()
 			if err == nil && info.ModTime().Unix() > latestTime {
 				latestTime = info.ModTime().Unix()
 				latestFile = filepath.Join(backupDir, name)
+			}
+		}
+	}
+
+	if latestFile == "" && engine == "redis" {
+		// Fallback: check dump.rdb in parent/workDir/data/redis or current working directory
+		parentDir := filepath.Dir(backupDir)
+		candidates := []string{
+			filepath.Join(parentDir, "data", "redis", "dump.rdb"),
+			filepath.Join(parentDir, "dump.rdb"),
+			"dump.rdb",
+		}
+		for _, cand := range candidates {
+			if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
+				return cand, nil
 			}
 		}
 	}

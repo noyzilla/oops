@@ -116,6 +116,11 @@ For each matched service in target order:
 - **Database Backup (`oops backup-db [targets...] [-r <duration|int>]`)**: Dumps running database containers to `backups/<engine>_backup_<TIMESTAMP>.sql.gz`.
 - **Filesystem Backup (`oops backup-data [names...] [-r <duration|int>]`)**: Archives data volumes from `oops.yaml` to `backups/data_<name>_<TIMESTAMP>.tar.gz`.
 
+### Restore Suite (`oops restore`, `oops restore-db`, `oops restore-data`)
+- **Smart Restore Dispatcher (`oops restore [target_or_file] [backup_file] [-y]`)**: Directly restores databases or volumes. Supports engine shortcuts (`oops restore redis`), raw dump files (`oops restore dump.rdb`, `*.rdb`, `*.sql`, `*.tar.gz`), and automatically transpiles Redis RDB snapshots to active Redis 7 AOF structures.
+- **Database Restore (`oops restore-db <engine>[:target] [db_name] [backup_file] [-y]`)**: Restores database dump into running container. For Redis, allows omitting `db_name` (`oops restore-db redis [dump.rdb]`).
+- **Data Volume Restore (`oops restore-data <target_name|backup_file> [-n] [-y]`)**: Extracts compressed filesystem volume archive with dry-run preview.
+
 ---
 
 ## Interface & Data Contracts
@@ -137,6 +142,9 @@ For each matched service in target order:
 | `oops backup` | `[-r 7d]` | Full backup (DB + volumes) and retention prune |
 | `oops backup-db` | `[targets...] [-r 7d]` | DB dump and retention prune |
 | `oops backup-data` | `[targets...] [-r 7d]` | Data volume tar archives and retention prune |
+| `oops restore` | `[target_or_file] [backup_file] [-y]` | Smart restore for engines (`redis`), dump files (`dump.rdb`), or archives |
+| `oops restore-db` | `<engine>[:target] [db_name] [backup_file] [-y]` | DB dump restore with confirmation guard |
+| `oops restore-data` | `<target_name\|backup_file> [-n] [-y]` | Data volume tar archive restore with dry-run preview |
 | `oops dns` | `[list]` | Inspects active DNS records and discovery routes |
 | `oops dns get` | `<domain>` | Resolves and outputs IP address for domain |
 | `oops dns set` | `<domain> <ip>` | Adds or updates static DNS record in `data/oops/dns.records` |

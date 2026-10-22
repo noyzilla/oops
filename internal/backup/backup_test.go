@@ -200,6 +200,20 @@ func TestFindLatestDBBackup_Redis(t *testing.T) {
 	}
 }
 
+func TestFindLatestDBBackup_Redis_DumpRDB(t *testing.T) {
+	tmpDir := t.TempDir()
+	dumpFile := filepath.Join(tmpDir, "dump.rdb")
+	_ = os.WriteFile(dumpFile, []byte("REDIS0011"), 0644)
+
+	latest, err := backup.FindLatestDBBackup(tmpDir, "redis", "")
+	if err != nil {
+		t.Fatalf("FindLatestDBBackup failed for dump.rdb: %v", err)
+	}
+	if latest != dumpFile {
+		t.Errorf("expected %s, got %s", dumpFile, latest)
+	}
+}
+
 type errReader struct{}
 
 func (e *errReader) Read(p []byte) (n int, err error) {

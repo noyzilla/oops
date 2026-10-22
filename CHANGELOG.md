@@ -7,6 +7,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
+- **Direct `dump.rdb` Support & Ergonomic Restore Shortcuts**: Extended `oops restore` to directly accept raw `dump.rdb` snapshots and engine shortcuts (e.g. `oops restore redis [dump.rdb]`, `oops restore dump.rdb`, `oops restore-db redis dump.rdb`). `FindLatestDBBackup` automatically discovers candidate `dump.rdb` files across workspace, backup directory, and `./data/redis/` (`cmd/restore.go`, `internal/backup/restore.go`).
 - **Redis ACL & Key Prefix Namespace Management (`oops db redis`)**: Added `redis` engine support to `oops db` (`create`, `readonly`, `passwd`, `list`, `drop`). Provisions isolated Redis 7 ACL users with key prefix boundaries (`~<name>:*`), executes `ACL SAVE` for persistence, and exports credentials to `config/env/redis.<user>.env` with `REDIS_URL` (`cmd/db.go`, `internal/db/redis.go`).
 - **Modernized Redis Stack Template**: Upgraded `oopsbox/compose.db.yaml` with production-grade tuning (AOF `appendfsync everysec`, `maxmemory 384mb`, `maxmemory-policy noeviction`, `maxclients 1000`, `timeout 1800`, Timezone `Asia/Bangkok`) and Docker Compose `pre_start` hook initializing `/data/users.acl` with default user credentials before boot.
 
