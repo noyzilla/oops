@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/noyzilla/oops/internal/db"
 	"github.com/noyzilla/oops/internal/docker"
@@ -148,21 +149,7 @@ func ExecuteRestoreDB(ctx context.Context, backupDir string, engineSpec string, 
 		}
 		cmd = exec.CommandContext(ctx, "docker", args...)
 	} else if engine == "redis" {
-		// For Redis: stream decompressed RDB into /data/dump.rdb inside the container and restart
-		cmd = exec.CommandContext(ctx, "docker", "exec", "-i", containerTarget, "sh", "-c", "cat > /data/dump.rdb")
-		cmd.Stdin = sqlReader
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to write RDB snapshot to redis container: %w", err)
-		}
-		log.Printf("==> Restarting Redis container %s to load restored snapshot...", containerTarget)
-		restartCmd := exec.CommandContext(ctx, "docker", "restart", containerTarget)
-		if err := restartCmd.Run(); err != nil {
-			return fmt.Errorf("failed to restart redis container: %w", err)
-		}
-		log.Printf("==> Successfully restored Redis snapshot from %s!", backupFilePath)
-		return nil
+		return RestoreRedis(ctx, containerTarget, sqlReader, backupFilePath)
 	} else {
 		return fmt.Errorf("unsupported database engine: %s", engine)
 	}
@@ -176,6 +163,142 @@ func ExecuteRestoreDB(ctx context.Context, backupDir string, engineSpec string, 
 	}
 
 	log.Printf("==> Successfully restored database %s from %s!", dbName, backupFilePath)
+	return nil
+}
+
+// RestoreRedis safely restores an RDB snapshot into Redis, handling AOF transpilation
+// and preserving safety backups of existing data.
+func RestoreRedis(ctx context.Context, containerTarget string, rdbReader io.Reader, backupFilePath string) error {
+	if containerTarget == "" {
+		containerTarget = "redis"
+	}
+
+	// 1. Inspect container image
+	inspectCmd := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.Config.Image}}", containerTarget)
+	out, _ := inspectCmd.Output()
+	redisImage := strings.TrimSpace(string(out))
+	if redisImage == "" {
+		redisImage = "redis:7-alpine"
+	}
+
+	// 2. Stop running main Redis container to freeze memory and prevent shutdown overwrite
+	log.Printf("==> Stopping Redis container %s to prevent memory overwrite...", containerTarget)
+	stopCmd := exec.CommandContext(ctx, "docker", "stop", containerTarget)
+	_ = stopCmd.Run()
+
+	// 3. Backup existing /data/appendonlydir and /data/dump.rdb, then stream new dump.rdb
+	timestamp := time.Now().Format("20060102150405")
+	prepScript := fmt.Sprintf(`
+if [ -d /data/appendonlydir ]; then
+    echo "==> Backing up existing appendonlydir to /data/appendonlydir.bak.%s"
+    mv /data/appendonlydir /data/appendonlydir.bak.%s
+fi
+if [ -f /data/dump.rdb ]; then
+    echo "==> Backing up existing dump.rdb to /data/dump.rdb.bak.%s"
+    cp /data/dump.rdb /data/dump.rdb.bak.%s
+fi
+cat > /data/dump.rdb
+chmod 660 /data/dump.rdb
+`, timestamp, timestamp, timestamp, timestamp)
+
+	prepCmd := exec.CommandContext(ctx, "docker", "run", "--rm", "-i", "--volumes-from", containerTarget, redisImage, "sh", "-c", prepScript)
+	prepCmd.Stdin = rdbReader
+	prepCmd.Stdout = os.Stdout
+	prepCmd.Stderr = os.Stderr
+	if err := prepCmd.Run(); err != nil {
+		_ = exec.CommandContext(ctx, "docker", "start", containerTarget).Run()
+		return fmt.Errorf("failed to prepare and stream RDB snapshot to redis container: %w", err)
+	}
+
+	// 4. Transpile RDB -> AOF via ephemeral helper container running --appendonly no
+	log.Printf("==> Transpiling RDB snapshot into Redis AOF structure...")
+	converterName := fmt.Sprintf("oops-redis-converter-%s", timestamp)
+	_ = exec.CommandContext(ctx, "docker", "rm", "-f", converterName).Run()
+
+	runCmd := exec.CommandContext(ctx, "docker", "run", "--name", converterName, "--volumes-from", containerTarget, "-d", redisImage,
+		"redis-server", "--appendonly", "no", "--dir", "/data", "--dbfilename", "dump.rdb")
+	if err := runCmd.Run(); err != nil {
+		_ = exec.CommandContext(ctx, "docker", "start", containerTarget).Run()
+		return fmt.Errorf("failed to run redis converter container: %w", err)
+	}
+	defer func() {
+		_ = exec.CommandContext(ctx, "docker", "rm", "-f", converterName).Run()
+	}()
+
+	// Wait for converter to be ready
+	ready := false
+	for i := 0; i < 30; i++ {
+		pingCmd := exec.CommandContext(ctx, "docker", "exec", converterName, "redis-cli", "ping")
+		if pingOut, pingErr := pingCmd.Output(); pingErr == nil && strings.Contains(string(pingOut), "PONG") {
+			ready = true
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	if !ready {
+		_ = exec.CommandContext(ctx, "docker", "start", containerTarget).Run()
+		return fmt.Errorf("redis converter container timed out waiting for ready")
+	}
+
+	// Log keys loaded into memory
+	dbsizeCmd := exec.CommandContext(ctx, "docker", "exec", converterName, "redis-cli", "DBSIZE")
+	if sizeOut, sizeErr := dbsizeCmd.Output(); sizeErr == nil {
+		log.Printf("==> Loaded %s keys from snapshot into memory", strings.TrimSpace(string(sizeOut)))
+	}
+
+	// Enable appendonly live -> triggers background AOF rewrite
+	configCmd := exec.CommandContext(ctx, "docker", "exec", converterName, "redis-cli", "CONFIG", "SET", "appendonly", "yes")
+	if confOut, confErr := configCmd.CombinedOutput(); confErr != nil {
+		_ = exec.CommandContext(ctx, "docker", "start", containerTarget).Run()
+		return fmt.Errorf("failed to enable AOF on converter: %s: %w", string(confOut), confErr)
+	}
+
+	// Wait for AOF rewrite to complete (aof_rewrite_in_progress == 0)
+	aofFinished := false
+	for i := 0; i < 60; i++ {
+		infoCmd := exec.CommandContext(ctx, "docker", "exec", converterName, "redis-cli", "INFO", "persistence")
+		if infoOut, infoErr := infoCmd.Output(); infoErr == nil {
+			infoStr := string(infoOut)
+			if strings.Contains(infoStr, "aof_rewrite_in_progress:0") {
+				aofFinished = true
+				break
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if !aofFinished {
+		log.Printf("Warning: AOF rewrite poll exceeded timeout, proceeding...")
+	}
+
+	// Save and shutdown converter
+	_ = exec.CommandContext(ctx, "docker", "exec", converterName, "redis-cli", "save").Run()
+	_ = exec.CommandContext(ctx, "docker", "exec", converterName, "redis-cli", "shutdown", "nosave").Run()
+	_ = exec.CommandContext(ctx, "docker", "rm", "-f", converterName).Run()
+
+	// 5. Start main Redis container
+	log.Printf("==> Starting main Redis container %s with restored AOF...", containerTarget)
+	startCmd := exec.CommandContext(ctx, "docker", "start", containerTarget)
+	if err := startCmd.Run(); err != nil {
+		return fmt.Errorf("failed to restart main redis container: %w", err)
+	}
+
+	// 6. Log final keys in main container
+	time.Sleep(1 * time.Second)
+	pass := os.Getenv("OOPS_DB_REDIS_PASSWORD")
+	if pass == "" {
+		pass = db.InspectContainerEnv(ctx, containerTarget, "REDIS_PASSWORD")
+	}
+	cliArgs := []string{"exec", containerTarget, "redis-cli"}
+	if pass != "" {
+		cliArgs = append(cliArgs, "-a", pass, "--no-auth-warning")
+	}
+	cliArgs = append(cliArgs, "DBSIZE")
+	dbsizeMainCmd := exec.CommandContext(ctx, "docker", cliArgs...)
+	if out, err := dbsizeMainCmd.Output(); err == nil {
+		log.Printf("==> Restored Redis database size: %s keys", strings.TrimSpace(string(out)))
+	}
+
+	log.Printf("==> Successfully restored Redis snapshot from %s!", backupFilePath)
 	return nil
 }
 

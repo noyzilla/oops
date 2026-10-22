@@ -10,6 +10,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - **Redis ACL & Key Prefix Namespace Management (`oops db redis`)**: Added `redis` engine support to `oops db` (`create`, `readonly`, `passwd`, `list`, `drop`). Provisions isolated Redis 7 ACL users with key prefix boundaries (`~<name>:*`), executes `ACL SAVE` for persistence, and exports credentials to `config/env/redis.<user>.env` with `REDIS_URL` (`cmd/db.go`, `internal/db/redis.go`).
 - **Modernized Redis Stack Template**: Upgraded `oopsbox/compose.db.yaml` with production-grade tuning (AOF `appendfsync everysec`, `maxmemory 384mb`, `maxmemory-policy noeviction`, `maxclients 1000`, `timeout 1800`, Timezone `Asia/Bangkok`) and Docker Compose `pre_start` hook initializing `/data/users.acl` with default user credentials before boot.
 
+### Fixed
+- **Redis Restore with AOF Transpilation & Safety Backup**: Resolved issue where restoring a `dump.rdb` snapshot failed or resulted in 0 keys when `appendonly yes` was active. `oops restore` now safely backs up existing `/data/appendonlydir` and `/data/dump.rdb` to `.bak.<timestamp>`, stops the main container to prevent memory overwrite, and uses an ephemeral helper container to load RDB and dynamically generate the modern Redis 7 AOF structure (`CONFIG SET appendonly yes`) before restarting the main container (`internal/backup/restore.go`).
+
 ## [v1.11.0] - 2026-10-22
 
 ### Added
