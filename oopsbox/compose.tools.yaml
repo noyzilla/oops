@@ -1,3 +1,8 @@
+# ==============================================================================
+# Oops Tools Stack Manifest (compose.tools.yaml)
+# ==============================================================================
+# Developer utility tools (HTTP debugging, mock SMTP) routed through oops_edge.
+# ==============================================================================
 x-oops-stack:
   - httpbin
   - mailpit

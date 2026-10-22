@@ -9,7 +9,7 @@ import (
 )
 
 const defaultCommonExample = `# ==============================================================================
-# Oops Common Service Extensions Blueprint (common.yaml)
+# Oops Common Service Extensions Blueprint (common.yaml.example)
 # ==============================================================================
 services:
   common-logging:

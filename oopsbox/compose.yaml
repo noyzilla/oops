@@ -1,3 +1,11 @@
+# ==============================================================================
+# Oops Base Manifest (compose.yaml)
+# ==============================================================================
+# Defines stack/service auto-start order (x-oops-stack) and default network.
+# Services or stacks omitted from x-oops-stack will not auto-start on 'oops up'.
+# ==============================================================================
+# name: oops
+
 x-oops-stack:
   - /edge
   - /db

@@ -1,3 +1,8 @@
+# ==============================================================================
+# Oops Edge Stack Manifest (compose.edge.yaml)
+# ==============================================================================
+# Ingress and management gateway routing through Caddy Docker Proxy.
+# ==============================================================================
 x-oops-stack:
   - caddy-proxy
   - oops
@@ -15,7 +20,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      - CADDY_INGRESS_NETWORKS=oops_edge
+      CADDY_INGRESS_NETWORKS: oops_edge
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - caddy_data:/data

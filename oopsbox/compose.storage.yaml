@@ -1,3 +1,8 @@
+# ==============================================================================
+# Oops Storage Stack Manifest (compose.storage.yaml)
+# ==============================================================================
+# S3-compatible distributed object storage on the oops_storage bridge network.
+# ==============================================================================
 x-oops-stack:
   - seaweedfs
 

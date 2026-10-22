@@ -1,3 +1,8 @@
+# ==============================================================================
+# Oops Database Stack Manifest (compose.db.yaml)
+# ==============================================================================
+# Persistent databases and caches isolated within the oops_db bridge network.
+# ==============================================================================
 x-oops-stack:
   - mysql
   - postgres
@@ -45,16 +50,16 @@ services:
       retries: 5
 
   redis:
+    image: redis:7-alpine
+    container_name: redis
+    hostname: redis.oops
+    restart: unless-stopped
     extends:
       file: common.yaml
       service: common-logging
-    container_name: redis
-    image: redis:7-alpine
-    hostname: redis.oops
-    restart: unless-stopped
     environment:
-      - TZ=Asia/Bangkok
-      - REDIS_PASSWORD=${OOPS_DB_REDIS_PASSWORD:-}
+      TZ: Asia/Bangkok
+      REDIS_PASSWORD: ${OOPS_DB_REDIS_PASSWORD:-}
     volumes:
       - ./data/redis:/data
     pre_start:
