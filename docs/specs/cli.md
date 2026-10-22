@@ -105,11 +105,11 @@ For each matched service in target order:
   - If `.State.Health.Status == "healthy"`: Service update succeeded. If `-d` / `--delay` is set, pause for delay gap.
   - If status is `"unhealthy"` or polling exceeds `OOPS_HEALTHCHECK_TIMEOUT` (default 10m, loaded from `x-oops.orchestrator.healthcheck.timeout` with env override): Abort update immediately and exit Code 1.
 
-### Database Management (`oops db <mysql|postgres>[:<target>] <action>`)
-- **Supported Engines**: `mysql`, `postgres`
+### Database Management (`oops db <mysql|postgres|redis>[:<target>] <action>`)
+- **Supported Engines**: `mysql`, `postgres`, `redis`
 - **Actions**: `create`, `readonly`, `passwd`, `list`, `drop`
-- **Naming Rule**: Database names contain at most one underscore (`_`), restricting databases to 2 levels.
-- **Auto Credential Export**: Automatically exports credentials to `config/env/<engine>.<db_name>.env`.
+- **Naming Rule**: Database names contain at most one underscore (`_`), restricting databases to 2 levels. For Redis, this serves as the Key Prefix namespace (`~<name>:*`).
+- **Auto Credential Export**: Automatically exports credentials to `config/env/<engine>.<db_name>.env` (including `REDIS_URL` for Redis).
 
 ### Automated Backup Suite (`oops backup`, `oops backup-db`, `oops backup-data`)
 - **Unified Full Backup (`oops backup [-r <duration|int>]`)**: Runs database dumps and filesystem volume archives.
@@ -133,7 +133,7 @@ For each matched service in target order:
 | `oops logs` | `[targets...] [--tail 50] [-f]` | Tail service logs |
 | `oops pull` | `[targets...] [--all]` | Pulls images for targets |
 | `oops update` | `[targets...] [--all] [-i <img/alias>] [-d 0s]` | Executes sequential rolling update with health check |
-| `oops db` | `<mysql\|postgres>[:<target>] <action>` | DB provisioning: `create`, `passwd`, `list`, `drop` |
+| `oops db` | `<mysql\|postgres\|redis>[:<target>] <action>` | DB provisioning: `create`, `readonly`, `passwd`, `list`, `drop` |
 | `oops backup` | `[-r 7d]` | Full backup (DB + volumes) and retention prune |
 | `oops backup-db` | `[targets...] [-r 7d]` | DB dump and retention prune |
 | `oops backup-data` | `[targets...] [-r 7d]` | Data volume tar archives and retention prune |

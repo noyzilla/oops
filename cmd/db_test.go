@@ -55,6 +55,51 @@ func TestWriteEnvFileUsesWorkDir(t *testing.T) {
 	}
 }
 
+func TestWriteEnvFile_Redis(t *testing.T) {
+	workDir := t.TempDir()
+
+	if err := writeEnvFile(workDir, "redis", "redis", "myapp", "myapp", "redispass123"); err != nil {
+		t.Fatalf("writeEnvFile failed: %v", err)
+	}
+
+	expectedPath := filepath.Join(workDir, "config", "env", "redis.myapp.env")
+	data, err := os.ReadFile(expectedPath)
+	if err != nil {
+		t.Fatalf("expected env file at %s, got error: %v", expectedPath, err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, "DB_ENGINE=redis") {
+		t.Errorf("expected DB_ENGINE=redis, got: %s", content)
+	}
+	if !strings.Contains(content, "DB_PORT=6379") {
+		t.Errorf("expected DB_PORT=6379, got: %s", content)
+	}
+	if !strings.Contains(content, "DB_URL=redis://myapp:redispass123@redis:6379/0") {
+		t.Errorf("expected DB_URL for redis, got: %s", content)
+	}
+	if !strings.Contains(content, "REDIS_URL=redis://myapp:redispass123@redis:6379/0") {
+		t.Errorf("expected REDIS_URL for redis, got: %s", content)
+	}
+
+	// Test password rotation for redis
+	if err := writePasswdEnvFile(workDir, "redis", "redis", "myapp", "newpass789"); err != nil {
+		t.Fatalf("writePasswdEnvFile failed: %v", err)
+	}
+
+	dataAfter, err := os.ReadFile(expectedPath)
+	if err != nil {
+		t.Fatalf("failed reading updated env file: %v", err)
+	}
+	contentAfter := string(dataAfter)
+	if !strings.Contains(contentAfter, "DB_PASSWORD=newpass789") {
+		t.Errorf("expected rotated password, got: %s", contentAfter)
+	}
+	if !strings.Contains(contentAfter, "REDIS_URL=redis://myapp:newpass789@redis:6379/0") {
+		t.Errorf("expected rotated REDIS_URL, got: %s", contentAfter)
+	}
+}
+
 func TestResolveBackupDirForWorkDir(t *testing.T) {
 	t.Setenv("OOPS_BACKUP_DIR", "")
 	cfg := &docker.OopsConfig{}

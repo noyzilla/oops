@@ -45,24 +45,59 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
-    container_name: redis
-    hostname: redis.oops
-    restart: unless-stopped
     extends:
       file: common.yaml
       service: common-logging
-    command: [ "sh", "-c", "if [ -n \"$${REDIS_PASSWORD}\" ]; then exec redis-server --requirepass \"$${REDIS_PASSWORD}\"; else exec redis-server; fi" ]
+    container_name: redis
+    image: redis:7-alpine
+    hostname: redis.oops
+    restart: unless-stopped
     environment:
-      REDIS_PASSWORD: ${OOPS_DB_REDIS_PASSWORD:-}
+      - TZ=Asia/Bangkok
+      - REDIS_PASSWORD=${OOPS_DB_REDIS_PASSWORD:-}
     volumes:
       - ./data/redis:/data
+    pre_start:
+      - command:
+          - sh
+          - -c
+          - |
+            if [ ! -f /data/users.acl ]; then
+              if [ -n "$$REDIS_PASSWORD" ]; then
+                echo "user default on >$$REDIS_PASSWORD ~* &* +@all" > /data/users.acl
+              else
+                echo "user default on nopass ~* &* +@all" > /data/users.acl
+              fi
+              chmod 644 /data/users.acl
+            fi
+    command:
+      - redis-server
+      - --aclfile
+      - /data/users.acl
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --auto-aof-rewrite-percentage
+      - "100"
+      - --auto-aof-rewrite-min-size
+      - 64mb
+      - --maxmemory
+      - 384mb
+      - --maxmemory-policy
+      - noeviction
+      - --maxclients
+      - "1000"
+      - --tcp-keepalive
+      - "60"
+      - --timeout
+      - "1800"
     networks:
       - oops_db
     healthcheck:
       test: [ "CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG; else redis-cli ping | grep PONG; fi" ]
-      interval: 5s
-      timeout: 3s
+      interval: 10s
+      timeout: 5s
       retries: 5
 
 networks:

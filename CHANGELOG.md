@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+### Added
+- **Redis ACL & Key Prefix Namespace Management (`oops db redis`)**: Added `redis` engine support to `oops db` (`create`, `readonly`, `passwd`, `list`, `drop`). Provisions isolated Redis 7 ACL users with key prefix boundaries (`~<name>:*`), executes `ACL SAVE` for persistence, and exports credentials to `config/env/redis.<user>.env` with `REDIS_URL` (`cmd/db.go`, `internal/db/redis.go`).
+- **Modernized Redis Stack Template**: Upgraded `oopsbox/compose.db.yaml` with production-grade tuning (AOF `appendfsync everysec`, `maxmemory 384mb`, `maxmemory-policy noeviction`, `maxclients 1000`, `timeout 1800`, Timezone `Asia/Bangkok`) and Docker Compose `pre_start` hook initializing `/data/users.acl` with default user credentials before boot.
+
 ## [v1.11.0] - 2026-10-22
 
 ### Added
