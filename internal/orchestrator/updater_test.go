@@ -150,3 +150,51 @@ func TestSyncUserUIDGIDToEnvFile(t *testing.T) {
 	}
 }
 
+func TestSyncEnvValues(t *testing.T) {
+	tmpDir := t.TempDir()
+	envPath := filepath.Join(tmpDir, ".env")
+
+	// 1. Initial creation with OOPS_IP
+	if err := orchestrator.SyncEnvValues(envPath, 1000, 1000, "172.28.0.53"); err != nil {
+		t.Fatalf("unexpected error creating .env: %v", err)
+	}
+
+	content, err := os.ReadFile(envPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	contentStr := string(content)
+	if !strings.Contains(contentStr, "UID=1000") || !strings.Contains(contentStr, "GID=1000") || !strings.Contains(contentStr, "OOPS_IP=172.28.0.53") {
+		t.Fatalf("expected .env to contain UID, GID, and OOPS_IP, got:\n%s", contentStr)
+	}
+
+	// 2. Update existing OOPS_IP
+	if err := orchestrator.SyncEnvValues(envPath, 1000, 1000, "172.28.0.99"); err != nil {
+		t.Fatalf("unexpected error updating .env: %v", err)
+	}
+	updated, err := os.ReadFile(envPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updatedStr := string(updated)
+	if strings.Contains(updatedStr, "OOPS_IP=172.28.0.53") {
+		t.Errorf("expected old OOPS_IP to be replaced, got:\n%s", updatedStr)
+	}
+	if !strings.Contains(updatedStr, "OOPS_IP=172.28.0.99") {
+		t.Errorf("expected new OOPS_IP=172.28.0.99, got:\n%s", updatedStr)
+	}
+
+	// 3. Preservation of existing OOPS_IP when oopsIP is empty (e.g. container temporarily down)
+	if err := orchestrator.SyncEnvValues(envPath, 1000, 1000, ""); err != nil {
+		t.Fatalf("unexpected error running with empty oopsIP: %v", err)
+	}
+	preserved, err := os.ReadFile(envPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preservedStr := string(preserved)
+	if !strings.Contains(preservedStr, "OOPS_IP=172.28.0.99") {
+		t.Errorf("expected existing OOPS_IP=172.28.0.99 to be preserved, got:\n%s", preservedStr)
+	}
+}
+

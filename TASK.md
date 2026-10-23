@@ -3,7 +3,8 @@
 This file tracks the active focus, immediate next actions, and backlog deliverables for the repository.
 
 ## Active Focus
-- Maintain living specifications, documentation, and stability following `v1.13.0` release.
+- `feat/sync-oops-ip-env`: Automatic `OOPS_IP` synchronization into `.env` and Compose process environment for downstream service DNS resolution.
 
 ## Immediate Next Actions
-- Ready for next development milestone (`cmd/`, `internal/`, `oopsbox/`, `docs/specs/`).
+- Verify test suite and review working tree changes (`internal/docker/ip.go`, `internal/orchestrator/updater.go`, `cmd/server.go`, `docs/specs/oopsbox.md`).
+- Await Navigator review before micro-committing.

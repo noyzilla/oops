@@ -6,10 +6,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/docker/docker/client"
 	"github.com/noyzilla/oops/internal/dns"
+	"github.com/noyzilla/oops/internal/orchestrator"
 	"github.com/noyzilla/oops/internal/webhook"
 	"github.com/spf13/cobra"
 )
@@ -30,6 +32,18 @@ func newServerCmd() *cobra.Command {
 			}
 
 			workDir := ResolveWorkDir(targetDir)
+
+			// Sync OOPS_IP and system defaults to .env if present
+			envFile := orchestrator.FindEnvFile(filepath.Join(workDir, "compose.yaml"))
+			if envFile == "" {
+				dotEnv := filepath.Join(workDir, ".env")
+				if _, err := os.Stat(dotEnv); err == nil {
+					envFile = dotEnv
+				}
+			}
+			if envFile != "" {
+				_ = orchestrator.SyncEnvDefaults(envFile)
+			}
 
 			// Initialize Docker client and Native DNS Daemon
 			dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())

@@ -51,6 +51,11 @@ Oopsbox enforces a **Pure Stack Architecture** with network micro-segmentation, 
   - `compose.tools.yaml`: Contains developer utilities (`httpbin`, `mailpit`) joined to `oops_edge`.
 - **`oops.yaml`**: Pure Oops system configuration file holding `x-oops:` settings (`secret`, `db`, `orchestrator`, `backup`, `dns`, `volume`, `registries`). It contains NO `services:` or `networks:` definitions.
 
+### Environment Variable Synchronization (`OOPS_IP`, `UID`, `GID`)
+To ensure zero-configuration compatibility across compose stacks:
+- **Caller Identity (`UID`, `GID`)**: Automatically synchronized to the caller's host UID and GID in `.env` and injected into the Compose process environment, ensuring volume mount permissions work without manual variable exports.
+- **Oops DNS Daemon IP (`OOPS_IP`)**: The container IP of `oops` (preferring `oops_edge` network) is automatically discovered and synchronized to `.env` as `OOPS_IP=<ip>`. Synchronized immediately when the `edge` stack starts and refreshed whenever `oops server` boots. Downstream compose services (e.g. forward proxies, test runners) can reference `${OOPS_IP}` in their `dns:` blocks (e.g. `dns: ["${OOPS_IP}", "1.1.1.1"]`) to seamlessly resolve internal `.oops` services. Existing `OOPS_IP` values in `.env` are preserved when the container is not running.
+
 ### Persistent Volumes & Configuration Mapping (The Stack & Service Triad)
 To maintain a clean and standardized workspace structure, Oopsbox enforces strict conventions for mapping stack manifests, container data volumes, and configurations onto the host filesystem:
 

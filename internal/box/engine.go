@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/noyzilla/oops/internal/docker"
 	"gopkg.in/yaml.v3"
 )
 
@@ -167,15 +168,7 @@ func GetHostGatewayIP() string {
 
 // GetOopsContainerIP inspects the running oops container and retrieves its network IP address.
 func GetOopsContainerIP() string {
-	cmd := exec.Command("docker", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{break}}{{end}}", "oops")
-	out, err := cmd.Output()
-	if err == nil {
-		ip := strings.TrimSpace(string(out))
-		if ip != "" {
-			return ip
-		}
-	}
-	return ""
+	return docker.GetOopsContainerIP()
 }
 
 // SetupMacOSResolver configures /etc/resolver/<tld> on macOS.

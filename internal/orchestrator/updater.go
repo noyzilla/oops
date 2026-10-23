@@ -92,18 +92,22 @@ func FindEnvFile(composePath string) string {
 }
 
 // ComposeCommandEnv returns the process environment with COMPOSE_IGNORE_ORPHANS=True,
-// and ensures UID and GID of current caller are present so compose variable expansion
-// (e.g. user: "${UID:-1000}:${GID:-1000}") evaluates correctly without defaulting.
+// and ensures UID, GID, and OOPS_IP (if running) are present so compose variable expansion
+// (e.g. user: "${UID:-1000}:${GID:-1000}", dns: ["${OOPS_IP:-127.0.0.1}"]) evaluates correctly.
 func ComposeCommandEnv() []string {
 	env := os.Environ()
 	hasUID := false
 	hasGID := false
+	hasOopsIP := false
 	for _, e := range env {
 		if strings.HasPrefix(e, "UID=") {
 			hasUID = true
 		}
 		if strings.HasPrefix(e, "GID=") {
 			hasGID = true
+		}
+		if strings.HasPrefix(e, "OOPS_IP=") {
+			hasOopsIP = true
 		}
 	}
 	if !hasUID {
@@ -112,19 +116,37 @@ func ComposeCommandEnv() []string {
 	if !hasGID {
 		env = append(env, fmt.Sprintf("GID=%d", os.Getgid()))
 	}
+	if !hasOopsIP {
+		if ip := docker.GetOopsContainerIP(); ip != "" {
+			env = append(env, fmt.Sprintf("OOPS_IP=%s", ip))
+		}
+	}
 	return append(env, "COMPOSE_IGNORE_ORPHANS=True")
 }
 
-// SyncUserUIDGIDToEnvFile updates or appends UID and GID of the current OS caller in the given .env file.
-func SyncUserUIDGIDToEnvFile(envPath string) error {
-	uid := os.Getuid()
-	gid := os.Getgid()
+// SyncEnvDefaults updates or appends UID, GID, and OOPS_IP (if oops container is running) in the given .env file.
+func SyncEnvDefaults(envPath string) error {
+	return SyncEnvValues(envPath, os.Getuid(), os.Getgid(), docker.GetOopsContainerIP())
+}
 
+// SyncUserUIDGIDToEnvFile updates or appends UID and GID of the current OS caller in the given .env file.
+// Maintained for backward compatibility; calls SyncEnvDefaults.
+func SyncUserUIDGIDToEnvFile(envPath string) error {
+	return SyncEnvDefaults(envPath)
+}
+
+// SyncEnvValues writes or updates UID, GID, and OOPS_IP in the target .env file.
+// If oopsIP is empty, any existing OOPS_IP in .env is preserved without modification.
+func SyncEnvValues(envPath string, uid, gid int, oopsIP string) error {
 	content, err := os.ReadFile(envPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			newContent := fmt.Sprintf("UID=%d\nGID=%d\n", uid, gid)
-			return os.WriteFile(envPath, []byte(newContent), 0644)
+			var sb strings.Builder
+			sb.WriteString(fmt.Sprintf("UID=%d\nGID=%d\n", uid, gid))
+			if oopsIP != "" {
+				sb.WriteString(fmt.Sprintf("OOPS_IP=%s\n", oopsIP))
+			}
+			return os.WriteFile(envPath, []byte(sb.String()), 0644)
 		}
 		return err
 	}
@@ -132,6 +154,7 @@ func SyncUserUIDGIDToEnvFile(envPath string) error {
 	lines := strings.Split(string(content), "\n")
 	foundUID := false
 	foundGID := false
+	foundOopsIP := false
 
 	var newLines []string
 	for _, line := range lines {
@@ -142,6 +165,14 @@ func SyncUserUIDGIDToEnvFile(envPath string) error {
 		} else if strings.HasPrefix(trimmed, "GID=") {
 			newLines = append(newLines, fmt.Sprintf("GID=%d", gid))
 			foundGID = true
+		} else if strings.HasPrefix(trimmed, "OOPS_IP=") {
+			if oopsIP != "" {
+				newLines = append(newLines, fmt.Sprintf("OOPS_IP=%s", oopsIP))
+			} else {
+				// Preserve existing OOPS_IP if detection returned empty
+				newLines = append(newLines, line)
+			}
+			foundOopsIP = true
 		} else {
 			newLines = append(newLines, line)
 		}
@@ -157,6 +188,9 @@ func SyncUserUIDGIDToEnvFile(envPath string) error {
 	}
 	if !foundGID {
 		newLines = append(newLines, fmt.Sprintf("GID=%d", gid))
+	}
+	if !foundOopsIP && oopsIP != "" {
+		newLines = append(newLines, fmt.Sprintf("OOPS_IP=%s", oopsIP))
 	}
 	newLines = append(newLines, "") // trailing newline
 
@@ -175,7 +209,7 @@ func RunComposeFiles(composeFiles []string, args ...string) error {
 
 	if len(composeFiles) > 0 {
 		if envFile := FindEnvFile(composeFiles[0]); envFile != "" {
-			_ = SyncUserUIDGIDToEnvFile(envFile)
+			_ = SyncEnvDefaults(envFile)
 			cmdArgs = append(cmdArgs, "--env-file", envFile)
 		}
 		for _, f := range composeFiles {
@@ -335,6 +369,14 @@ func (o *Orchestrator) upAllowed(targets []docker.ResolvedTarget, delay time.Dur
 		cmdArgs := append([]string{"up", "-d"}, group.services...)
 		if err := RunComposeFiles(group.composeFiles, cmdArgs...); err != nil {
 			return err
+		}
+
+		// When edge stack finishes starting, the oops container is up with an active IP.
+		// Refresh OOPS_IP immediately in .env so subsequent stacks receive the new IP.
+		if group.stackName == edgeStackName && len(group.composeFiles) > 0 {
+			if envFile := FindEnvFile(group.composeFiles[0]); envFile != "" {
+				_ = SyncEnvDefaults(envFile)
+			}
 		}
 
 		if delay > 0 && i < len(groups)-1 {
