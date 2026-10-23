@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.14.0] - 2026-10-23
+
 ### Added
 - **Automatic `OOPS_IP` Environment Synchronization**: Auto-detects the bridge IP of the running `oops` container (preferring the `oops_edge` network) and synchronizes `OOPS_IP=<ip>` into `.env` and `ComposeCommandEnv()`. Refreshed immediately after the `edge` stack starts during `oops up` and when `oops server` initializes, enabling downstream services (such as forward proxies and test containers) to reference `${OOPS_IP}` in their `dns:` configuration to resolve internal `.oops` services without manual IP maintenance (`internal/docker/ip.go`, `internal/orchestrator/updater.go`, `cmd/server.go`, `docs/specs/oopsbox.md`).
 
