@@ -176,6 +176,12 @@ func TestBuildTunnelCommand_StandardSSH(t *testing.T) {
 	if !strings.Contains(script, "exec ssh ") {
 		t.Errorf("script should execute standard ssh: %s", script)
 	}
+	if !strings.Contains(script, "IgnoreUnknown=UseKeychain") {
+		t.Errorf("script missing IgnoreUnknown=UseKeychain: %s", script)
+	}
+	if !strings.Contains(script, "sed -i -E") {
+		t.Errorf("script missing sed command to sanitize ssh config: %s", script)
+	}
 	if strings.Contains(script, "gcloud compute ssh") {
 		t.Errorf("script should NOT use gcloud compute ssh: %s", script)
 	}

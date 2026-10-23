@@ -86,6 +86,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - Tunneling uses standard OpenSSH client commands (`ssh <host>`), completely decoupled from cloud-specific CLI flags.
 - For GCP instances, `~/.ssh/config` defines `ProxyCommand gcloud compute start-iap-tunnel ...` which OpenSSH executes seamlessly.
 - For non-GCP hosts (AWS, Hetzner, Bare-Metal), standard SSH connects directly without configuration changes.
+- **macOS SSH Config Sanitization**: When mounting `~/.ssh` from macOS host machines into the Linux tunnel container, Apple-specific options (such as `UseKeychain yes`) are automatically stripped from the container's local `/root/.ssh/config` copy and overridden via `-o IgnoreUnknown=UseKeychain` to prevent OpenSSH option rejection crashes.
 
 ---
 
