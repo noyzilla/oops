@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.14.1] - 2026-10-24
+
 ### Fixed
 - **Docker Context Host Auto-Detection**: Centralized Go Docker SDK client initialization through `internal/docker.NewClient()`. Dynamically resolves the active Docker daemon endpoint via `docker context inspect --format '{{.Endpoints.docker.Host}}'` when `$DOCKER_HOST` is unset, preventing connection failures to `/var/run/docker.sock` on OrbStack, Colima, or custom Docker contexts (`internal/docker/host.go`, `cmd/tunnel.go`, `cmd/dns.go`, `cmd/ps.go`, `cmd/ip.go`, `cmd/logs.go`, `cmd/server.go`, `docs/specs/cli.md`).
 
