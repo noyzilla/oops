@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.13.0] - 2026-10-23
+
 ### Added
 - **Database Tunneling & Dynamic Service Discovery (`oops tunnel`)**: Implemented zero-host-port database tunneling via standard OpenSSH (with transparent GCP IAP support via `~/.ssh/config` ProxyCommand or direct SSH). Features Dynamic Service-to-IP and Exposed Port resolution on remote Docker bridge networks (querying container IP and ports for `mysql`, `redis`, etc.), Client Tunnel Container isolation on local Oops network (`google/cloud-sdk:alpine`), and direct DNS addressing via `<service>.<remote>.tunnel.oops:<port>` without host port mappings or localhost conflicts (`cmd/tunnel.go`, `internal/tunnel/`, `docs/specs/tunnel.md`).
 - **Remote Manifest Tunnel Configuration (`tunnel.services`)**: Extended `remote.Config` in `internal/remote/config.go` with optional `tunnel.services` list declared inside `/@<remote>/remote.yaml` for zero-arg tunnel startup (`oops tunnel @<remote>`).
