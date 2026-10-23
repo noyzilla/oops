@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/docker/docker/client"
+	"github.com/noyzilla/oops/internal/docker"
 	"github.com/noyzilla/oops/internal/tunnel"
 	"github.com/spf13/cobra"
 )
@@ -87,7 +88,7 @@ func newTunnelRestartCmd() *cobra.Command {
 }
 
 func getDockerClient() (*client.Client, error) {
-	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	dockerCli, err := docker.NewClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed connecting to Docker daemon: %w", err)
 	}

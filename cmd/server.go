@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/docker/docker/client"
 	"github.com/noyzilla/oops/internal/dns"
+	"github.com/noyzilla/oops/internal/docker"
 	"github.com/noyzilla/oops/internal/orchestrator"
 	"github.com/noyzilla/oops/internal/webhook"
 	"github.com/spf13/cobra"
@@ -46,7 +46,7 @@ func newServerCmd() *cobra.Command {
 			}
 
 			// Initialize Docker client and Native DNS Daemon
-			dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+			dockerCli, err := docker.NewClient()
 			var resolver *dns.Resolver
 			if err != nil {
 				log.Printf("[Server] Warning: Failed to connect to Docker daemon for DNS watcher: %v", err)

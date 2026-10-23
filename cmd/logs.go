@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/docker/docker/client"
 	"github.com/noyzilla/oops/internal/dns"
 	"github.com/noyzilla/oops/internal/docker"
 	"github.com/spf13/cobra"
@@ -42,7 +41,7 @@ func runLogs(cmd *cobra.Command, args []string, tail int, follow bool) error {
 	// 1. Direct single-container lookup (fastest & most reliable without compose .env interpolation issues)
 	if len(args) == 1 {
 		targetName := args[0]
-		dockerCli, cliErr := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		dockerCli, cliErr := docker.NewClient()
 		if cliErr == nil && dockerCli != nil {
 			rec, recErr := dns.LookupRecord(context.Background(), workDir, targetName, dockerCli)
 			if recErr == nil && rec.Container != "" {

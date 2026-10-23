@@ -24,7 +24,7 @@ type Orchestrator struct {
 
 // New creates a new Orchestrator instance
 func New() (*Orchestrator, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := docker.NewClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize docker client: %w", err)
 	}

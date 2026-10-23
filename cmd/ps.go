@@ -11,7 +11,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 	"github.com/noyzilla/oops/internal/dns"
 	"github.com/noyzilla/oops/internal/docker"
 	"github.com/spf13/cobra"
@@ -169,7 +168,7 @@ func runPs(cmd *cobra.Command, args []string, fullImage bool, showAll bool) erro
 		return err
 	}
 
-	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	dockerCli, err := docker.NewClient()
 	if err != nil {
 		return fmt.Errorf("failed connecting to Docker daemon: %w", err)
 	}

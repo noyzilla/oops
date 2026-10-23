@@ -13,7 +13,6 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
 )
 
 // NormalizeGitURL normalizes a Git repository URL for reliable comparison
@@ -26,7 +25,7 @@ func NormalizeGitURL(raw string) string {
 
 // ValidateAndFindTargets finds matching target containers and validates the provided secret token
 func ValidateAndFindTargets(ctx context.Context, action, imageURL, gitURL, containerRegex, token string) ([]ResolvedTarget, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := NewClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %v", err)
 	}
@@ -179,7 +178,7 @@ func ExecuteRecreation(ctx context.Context, targets []ResolvedTarget, imageURL s
 
 // ExecuteGitPull creates a temporary container using alpine/git to pull the latest code or checkout a tag, then restarts the target container
 func ExecuteGitPull(ctx context.Context, targets []ResolvedTarget, tag string, delayDur time.Duration) error {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := NewClient()
 	if err != nil {
 		return fmt.Errorf("failed to create docker client: %v", err)
 	}
@@ -354,7 +353,7 @@ func ExecuteGitPull(ctx context.Context, targets []ResolvedTarget, tag string, d
 
 // CountAllContainers returns the total number of containers currently on the Docker daemon.
 func CountAllContainers(ctx context.Context) (int, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := NewClient()
 	if err != nil {
 		return 0, fmt.Errorf("failed to create docker client: %v", err)
 	}
@@ -369,7 +368,7 @@ func CountAllContainers(ctx context.Context) (int, error) {
 
 // WipeAllContainers forcefully stops and removes all containers on the Docker daemon.
 func WipeAllContainers(ctx context.Context) (int, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := NewClient()
 	if err != nil {
 		return 0, fmt.Errorf("failed to create docker client: %v", err)
 	}

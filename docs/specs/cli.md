@@ -90,6 +90,12 @@ To ensure multi-project stability and 100% path parity across host and container
 ### Docker Wrapper Same-Host-Path Binding Invariant
 When running the Oops CLI via Docker wrapper container, the host directory MUST be bound to the **identical absolute path** inside the container (`-v "${OOPSBOX_DIR}":"${OOPSBOX_DIR}" -w "${OOPSBOX_DIR}"`). Docker Compose passes working directory labels to the host daemon; same-host-path binding ensures 100% path parity.
 
+### Docker Daemon & Context Host Resolution Invariant
+All interactions with the local Docker daemon via the Go Docker SDK are centralized through `internal/docker.NewClient()`. The client dynamically resolves the target Docker daemon endpoint following this strict precedence:
+- **Environment Override (`$DOCKER_HOST`)**: If `$DOCKER_HOST` is explicitly set in the execution environment, its value takes absolute precedence.
+- **Active Docker Context Inspection**: If `$DOCKER_HOST` is unset, Oops queries the active Docker context endpoint by executing `docker context inspect --format '{{.Endpoints.docker.Host}}'`. This guarantees full parity with Docker CLI context selections (such as OrbStack `unix://$HOME/.orbstack/run/docker.sock`, Colima, or custom remote contexts) without requiring manual shell environment exports.
+- **Default Daemon Fallback**: If context inspection fails, returns empty, or Docker CLI is not installed, the client falls back to the default platform socket (`client.DefaultDockerHost` / `unix:///var/run/docker.sock`).
+
 ### Sequential Lifecycle Hooks & Inter-Service Delay Protocol
 When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down`, or `oops up` targeting wildcards):
 - **Sequential Service Execution**: Matched services are processed sequentially one by one in resolved dependency or lexicographical order.

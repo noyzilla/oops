@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/client"
 	"github.com/noyzilla/oops/internal/dns"
+	"github.com/noyzilla/oops/internal/docker"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,7 @@ func newDNSCmd() *cobra.Command {
 func runDNSList(cmd *cobra.Command) error {
 	workDir := ResolveWorkDir(targetDir)
 
-	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	dockerCli, err := docker.NewClient()
 	if err != nil {
 		dockerCli = nil
 	}
@@ -68,7 +68,7 @@ func newDNSGetCmd() *cobra.Command {
 			workDir := ResolveWorkDir(targetDir)
 			domain := strings.TrimSpace(args[0])
 
-			dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+			dockerCli, err := docker.NewClient()
 			if err != nil {
 				dockerCli = nil
 			}
@@ -95,7 +95,7 @@ func newDNSSetCmd() *cobra.Command {
 			ip := strings.TrimSpace(args[1])
 
 			// Validate against running Docker container hostnames
-			if dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation()); err == nil && dockerCli != nil {
+			if dockerCli, err := docker.NewClient(); err == nil && dockerCli != nil {
 				containers := dns.CollectContainerRecords(context.Background(), dockerCli)
 				for _, c := range containers {
 					if strings.EqualFold(c.Hostname, domain) {
@@ -138,7 +138,7 @@ func newDNSDelCmd() *cobra.Command {
 			domain := strings.TrimSpace(args[0])
 
 			// Validate that user is not attempting to delete a dynamic container service
-			if dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation()); err == nil && dockerCli != nil {
+			if dockerCli, err := docker.NewClient(); err == nil && dockerCli != nil {
 				containers := dns.CollectContainerRecords(context.Background(), dockerCli)
 				for _, c := range containers {
 					if strings.EqualFold(c.Hostname, domain) {

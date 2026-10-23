@@ -8,8 +8,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 	"github.com/noyzilla/oops/internal/dns"
+	"github.com/noyzilla/oops/internal/docker"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +40,7 @@ func newIPCmd() *cobra.Command {
 func runSingleIPLookup(cmd *cobra.Command, target string) error {
 	workDir := ResolveWorkDir(targetDir)
 
-	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	dockerCli, err := docker.NewClient()
 	if err != nil {
 		dockerCli = nil
 	}
@@ -55,7 +55,7 @@ func runSingleIPLookup(cmd *cobra.Command, target string) error {
 }
 
 func runIPsList(cmd *cobra.Command) error {
-	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	dockerCli, err := docker.NewClient()
 	if err != nil {
 		return fmt.Errorf("failed connecting to Docker daemon: %w", err)
 	}
