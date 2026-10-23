@@ -163,6 +163,11 @@ For each matched service in target order:
 | `oops remote setup` | `[@<remote>]` | Installs or upgrades `docker-compose-plugin` and `oops` CLI to latest version on remote server |
 | `oops remote list` | *(none)* | Lists registered remotes discovered in `/@*/remote.yaml` |
 | `oops remote remove` | `@<remote>` | Removes registered remote directory `/@<remote>/` |
+| `oops tunnel` | `[@<remote>] [service[:port]...]` | Establishes or inspects database tunnel to remote server (auto-detects ports and uses `tunnel.services` from `remote.yaml`) |
+| `oops tunnel up` | `@<remote> [service[:port]...]` | Starts client tunnel container on Oops network without host port mappings |
+| `oops tunnel down` | `@<remote>` | Stops and removes client tunnel container for target remote |
+| `oops tunnel list` | *(none)* | Lists active tunnel connections, container names, and DNS endpoints (`<service>.<remote>.tunnel.oops:<port>`) |
+| `oops tunnel restart` | `@<remote> [service[:port]...]` | Re-resolves remote container IPs/ports and restarts client tunnel container |
 | `oops rx` | `[@<remote>] <oops-cmd> [args...]` | Remote Execute: Forwards oops command over SSH to remote target (e.g. `oops ps` -> `oops ps`) |
 | `oops version` | `[-v, --version]` | Displays Oops version and build information |
 | `oops selfupdate` | `[-c, --check] [-f, --force]` | Self-updates binary from GitHub release |

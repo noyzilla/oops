@@ -9,10 +9,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// TunnelManifest defines tunnel service configuration in remote.yaml
+type TunnelManifest struct {
+	Services []string `yaml:"services,omitempty"`
+}
+
 // Config represents the remote connection manifest in /@<name>/remote.yaml
 type Config struct {
-	Host string `yaml:"host"`
-	Path string `yaml:"path"`
+	Host    string         `yaml:"host"`
+	Path    string         `yaml:"path"`
+	Zone    string         `yaml:"zone,omitempty"`
+	Project string         `yaml:"project,omitempty"`
+	Tunnel  TunnelManifest `yaml:"tunnel,omitempty"`
 }
 
 // CapsuleDir returns the directory path for a remote capsule (e.g. /path/to/workdir/@prod)

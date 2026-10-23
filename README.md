@@ -178,6 +178,23 @@ oops rx @prod up /crm
 oops rx @prod ps
 ```
 
+### Secure Database Tunneling (`oops tunnel`)
+```bash
+# Establish tunnel using default or remote.yaml services (e.g. mysql, redis)
+oops tunnel @b9tpe
+
+# Specify target services (ports auto-discovered from remote container metadata)
+oops tunnel up @b9tpe mysql redis
+
+# Connect directly via Oops DNS without localhost port conflicts:
+# - mysql.b9tpe.tunnel.oops:3306
+# - redis.b9tpe.tunnel.oops:6379
+
+# Inspect and tear down tunnels
+oops tunnel list
+oops tunnel down @b9tpe
+```
+
 ---
 
 ## CI/CD Webhook Deployments

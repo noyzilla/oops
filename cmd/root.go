@@ -253,6 +253,7 @@ func init() {
 	rootCmd.AddCommand(newDNSCmd())
 	rootCmd.AddCommand(newIPCmd())
 	rootCmd.AddCommand(newRemoteCmd())
+	rootCmd.AddCommand(newTunnelCmd())
 	rootCmd.AddCommand(newRxCmd())
 	rootCmd.AddCommand(newDeployCmd())
 }

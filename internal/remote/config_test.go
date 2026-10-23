@@ -11,8 +11,13 @@ func TestRemoteConfigManagement(t *testing.T) {
 
 	// 1. Test SaveConfig
 	cfg := &Config{
-		Host: "prod.example.com",
-		Path: "~/oopsbox",
+		Host:    "prod.example.com",
+		Path:    "~/oopsbox",
+		Zone:    "asia-southeast1-b",
+		Project: "my-gcp-project",
+		Tunnel: TunnelManifest{
+			Services: []string{"mysql", "redis"},
+		},
 	}
 	if err := SaveConfig(tempDir, "prod", cfg); err != nil {
 		t.Fatalf("SaveConfig failed: %v", err)
@@ -34,8 +39,11 @@ func TestRemoteConfigManagement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
-	if loaded.Host != "prod.example.com" || loaded.Path != "~/oopsbox" {
+	if loaded.Host != "prod.example.com" || loaded.Path != "~/oopsbox" || loaded.Zone != "asia-southeast1-b" || loaded.Project != "my-gcp-project" {
 		t.Fatalf("unexpected loaded config: %+v", loaded)
+	}
+	if len(loaded.Tunnel.Services) != 2 || loaded.Tunnel.Services[0] != "mysql" || loaded.Tunnel.Services[1] != "redis" {
+		t.Fatalf("unexpected tunnel services: %v", loaded.Tunnel.Services)
 	}
 
 	// Also test LoadConfig with @ prefix

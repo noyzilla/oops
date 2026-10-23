@@ -51,6 +51,10 @@ When executing `oops remote connect @<remote>[:<path>]`:
   ```yaml
   host: user@192.168.1.50 # SSH connection target or ~/.ssh/config alias
   path: ~/oopsbox         # Remote working directory
+  tunnel:
+    services:             # Default services forwarded by 'oops tunnel @<remote>'
+      - mysql
+      - redis
   ```
 - **Blueprint-Driven Initialization [การสร้างค่าเริ่มต้นเมื่อเชื่อมต่อเครื่องใหม่]**:
   - If remote server already contains `compose.yaml`, `oops.yaml`, or `.oopsallow`: Automatically pulls them down into `/@<host>/` following `.oopsallow`.

@@ -190,21 +190,6 @@ func CollectContainerRecords(ctx context.Context, cli *client.Client) []DNSRecor
 			continue
 		}
 
-		hostname := ExtractContainerHostname(&inspect)
-		if hostname == "" || hostname == "localhost" {
-			continue
-		}
-
-		ip := ExtractContainerIP(&inspect)
-		if ip == nil {
-			continue
-		}
-
-		recType := RecordTypeExact
-		if strings.HasPrefix(hostname, ".") {
-			recType = RecordTypeWildcard
-		}
-
 		var networkNames []string
 		if inspect.NetworkSettings != nil {
 			for netName := range inspect.NetworkSettings.Networks {
@@ -212,17 +197,41 @@ func CollectContainerRecords(ctx context.Context, cli *client.Client) []DNSRecor
 			}
 		}
 		sort.Strings(networkNames)
-
 		cName := strings.TrimPrefix(inspect.Name, "/")
 
-		records = append(records, DNSRecord{
-			Hostname:  hostname,
-			IP:        ip.String(),
-			Type:      recType,
-			Container: cName,
-			Networks:  strings.Join(networkNames, ", "),
-			Source:    "container (" + cName + ")",
-		})
+		// 1. Explicit domain mappings
+		customMappings := ExtractContainerDNSMappings(&inspect)
+		for domain, mapIP := range customMappings {
+			records = append(records, DNSRecord{
+				Hostname:  domain,
+				IP:        mapIP.String(),
+				Type:      RecordTypeExact,
+				Container: cName,
+				Networks:  strings.Join(networkNames, ", "),
+				Source:    "container (" + cName + ")",
+			})
+		}
+
+		// 2. Standard container hostnames
+		hostnames := ExtractContainerHostnames(&inspect)
+		ip := ExtractContainerIP(&inspect)
+		if len(hostnames) > 0 && ip != nil {
+			for _, hostname := range hostnames {
+				recType := RecordTypeExact
+				if strings.HasPrefix(hostname, ".") {
+					recType = RecordTypeWildcard
+				}
+
+				records = append(records, DNSRecord{
+					Hostname:  hostname,
+					IP:        ip.String(),
+					Type:      recType,
+					Container: cName,
+					Networks:  strings.Join(networkNames, ", "),
+					Source:    "container (" + cName + ")",
+				})
+			}
+		}
 	}
 
 	sort.Slice(records, func(i, j int) bool {
