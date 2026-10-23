@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.14.2] - 2026-10-24
+
 ### Fixed
 - **Tunnel SSH macOS Keychain Sanitization**: Added `-o IgnoreUnknown=UseKeychain` and automated `/root/.ssh/config` sanitization inside the tunnel container bootstrap script to prevent Alpine Linux OpenSSH crashes when host `~/.ssh/config` includes macOS-specific `UseKeychain yes` directives (`internal/tunnel/container.go`, `internal/tunnel/tunnel_test.go`, `docs/specs/tunnel.md`).
 
