@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Changed
+- **Multiline Tunnel Endpoints Display with Scoped Service Targets**: Replaced comma-separated single-line endpoints in `oops tunnel list` with multiline endpoint rows. Dynamically resolves service targets against local workspace stacks, displaying `endpoint (/<stack>/<service>)` (e.g., `mysql.b9tpe.tunnel.oops:3306 (/db/mysql)`) and dropping the redundant `FORWARDED` column (`cmd/tunnel.go`, `cmd/tunnel_test.go`, `docs/specs/tunnel.md`).
+
 ## [v1.15.0] - 2026-10-24
 
 ### Added

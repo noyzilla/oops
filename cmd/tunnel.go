@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"text/tabwriter"
 
@@ -172,15 +173,58 @@ func runTunnelList(cmd *cobra.Command) error {
 		return nil
 	}
 
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 3, ' ', 0)
-	fmt.Fprintln(w, "REMOTE\tCONTAINER\tSTATUS\tENDPOINTS\tFORWARDED")
+	workDir := ResolveWorkDir(targetDir)
+	return formatTunnelList(cmd.OutOrStdout(), list, workDir)
+}
+
+func formatTunnelList(out io.Writer, list []tunnel.TunnelStatus, workDir string) error {
+	w := tabwriter.NewWriter(out, 0, 4, 3, ' ', 0)
+	fmt.Fprintln(w, "REMOTE\tCONTAINER\tSTATUS\tENDPOINTS")
+
+	serviceToScoped := make(map[string]string)
+	resolveService := func(svc string) string {
+		if s, ok := serviceToScoped[svc]; ok {
+			return s
+		}
+		if workDir != "" {
+			if targets, err := docker.ResolveTargets(workDir, []string{svc}); err == nil && len(targets) > 0 {
+				res := fmt.Sprintf("/%s/%s", targets[0].StackName, targets[0].ServiceName)
+				serviceToScoped[svc] = res
+				return res
+			}
+		}
+		serviceToScoped[svc] = ""
+		return ""
+	}
 
 	for _, t := range list {
-		endpointsStr := strings.Join(t.Endpoints, ", ")
-		if endpointsStr == "" {
-			endpointsStr = t.Hostname
+		endpoints := t.Endpoints
+		if len(endpoints) == 0 && t.Hostname != "" {
+			endpoints = []string{t.Hostname}
 		}
-		fmt.Fprintf(w, "@%s\t%s\t%s\t%s\t%s\n", t.RemoteName, t.Container, t.Status, endpointsStr, t.Services)
+
+		if len(endpoints) == 0 {
+			fmt.Fprintf(w, "@%s\t%s\t%s\t-\n", t.RemoteName, t.Container, t.Status)
+			continue
+		}
+
+		for i, ep := range endpoints {
+			svcName := strings.Split(ep, ".")[0]
+			if idx := strings.Index(svcName, ":"); idx != -1 {
+				svcName = svcName[:idx]
+			}
+			scoped := resolveService(svcName)
+			displayEp := ep
+			if scoped != "" {
+				displayEp = fmt.Sprintf("%s (%s)", ep, scoped)
+			}
+
+			if i == 0 {
+				fmt.Fprintf(w, "@%s\t%s\t%s\t%s\n", t.RemoteName, t.Container, t.Status, displayEp)
+			} else {
+				fmt.Fprintf(w, "\t\t\t%s\n", displayEp)
+			}
+		}
 	}
 	return w.Flush()
 }

@@ -134,9 +134,9 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 
 ### Status Output Schema
 ```text
-REMOTE   CONTAINER            STATUS    ENDPOINT                 FORWARDED SERVICES
-@b9tpe   oops-tunnel-b9tpe    Up (2m)   tunnel-b9tpe.oops:3306   mysql (172.18.0.5:3306)
-                                        tunnel-b9tpe.oops:6379   redis (172.18.0.6:6379)
+REMOTE   CONTAINER           STATUS         ENDPOINTS
+@b9tpe   oops-tunnel-b9tpe   Up 5 minutes   mysql.b9tpe.tunnel.oops:3306 (/db/mysql)
+                                            redis.b9tpe.tunnel.oops:6379 (/db/redis)
 ```
 
 ---
