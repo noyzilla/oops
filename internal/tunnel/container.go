@@ -1,8 +1,11 @@
 package tunnel
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -130,6 +133,29 @@ func BuildContainerConfig(cfg *TunnelConfig, mappings []PortMapping) (*container
 				ReadOnly: true,
 			})
 		}
+
+		// Smart bind mounts for referenced SSH key directories outside ~/.ssh
+		extraDirs := ResolveSSHReferencedDirectories(home, cfg.Host)
+		for _, dir := range extraDirs {
+			mounts = append(mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   dir,
+				Target:   dir,
+				ReadOnly: true,
+			})
+			if strings.HasPrefix(dir, home) {
+				rel := strings.TrimPrefix(dir, home)
+				targetRoot := filepath.Clean(filepath.Join("/root", rel))
+				if targetRoot != dir {
+					mounts = append(mounts, mount.Mount{
+						Type:     mount.TypeBind,
+						Source:   dir,
+						Target:   targetRoot,
+						ReadOnly: true,
+					})
+				}
+			}
+		}
 	}
 
 	env := []string{"CLOUDSDK_CORE_DISABLE_FILE_LOGGING=true"}
@@ -161,4 +187,94 @@ func BuildContainerConfig(cfg *TunnelConfig, mappings []PortMapping) (*container
 	}
 
 	return config, hostConfig, nil
+}
+
+// ResolveSSHReferencedDirectories inspects OpenSSH configuration on the host for the given remote host
+// and returns existing external directories (outside ~/.ssh) that contain referenced IdentityFile, CertificateFile, or Include paths.
+func ResolveSSHReferencedDirectories(home, host string) []string {
+	if home == "" {
+		return nil
+	}
+	sshDir := filepath.Clean(filepath.Join(home, ".ssh"))
+	var candidatePaths []string
+
+	// 1. Query OpenSSH evaluated options for host (handles wildcards and includes)
+	if host != "" {
+		out, err := exec.Command("ssh", "-G", host).Output()
+		if err == nil {
+			scanner := bufio.NewScanner(bytes.NewReader(out))
+			for scanner.Scan() {
+				line := strings.TrimSpace(scanner.Text())
+				lower := strings.ToLower(line)
+				if strings.HasPrefix(lower, "identityfile ") {
+					candidatePaths = append(candidatePaths, strings.TrimSpace(line[len("identityfile "):]))
+				} else if strings.HasPrefix(lower, "certificatefile ") {
+					candidatePaths = append(candidatePaths, strings.TrimSpace(line[len("certificatefile "):]))
+				}
+			}
+		}
+	}
+
+	// 2. Fallback / supplement: Read ~/.ssh/config directly
+	configPath := filepath.Join(sshDir, "config")
+	if content, err := os.ReadFile(configPath); err == nil {
+		scanner := bufio.NewScanner(bytes.NewReader(content))
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if strings.HasPrefix(line, "#") {
+				continue
+			}
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				key := strings.ToLower(fields[0])
+				if key == "identityfile" || key == "certificatefile" || key == "include" {
+					candidatePaths = append(candidatePaths, fields[1])
+				}
+			}
+		}
+	}
+
+	var dirs []string
+	seenDirs := make(map[string]bool)
+
+	for _, rawPath := range candidatePaths {
+		rawPath = strings.TrimSpace(rawPath)
+		if rawPath == "" || rawPath == "none" {
+			continue
+		}
+		// Expand ~
+		expanded := rawPath
+		if strings.HasPrefix(rawPath, "~/") {
+			expanded = filepath.Join(home, rawPath[2:])
+		} else if rawPath == "~" {
+			expanded = home
+		}
+
+		cleaned := filepath.Clean(expanded)
+		fi, err := os.Stat(cleaned)
+		if err != nil {
+			continue
+		}
+
+		dir := cleaned
+		if !fi.IsDir() {
+			dir = filepath.Dir(cleaned)
+		}
+
+		// Skip if inside or equal to ~/.ssh (already mounted as ~/.ssh-host)
+		if dir == sshDir || strings.HasPrefix(dir, sshDir+string(filepath.Separator)) {
+			continue
+		}
+		// Skip root or system directories
+		if dir == "/" || dir == "/etc" || dir == "/var" {
+			continue
+		}
+
+		if !seenDirs[dir] {
+			seenDirs[dir] = true
+			dirs = append(dirs, dir)
+		}
+	}
+
+	return dirs
 }
