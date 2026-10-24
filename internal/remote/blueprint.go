@@ -41,6 +41,9 @@ x-oops-stack:
 networks:
   default:
     name: oops_default
+    ipam:
+      config:
+        - subnet: 10.240.0.0/16
 `
 
 const defaultOopsExample = `# ==============================================================================

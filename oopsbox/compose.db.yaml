@@ -23,6 +23,9 @@ services:
       - ./data/mysql:/var/lib/mysql
     networks:
       - oops_db
+      # Optional: Pin static IP for legacy services (never use .1 gateway or .2 dns)
+      # oops_db:
+      #   ipv4_address: 10.240.2.10
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}" ]
       interval: 5s
@@ -43,6 +46,9 @@ services:
       - ./data/postgres:/var/lib/postgresql/data
     networks:
       - oops_db
+      # Optional: Pin static IP for legacy services (never use .1 gateway or .2 dns)
+      # oops_db:
+      #   ipv4_address: 10.240.2.10
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
@@ -99,6 +105,9 @@ services:
       - "1800"
     networks:
       - oops_db
+      # Optional: Pin static IP for legacy services (never use .1 gateway or .2 dns)
+      # oops_db:
+      #   ipv4_address: 10.240.2.10
     healthcheck:
       test: [ "CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG; else redis-cli ping | grep PONG; fi" ]
       interval: 10s
@@ -109,3 +118,7 @@ networks:
   oops_db:
     name: oops_db
     driver: bridge
+    # Optional: Pin deterministic subnet partition under 10.240.0.0/16
+    # ipam:
+    #   config:
+    #     - subnet: 10.240.2.0/24
