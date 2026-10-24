@@ -45,7 +45,8 @@ func BuildResolutionScript(services []string) string {
 	var sb strings.Builder
 	sb.WriteString("for svc in ")
 	for _, s := range services {
-		sb.WriteString(strings.TrimSpace(s) + " ")
+		sb.WriteString(strings.TrimSpace(s))
+		sb.WriteString(" ")
 	}
 	sb.WriteString("; do ")
 	sb.WriteString(`cid=$(docker ps --filter "label=com.docker.compose.service=$svc" -q | head -n1); `)
