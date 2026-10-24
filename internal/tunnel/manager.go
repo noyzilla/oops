@@ -90,13 +90,18 @@ func FindAvailableIPs(subnetCIDR string, usedIPs map[string]bool, count int) ([]
 	return available, nil
 }
 
-// EnsureNetwork finds or creates the primary Oops Docker network (oops_edge or bridge)
+// EnsureNetwork finds or creates the primary Oops Docker network (oops_default, oops_edge, or bridge)
 func (m *Manager) EnsureNetwork(ctx context.Context) (string, error) {
 	networks, err := m.dockerCli.NetworkList(ctx, network.ListOptions{})
 	if err != nil {
 		return "bridge", nil
 	}
 
+	for _, n := range networks {
+		if n.Name == "oops_default" {
+			return "oops_default", nil
+		}
+	}
 	for _, n := range networks {
 		if n.Name == "oops_edge" {
 			return "oops_edge", nil

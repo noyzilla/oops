@@ -1,7 +1,7 @@
 # ==============================================================================
 # Oops Tools Stack Manifest (compose.tools.yaml)
 # ==============================================================================
-# Developer utility tools (HTTP debugging, mock SMTP) routed through oops_edge.
+# Developer utility tools (HTTP debugging, mock SMTP) routed through oops_default.
 # ==============================================================================
 x-oops-stack:
   - httpbin
@@ -21,7 +21,7 @@ services:
       caddy: "httpbin.web.oops"
       caddy.reverse_proxy: "{{upstreams 8080}}"
     networks:
-      - oops_edge
+      - default
 
   mailpit:
     image: axllent/mailpit:latest
@@ -36,4 +36,8 @@ services:
       caddy: "mailpit.web.oops"
       caddy.reverse_proxy: "{{upstreams 8025}}"
     networks:
-      - oops_edge
+      - default
+
+networks:
+  default:
+    name: oops_default
