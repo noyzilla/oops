@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.14.4] - 2026-10-24
+
 ### Fixed
 - **Tunnel GCP Config Placeholder Overwrite & Env Propagation**: Used `cp -rf` to force overwrite base image placeholder configurations (`config_default`) with host active configurations (`project`, `account`, dotfiles) when staging `~/.config/gcloud` into the tunnel container. Added host environment variable propagation (`CLOUDSDK_CORE_PROJECT`, `CLOUDSDK_ACTIVE_CONFIG_NAME`, `CLOUDSDK_COMPUTE_ZONE`, `CLOUDSDK_COMPUTE_REGION`), resolving `The required property [project] is not currently set` errors during IAP tunnel startup (`internal/tunnel/container.go`, `internal/tunnel/tunnel_test.go`, `docs/specs/tunnel.md`).
 
