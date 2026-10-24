@@ -126,4 +126,16 @@ services:
 	}
 }
 
+func TestTunnelUpCommand_Flags(t *testing.T) {
+	upCmd := newTunnelUpCmd()
+	meshFlag := upCmd.Flags().Lookup("mesh")
+	if meshFlag == nil {
+		t.Fatalf("expected --mesh flag on tunnel up")
+	}
+	portFlag := upCmd.Flags().Lookup("port")
+	if portFlag == nil {
+		t.Fatalf("expected --port flag on tunnel up")
+	}
+}
+
 

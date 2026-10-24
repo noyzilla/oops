@@ -12,15 +12,22 @@ import (
 // TunnelManifest defines tunnel service configuration in remote.yaml
 type TunnelManifest struct {
 	Services []string `yaml:"services,omitempty"`
+	Mode     string   `yaml:"mode,omitempty"` // "mesh" or "port"
+}
+
+// NetworkManifest defines network configuration in remote.yaml
+type NetworkManifest struct {
+	Subnet string `yaml:"subnet,omitempty"`
 }
 
 // Config represents the remote connection manifest in /@<name>/remote.yaml
 type Config struct {
-	Host    string         `yaml:"host"`
-	Path    string         `yaml:"path"`
-	Zone    string         `yaml:"zone,omitempty"`
-	Project string         `yaml:"project,omitempty"`
-	Tunnel  TunnelManifest `yaml:"tunnel,omitempty"`
+	Host    string          `yaml:"host"`
+	Path    string          `yaml:"path"`
+	Zone    string          `yaml:"zone,omitempty"`
+	Project string          `yaml:"project,omitempty"`
+	Tunnel  TunnelManifest  `yaml:"tunnel,omitempty"`
+	Network NetworkManifest `yaml:"network,omitempty"`
 }
 
 // CapsuleDir returns the directory path for a remote capsule (e.g. /path/to/workdir/@prod)

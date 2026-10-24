@@ -156,6 +156,10 @@ For each matched service in target order:
 | `oops dns set` | `<domain> <ip>` | Adds or updates static DNS record in `data/oops/dns.records` |
 | `oops dns del` | `<domain>` | Deletes static DNS record from `data/oops/dns.records` |
 | `oops dns reload` | *(none)* | Atomically reloads DNS daemon |
+| `oops dns prune` | `[-n, --dry-run]` | Prunes stale macOS DNS resolvers in `/etc/resolver/` (alias `oops dns fix`) |
+| `oops doctor` | *(none)* | Full system and workspace health diagnostic across Compose, DNS, and Docker |
+| `oops doctor compose` | `[@<remote>] [-a, --all]` | Audits Compose subnet containment, IPAM compliance, and static IP reservations |
+| `oops doctor dns` | *(none)* | Audits macOS `/etc/resolver/` entries and Single-TLD configuration |
 | `oops ip` | `[service]` | Displays IP address of container |
 | `oops box init` | `[path]` | Initializes Oopsbox workspace from blueprint, sets active box |
 | `oops box start` | *(none)* | Boots VM engine and starts default stack |

@@ -7,8 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/noyzilla/oops/internal/box"
 	"github.com/noyzilla/oops/internal/dns"
 	"github.com/noyzilla/oops/internal/docker"
+	"github.com/noyzilla/oops/internal/remote"
 	"github.com/spf13/cobra"
 )
 
@@ -27,6 +29,7 @@ func newDNSCmd() *cobra.Command {
 	dnsCmd.AddCommand(newDNSAddCmd())
 	dnsCmd.AddCommand(newDNSDelCmd())
 	dnsCmd.AddCommand(newDNSReloadCmd())
+	dnsCmd.AddCommand(newDNSPruneCmd())
 
 	return dnsCmd
 }
@@ -186,4 +189,73 @@ func newDNSReloadCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func newDNSPruneCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "prune",
+		Aliases: []string{"fix"},
+		Short:   "Prune stale macOS DNS resolver entries that do not belong to active remotes or workspaces",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			workDir := ResolveWorkDir(targetDir)
+			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			defer func() {
+				_ = cmd.Flags().Set("dry-run", "false")
+			}()
+
+			resolvers, err := box.ListMacOSResolvers()
+			if err != nil {
+				return fmt.Errorf("failed to list resolvers: %w", err)
+			}
+			if len(resolvers) == 0 {
+				fmt.Fprintln(cmd.OutOrStdout(), "No DNS resolvers found in /etc/resolver")
+				return nil
+			}
+
+			// Collect active TLDs to retain
+			keepSet := map[string]bool{
+				"oops": true,
+			}
+			if envTLD := os.Getenv("OOPS_DNS_TLD"); envTLD != "" {
+				keepSet[strings.ToLower(strings.TrimSpace(envTLD))] = true
+			}
+			if remotes, err := remote.ListRemotes(workDir); err == nil {
+				for _, r := range remotes {
+					keepSet[strings.ToLower(strings.TrimSpace(r))] = true
+				}
+			}
+
+			var stale []string
+			for _, r := range resolvers {
+				if !keepSet[strings.ToLower(r)] {
+					stale = append(stale, r)
+				}
+			}
+
+			if len(stale) == 0 {
+				fmt.Fprintln(cmd.OutOrStdout(), "✓ All DNS resolvers in /etc/resolver are active and valid")
+				return nil
+			}
+
+			if dryRun {
+				fmt.Fprintf(cmd.OutOrStdout(), "Found %d stale DNS resolver(s) that would be pruned: %s\n", len(stale), strings.Join(stale, ", "))
+				return nil
+			}
+
+			var keepList []string
+			for k := range keepSet {
+				keepList = append(keepList, k)
+			}
+			pruned, err := box.PruneMacOSResolvers(keepList)
+			if err != nil {
+				return fmt.Errorf("failed to prune resolvers: %w", err)
+			}
+
+			fmt.Fprintf(cmd.OutOrStdout(), "✓ Pruned %d stale DNS resolver(s): %s\n", len(pruned), strings.Join(pruned, ", "))
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolP("dry-run", "n", false, "Preview resolvers to prune without deleting")
+	return cmd
 }

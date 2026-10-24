@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/noyzilla/oops/internal/box"
 )
@@ -65,6 +66,9 @@ x-oops:
     dir: ./backups
     retention: 7d
     data: []
+
+  network:
+    subnet: 10.240.0.0/16
 
   dns:
     tld: oops
@@ -137,6 +141,15 @@ func InitCapsuleBlueprints(workDir, remoteName string) ([]string, error) {
 
 		if len(content) == 0 {
 			content = []byte(item.defaultData)
+		}
+
+		if item.targetName == "oops.yaml" {
+			// Enforce Remote Identity Invariant: tld == <remote_name>
+			contentStr := string(content)
+			if strings.Contains(contentStr, "tld: oops") {
+				contentStr = strings.Replace(contentStr, "tld: oops", fmt.Sprintf("tld: %s", remoteName), 1)
+				content = []byte(contentStr)
+			}
 		}
 
 		if err := os.WriteFile(targetPath, content, 0644); err != nil {

@@ -2,6 +2,7 @@ package docker
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,6 +83,11 @@ type VolumeConfig struct {
 	MountPrefixes []string `yaml:"mount_prefixes,omitempty"`
 }
 
+// NetworkConfig defines mesh subnet and IPAM settings in oops.yaml
+type NetworkConfig struct {
+	Subnet string `yaml:"subnet,omitempty"`
+}
+
 type OopsConfig struct {
 	Secret       string             `yaml:"secret,omitempty"`
 	DB           DBConfig           `yaml:"db,omitempty"`
@@ -89,6 +95,7 @@ type OopsConfig struct {
 	Backup       BackupConfig       `yaml:"backup,omitempty"`
 	Backups      BackupConfig       `yaml:"backups,omitempty"` // Alias for backward compatibility
 	DNS          DNSConfig          `yaml:"dns,omitempty"`
+	Network      NetworkConfig      `yaml:"network,omitempty"`
 	Volume       VolumeConfig       `yaml:"volume,omitempty"`
 	Registries   map[string]string  `yaml:"registries,omitempty"`
 }
@@ -163,6 +170,9 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 				if wrapper.XOops.DNS.TLD != "" {
 					fileCfg.DNS.TLD = wrapper.XOops.DNS.TLD
 				}
+				if wrapper.XOops.Network.Subnet != "" {
+					fileCfg.Network.Subnet = wrapper.XOops.Network.Subnet
+				}
 				if len(wrapper.XOops.DNS.Upstreams) > 0 {
 					fileCfg.DNS.Upstreams = wrapper.XOops.DNS.Upstreams
 				}
@@ -203,6 +213,7 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 			}
 
 			cfg.DNS = fileCfg.DNS
+			cfg.Network = fileCfg.Network
 			cfg.Volume = fileCfg.Volume
 			break
 		}
@@ -288,6 +299,11 @@ func LoadOopsConfig(workDir string) (*OopsConfig, error) {
 		cfg.Volume.MountPrefixes = prefixes
 	}
 
+	// Network overrides
+	if envSubnet := os.Getenv("OOPS_NETWORK_SUBNET"); envSubnet != "" {
+		cfg.Network.Subnet = envSubnet
+	}
+
 	// Apply default values
 	if cfg.DNS.TLD == "" {
 		cfg.DNS.TLD = "oops"
@@ -338,4 +354,52 @@ func ExpandImageAlias(rawImage string, registries map[string]string) string {
 	}
 
 	return trimmed
+}
+
+// ValidateNetworkSubnet validates that a CIDR string is a valid IPv4 network block suitable for Oops Mesh.
+// It checks IPv4 format, prevents loopback ranges (127.0.0.0/8), and validates prefix length.
+func ValidateNetworkSubnet(cidr string) error {
+	cidr = strings.TrimSpace(cidr)
+	if cidr == "" {
+		return nil
+	}
+	ip, ipNet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return fmt.Errorf("invalid network subnet CIDR %q: %w", cidr, err)
+	}
+	if ip.To4() == nil {
+		return fmt.Errorf("network subnet must be IPv4, got %q", cidr)
+	}
+	if ip.IsLoopback() {
+		return fmt.Errorf("loopback subnet %q (127.0.0.0/8) cannot be used for bridge networking", cidr)
+	}
+	ones, _ := ipNet.Mask.Size()
+	if ones < 8 || ones > 28 {
+		return fmt.Errorf("network subnet prefix /%d must be between /8 and /28", ones)
+	}
+	return nil
+}
+
+// IsSubnetContained checks if childCIDR is completely contained within parentCIDR.
+func IsSubnetContained(parentCIDR, childCIDR string) (bool, error) {
+	_, parentNet, err := net.ParseCIDR(strings.TrimSpace(parentCIDR))
+	if err != nil {
+		return false, fmt.Errorf("invalid parent CIDR %q: %w", parentCIDR, err)
+	}
+	childIP, childNet, err := net.ParseCIDR(strings.TrimSpace(childCIDR))
+	if err != nil {
+		return false, fmt.Errorf("invalid child CIDR %q: %w", childCIDR, err)
+	}
+
+	if !parentNet.Contains(childIP) {
+		return false, nil
+	}
+
+	parentOnes, _ := parentNet.Mask.Size()
+	childOnes, _ := childNet.Mask.Size()
+	if childOnes < parentOnes {
+		return false, nil
+	}
+
+	return true, nil
 }

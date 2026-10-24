@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -12,9 +13,12 @@ import (
 
 // Server coordinates DNS query resolution and upstream forwarding
 type Server struct {
-	resolver  *Resolver
-	upstreams []string
-	client    *dns.Client
+	resolver       *Resolver
+	upstreams      []string
+	tld            string
+	zoneForwarders map[string]string
+	mu             sync.RWMutex
+	client         *dns.Client
 }
 
 // ParseUpstreams parses comma-separated upstream DNS servers
@@ -50,11 +54,87 @@ func NewServer(resolver *Resolver, upstreams []string) *Server {
 	if len(upstreams) == 0 {
 		upstreams = ParseUpstreams("")
 	}
-	return &Server{
-		resolver:  resolver,
-		upstreams: upstreams,
-		client:    &dns.Client{Timeout: 2 * time.Second},
+	tld := os.Getenv("OOPS_DNS_TLD")
+	if tld == "" {
+		tld = "oops"
 	}
+	return &Server{
+		resolver:       resolver,
+		upstreams:      upstreams,
+		tld:            tld,
+		zoneForwarders: make(map[string]string),
+		client:         &dns.Client{Timeout: 2 * time.Second},
+	}
+}
+
+// SetTLD updates the authoritative TLD for this DNS instance
+func (s *Server) SetTLD(tld string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.tld = strings.TrimSpace(strings.ToLower(tld))
+}
+
+// RegisterZoneForwarder binds a domain zone suffix (e.g. "b9tpe") to a target DNS server (e.g. "10.240.0.2:53")
+func (s *Server) RegisterZoneForwarder(zone, targetDNS string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cleanZone := strings.TrimPrefix(strings.TrimSuffix(strings.ToLower(zone), "."), ".")
+	s.zoneForwarders[cleanZone] = strings.TrimSpace(targetDNS)
+}
+
+// UnregisterZoneForwarder removes a zone forwarder binding
+func (s *Server) UnregisterZoneForwarder(zone string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cleanZone := strings.TrimPrefix(strings.TrimSuffix(strings.ToLower(zone), "."), ".")
+	delete(s.zoneForwarders, cleanZone)
+}
+
+// GetZoneForwarders returns a snapshot of active zone forwarders
+func (s *Server) GetZoneForwarders() map[string]string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	res := make(map[string]string)
+	for k, v := range s.zoneForwarders {
+		res[k] = v
+	}
+	return res
+}
+
+func (s *Server) isPrivateTLD(qName string) bool {
+	s.mu.RLock()
+	tld := s.tld
+	s.mu.RUnlock()
+	if tld == "" {
+		tld = "oops"
+	}
+
+	if qName == "oops" || strings.HasSuffix(qName, ".oops") {
+		return true
+	}
+	if qName == tld || strings.HasSuffix(qName, "."+tld) {
+		return true
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for zone := range s.zoneForwarders {
+		if qName == zone || strings.HasSuffix(qName, "."+zone) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) matchZoneForwarder(qName string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for zone, target := range s.zoneForwarders {
+		if qName == zone || strings.HasSuffix(qName, "."+zone) {
+			return target
+		}
+	}
+	return ""
 }
 
 // ServeDNS handles incoming DNS queries
@@ -64,6 +144,8 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	msg.Authoritative = true
 
 	for _, q := range r.Question {
+		qName := strings.TrimSuffix(strings.ToLower(q.Name), ".")
+
 		if q.Qtype == dns.TypeA {
 			if ip, ok := s.resolver.Resolve(q.Name); ok {
 				rr := &dns.A{
@@ -75,9 +157,29 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				return
 			}
 		}
+
+		// Check active remote zone forwarders
+		if target := s.matchZoneForwarder(qName); target != "" {
+			resp, _, err := s.client.Exchange(r, target)
+			if err == nil && resp != nil {
+				_ = w.WriteMsg(resp)
+				return
+			}
+			// Remote target unreachable: fail-fast with NXDOMAIN (never leak to public upstream)
+			msg.Rcode = dns.RcodeNameError
+			_ = w.WriteMsg(msg)
+			return
+		}
+
+		// Zero Public Leakage Guard: never leak private TLD queries to public upstreams
+		if s.isPrivateTLD(qName) {
+			msg.Rcode = dns.RcodeNameError
+			_ = w.WriteMsg(msg)
+			return
+		}
 	}
 
-	// Unresolved query -> Forward to Upstream
+	// Unresolved public domain -> Forward to Upstream
 	s.forwardUpstream(w, r)
 }
 

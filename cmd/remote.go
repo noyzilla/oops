@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/noyzilla/oops/internal/box"
 	"github.com/noyzilla/oops/internal/remote"
 	"github.com/noyzilla/oops/internal/sync"
 	"github.com/spf13/cobra"
@@ -246,6 +247,11 @@ func newRemoteConnectCmd() *cobra.Command {
 				cmd.Printf("Notice: blueprint check: %v\n", err)
 			}
 
+			// One-time macOS resolver setup for remote TLD
+			if err := box.SetupMacOSResolver(capsuleName); err != nil {
+				cmd.Printf("Notice: could not configure local DNS resolver for .%s: %v\n", capsuleName, err)
+			}
+
 			cmd.Printf("\n✓ Successfully connected remote '@%s'\n", capsuleName)
 			cmd.Printf("  Host             : %s\n", cfg.Host)
 			cmd.Printf("  Remote Path      : %s\n", cfg.Path)
@@ -438,6 +444,7 @@ func newRemoteRemoveCmd() *cobra.Command {
 			if err := remote.RemoveRemote(workDirAbs, name); err != nil {
 				return fmt.Errorf("failed removing remote '@%s': %w", name, err)
 			}
+			_ = box.RemoveMacOSResolver(name)
 			cmd.Printf("✓ Removed remote '@%s' from workspace\n", name)
 			return nil
 		},
@@ -469,6 +476,7 @@ func newRemoteRenameCmd() *cobra.Command {
 			if err := os.Rename(oldCapsule, newCapsule); err != nil {
 				return fmt.Errorf("failed renaming remote '@%s' to '@%s': %w", oldName, newName, err)
 			}
+			_ = box.RenameMacOSResolver(oldName, newName)
 			cmd.Printf("✓ Renamed remote '@%s' to '@%s'\n", oldName, newName)
 			return nil
 		},

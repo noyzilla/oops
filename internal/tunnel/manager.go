@@ -256,7 +256,11 @@ func (m *Manager) Up(ctx context.Context, cfg *TunnelConfig, mappings []PortMapp
 
 	var endpoints []string
 	for _, m := range mappings {
-		endpoints = append(endpoints, fmt.Sprintf("%s:%d", cfg.ServiceDomain(m.Service), m.LocalPort))
+		if cfg.Mode == "mesh" {
+			endpoints = append(endpoints, fmt.Sprintf("%s:%d (mesh %s)", cfg.ServiceDomain(m.Service), m.RemotePort, cfg.Subnet))
+		} else {
+			endpoints = append(endpoints, fmt.Sprintf("%s:%d", cfg.ServiceDomain(m.Service), m.LocalPort))
+		}
 	}
 
 	return &TunnelStatus{
@@ -316,7 +320,7 @@ func (m *Manager) List(ctx context.Context) ([]TunnelStatus, error) {
 					head := p[:idx]
 					sub := strings.Split(head, ":")
 					if len(sub) == 2 {
-						endpoints = append(endpoints, fmt.Sprintf("%s.%s.tunnel.oops:%s", sub[0], rName, sub[1]))
+						endpoints = append(endpoints, fmt.Sprintf("%s.%s:%s", sub[0], rName, sub[1]))
 					}
 				}
 			}

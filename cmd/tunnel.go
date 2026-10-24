@@ -13,13 +13,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	tunnelMeshMode bool
+	tunnelPortMode bool
+)
+
 func newTunnelCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tunnel [@remote] [services...]",
 		Short: "Manage secure IAP SSH database tunnels to remote environments",
 		Long: `Creates an isolated client tunnel container via Google Cloud IAP SSH to access remote databases (MySQL, Redis, PostgreSQL).
 Connects without exposing remote server IP addresses and without exposing any ports on the local host machine.
-Local applications and database GUIs connect directly via DNS: <service>.<remote>.tunnel.oops:<port> (e.g. mysql.b9tpe.tunnel.oops:3306, redis.b9tpe.tunnel.oops:6379)`,
+Local applications and database GUIs connect directly via DNS: <service>.<remote>:<port> (e.g. mysql.b9tpe:3306, redis.b9tpe:6379)`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return cmd.Help()
@@ -31,6 +36,9 @@ Local applications and database GUIs connect directly via DNS: <service>.<remote
 		},
 	}
 
+	cmd.PersistentFlags().BoolVar(&tunnelMeshMode, "mesh", false, "Use L3 user-space mesh routing mode over SOCKS5")
+	cmd.PersistentFlags().BoolVar(&tunnelPortMode, "port", false, "Use standard L4 port forwarding mode")
+
 	cmd.AddCommand(newTunnelUpCmd())
 	cmd.AddCommand(newTunnelDownCmd())
 	cmd.AddCommand(newTunnelListCmd())
@@ -40,18 +48,24 @@ Local applications and database GUIs connect directly via DNS: <service>.<remote
 }
 
 func newTunnelUpCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "up @<remote> [service:port...]",
 		Short: "Establish an IAP database tunnel to a remote server",
 		Long: `Starts a local tunnel container connected to Oops network.
 Default ports if omitted: mysql:3306 redis:6379.
 Example: oops tunnel up @b9tpe
+Example: oops tunnel up @b9tpe --mesh
 Example: oops tunnel up @b9tpe mysql:3306 redis:6379 pg:5432:5432`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runTunnelUp(cmd, args[0], args[1:])
 		},
 	}
+
+	cmd.Flags().BoolVar(&tunnelMeshMode, "mesh", false, "Use L3 user-space mesh routing mode over SOCKS5")
+	cmd.Flags().BoolVar(&tunnelPortMode, "port", false, "Use standard L4 port forwarding mode")
+
+	return cmd
 }
 
 func newTunnelDownCmd() *cobra.Command {
@@ -102,6 +116,12 @@ func runTunnelUp(cmd *cobra.Command, remoteTarget string, portSpecs []string) er
 	cfg, err := tunnel.ResolveTunnelConfig(workDir, remoteTarget)
 	if err != nil {
 		return err
+	}
+
+	if tunnelMeshMode {
+		cfg.Mode = "mesh"
+	} else if tunnelPortMode {
+		cfg.Mode = "port"
 	}
 
 	mappings, err := tunnel.ParsePortSpecs(portSpecs, cfg.Services)

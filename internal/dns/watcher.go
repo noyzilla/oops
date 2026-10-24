@@ -2,8 +2,10 @@ package dns
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
+	"os"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -37,10 +39,15 @@ func ExtractContainerIP(inspect *container.InspectResponse) net.IP {
 	return nil
 }
 
-// ExtractContainerHostnames extracts all configured hostnames from labels and Config.Hostname
+// ExtractContainerHostnames extracts all configured hostnames from compose service names, labels, and Config.Hostname
 func ExtractContainerHostnames(inspect *container.InspectResponse) []string {
 	if inspect == nil {
 		return nil
+	}
+
+	tld := os.Getenv("OOPS_DNS_TLD")
+	if tld == "" {
+		tld = "oops"
 	}
 
 	var result []string
@@ -66,13 +73,34 @@ func ExtractContainerHostnames(inspect *container.InspectResponse) []string {
 			})
 			for _, p := range parts {
 				add(p)
+				if tld != "oops" && strings.HasSuffix(p, ".oops") {
+					add(strings.TrimSuffix(p, ".oops") + "." + tld)
+				}
 			}
 		}
 	}
 
 	// 2. Check container Config.Hostname
 	if inspect.Config != nil && inspect.Config.Hostname != "" {
-		add(inspect.Config.Hostname)
+		h := inspect.Config.Hostname
+		// Skip short docker default container IDs (usually 12 hex chars) if compose service name exists
+		isDefaultHexID := len(h) == 12 && inspect.Config.Labels != nil && inspect.Config.Labels["com.docker.compose.service"] != ""
+		if !isDefaultHexID {
+			add(h)
+			if tld != "oops" && strings.HasSuffix(h, ".oops") {
+				add(strings.TrimSuffix(h, ".oops") + "." + tld)
+			}
+		}
+	}
+
+	// 3. Auto-register Compose Service Name: <service>.<tld> (and <service>.oops)
+	if inspect.Config != nil && inspect.Config.Labels != nil {
+		if service, ok := inspect.Config.Labels["com.docker.compose.service"]; ok && service != "" {
+			add(fmt.Sprintf("%s.%s", service, tld))
+			if tld != "oops" {
+				add(fmt.Sprintf("%s.oops", service))
+			}
+		}
 	}
 
 	return result

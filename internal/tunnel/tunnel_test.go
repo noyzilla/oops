@@ -125,8 +125,11 @@ tunnel:
 	if len(cfg.Services) != 3 || cfg.Services[0] != "mysql" || cfg.Services[2] != "minio:9000" {
 		t.Errorf("unexpected Services from remote.yaml: %v", cfg.Services)
 	}
-	if cfg.ServiceDomain("mysql") != "mysql.b9tpe.tunnel.oops" {
-		t.Errorf("expected ServiceDomain mysql.b9tpe.tunnel.oops, got %s", cfg.ServiceDomain("mysql"))
+	if cfg.ServiceDomain("mysql") != "mysql.b9tpe" {
+		t.Errorf("expected ServiceDomain mysql.b9tpe, got %s", cfg.ServiceDomain("mysql"))
+	}
+	if cfg.LegacyServiceDomain("mysql") != "mysql.b9tpe.tunnel.oops" {
+		t.Errorf("expected LegacyServiceDomain mysql.b9tpe.tunnel.oops, got %s", cfg.LegacyServiceDomain("mysql"))
 	}
 }
 
@@ -187,6 +190,30 @@ func TestBuildTunnelCommand_StandardSSH(t *testing.T) {
 	}
 	if strings.Contains(script, "gcloud compute ssh") {
 		t.Errorf("script should NOT use gcloud compute ssh: %s", script)
+	}
+}
+
+func TestBuildTunnelCommand_MeshMode(t *testing.T) {
+	cfg := &TunnelConfig{
+		RemoteName: "b9tpe",
+		Host:       "b9tpe",
+		Hostname:   "tunnel-b9tpe.oops",
+		Mode:       "mesh",
+		Subnet:     "10.240.0.0/16",
+	}
+
+	mappings := []PortMapping{
+		{Service: "mysql", LocalPort: 3306, RemotePort: 3306, ContainerIP: "10.240.0.10"},
+	}
+
+	cmd := BuildTunnelCommand(cfg, mappings)
+	script := cmd[2]
+
+	if !strings.Contains(script, "-D 0.0.0.0:1080") {
+		t.Errorf("mesh mode script missing dynamic SOCKS5 forward -D 0.0.0.0:1080: %s", script)
+	}
+	if strings.Contains(script, "-L ") {
+		t.Errorf("mesh mode script should not contain -L port forwards: %s", script)
 	}
 }
 

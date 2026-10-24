@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/noyzilla/oops/cmd"
+	"github.com/noyzilla/oops/internal/box"
 )
 
 func TestDNSCommands_AddDelReloadList(t *testing.T) {
@@ -92,5 +93,64 @@ func TestDNSCommands_AddDelReloadList(t *testing.T) {
 	}
 	if !strings.Contains(string(dataAfterDel), ".wild.test") {
 		t.Errorf("expected .wild.test to remain, but missing from %s", string(dataAfterDel))
+	}
+}
+
+func TestDNSPruneCommand(t *testing.T) {
+	tempResolverDir := t.TempDir()
+	cleanup := box.SetResolverDirForTest(tempResolverDir)
+	defer cleanup()
+
+	// Seed resolvers: oops (active), b9tpe (stale unless remote registered), stale1, stale2
+	_ = os.WriteFile(filepath.Join(tempResolverDir, "oops"), []byte("nameserver 127.0.0.1\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempResolverDir, "stale1"), []byte("nameserver 127.0.0.1\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempResolverDir, "stale2"), []byte("nameserver 127.0.0.1\n"), 0644)
+
+	tempWorkDir := t.TempDir()
+
+	// 1. Dry run
+	rootCmd := cmd.GetRootCommand()
+	buf := new(bytes.Buffer)
+	rootCmd.SetOut(buf)
+	rootCmd.SetErr(buf)
+	rootCmd.SetArgs([]string{"-C", tempWorkDir, "dns", "prune", "--dry-run"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("dns prune --dry-run failed: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "stale1") || !strings.Contains(output, "stale2") {
+		t.Errorf("expected dry-run to identify stale1 and stale2, got: %s", output)
+	}
+
+	// Files should still exist
+	if _, err := os.Stat(filepath.Join(tempResolverDir, "stale1")); err != nil {
+		t.Fatalf("expected stale1 to still exist after dry-run")
+	}
+
+	// 2. Real prune
+	rootCmd = cmd.GetRootCommand()
+	buf.Reset()
+	rootCmd.SetOut(buf)
+	rootCmd.SetErr(buf)
+	rootCmd.SetArgs([]string{"-C", tempWorkDir, "dns", "prune"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("dns prune failed: %v", err)
+	}
+	output = buf.String()
+	if !strings.Contains(output, "Pruned 2 stale DNS resolver") {
+		t.Errorf("expected success message, got: %s", output)
+	}
+
+	// Verify stale files removed, oops preserved
+	if _, err := os.Stat(filepath.Join(tempResolverDir, "stale1")); !os.IsNotExist(err) {
+		t.Errorf("expected stale1 to be deleted")
+	}
+	if _, err := os.Stat(filepath.Join(tempResolverDir, "stale2")); !os.IsNotExist(err) {
+		t.Errorf("expected stale2 to be deleted")
+	}
+	if _, err := os.Stat(filepath.Join(tempResolverDir, "oops")); err != nil {
+		t.Errorf("expected oops resolver to be preserved")
 	}
 }

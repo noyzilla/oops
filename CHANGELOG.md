@@ -6,6 +6,13 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Added
+- **Mesh VPN L3 Subnet & IPAM Schema**: Introduced deterministic `network.subnet` in `remote.yaml` (default `10.240.0.0/16`) and root `compose.yaml` `x-oops.network.subnet`, with IP containment validation (`ValidateNetworkSubnet`, `IsSubnetContained`) and deterministic IP reservations (`.1` Gateway, `.2` DNS) (`internal/docker/config.go`, `internal/remote/blueprint.go`, `docs/specs/remote.md`).
+- **Single-TLD Remote Identity & Automated Compose Service Registration**: Enforced `dns.tld == <remote_name>` on every capsule, automatically registering `com.docker.compose.service` as `<service>.<tld>` alongside `<service>.oops`, paired TLD routing, and Zero Public Leakage Guard with instant NXDOMAIN fail-fast (`internal/dns/resolver.go`, `internal/dns/watcher.go`, `internal/dns/server.go`, `docs/specs/dns.md`).
+- **macOS Resolver Lifecycle & Pruning (`oops dns prune`)**: One-time sudo configuration for `/etc/resolver/<remote>` during `oops remote connect`, automated removal/renaming during remote lifecycle, and `oops dns prune` (alias `fix`) to purge stale resolver files (`internal/box/engine.go`, `cmd/remote.go`, `cmd/dns.go`, `docs/specs/dns.md`).
+- **All-in-One Health Diagnostic Suite (`oops doctor`)**: Implemented `oops doctor`, `oops doctor compose [@<remote> | --all]`, and `oops doctor dns` to audit Compose subnet containment, cross-remote subnet collisions, static IP reservations, and orphaned resolvers (`internal/doctor/inspector.go`, `cmd/doctor.go`, `docs/specs/cli.md`).
+- **Dual-Mode Tunnel Runner (`port` vs `mesh`)**: Added support for `tunnel.mode: mesh | port` in `remote.yaml` and CLI flags `--mesh` / `--port`, establishing dynamic SOCKS5 routing over SSH for transparent L3 container communication without local port clashes (`internal/tunnel/config.go`, `internal/tunnel/container.go`, `internal/tunnel/manager.go`, `cmd/tunnel.go`, `docs/specs/tunnel.md`).
+
 ## [v1.17.0] - 2026-10-24
 
 ### Added

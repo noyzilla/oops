@@ -62,6 +62,18 @@ func TestExtractContainerHostnames_SingleAndMulti(t *testing.T) {
 			},
 			expected: []string{"tunnel-b9tpe.oops"},
 		},
+		{
+			name: "compose service name auto registration",
+			inspect: &container.InspectResponse{
+				Config: &container.Config{
+					Hostname: "a1b2c3d4e5f6", // default 12 hex container ID
+					Labels: map[string]string{
+						"com.docker.compose.service": "mysql",
+					},
+				},
+			},
+			expected: []string{"mysql.oops"},
+		},
 	}
 
 	for _, tt := range tests {

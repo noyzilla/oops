@@ -171,12 +171,26 @@ func GetOopsContainerIP() string {
 	return docker.GetOopsContainerIP()
 }
 
+var resolverDir = "/etc/resolver"
+
+// SetResolverDirForTest allows overriding the resolver directory during testing
+func SetResolverDirForTest(dir string) func() {
+	orig := resolverDir
+	resolverDir = dir
+	return func() {
+		resolverDir = orig
+	}
+}
+
 // SetupMacOSResolver configures /etc/resolver/<tld> on macOS.
 func SetupMacOSResolver(tld string) error {
-	if runtime.GOOS != "darwin" {
+	if runtime.GOOS != "darwin" && resolverDir == "/etc/resolver" {
 		return nil
 	}
-	resolverDir := "/etc/resolver"
+	tld = strings.TrimPrefix(strings.TrimSpace(strings.ToLower(tld)), ".")
+	if tld == "" {
+		return nil
+	}
 	resolverFile := filepath.Join(resolverDir, tld)
 
 	nameserverIP := GetOopsContainerIP()
@@ -191,8 +205,128 @@ func SetupMacOSResolver(tld string) error {
 	}
 
 	fmt.Printf("==> Configuring macOS DNS resolver for .%s domain (nameserver %s)...\n", tld, nameserverIP)
-	script := fmt.Sprintf("mkdir -p %s && printf '%s' > %s", resolverDir, content, resolverFile)
+	return writeResolverFile(resolverDir, resolverFile, content)
+}
+
+// RemoveMacOSResolver removes /etc/resolver/<tld> on macOS.
+func RemoveMacOSResolver(tld string) error {
+	if runtime.GOOS != "darwin" && resolverDir == "/etc/resolver" {
+		return nil
+	}
+	tld = strings.TrimPrefix(strings.TrimSpace(strings.ToLower(tld)), ".")
+	if tld == "" {
+		return nil
+	}
+	resolverFile := filepath.Join(resolverDir, tld)
+	if _, err := os.Stat(resolverFile); os.IsNotExist(err) {
+		return nil
+	}
+	return removeResolverFile(resolverFile)
+}
+
+// RenameMacOSResolver renames /etc/resolver/<oldTLD> to /etc/resolver/<newTLD> on macOS.
+func RenameMacOSResolver(oldTLD, newTLD string) error {
+	if runtime.GOOS != "darwin" && resolverDir == "/etc/resolver" {
+		return nil
+	}
+	oldTLD = strings.TrimPrefix(strings.TrimSpace(strings.ToLower(oldTLD)), ".")
+	newTLD = strings.TrimPrefix(strings.TrimSpace(strings.ToLower(newTLD)), ".")
+	if oldTLD == "" || newTLD == "" || oldTLD == newTLD {
+		return nil
+	}
+
+	oldFile := filepath.Join(resolverDir, oldTLD)
+	newFile := filepath.Join(resolverDir, newTLD)
+	if _, err := os.Stat(oldFile); os.IsNotExist(err) {
+		return SetupMacOSResolver(newTLD)
+	}
+	return renameResolverFile(oldFile, newFile)
+}
+
+// ListMacOSResolvers returns all entries under /etc/resolver on macOS.
+func ListMacOSResolvers() ([]string, error) {
+	if runtime.GOOS != "darwin" && resolverDir == "/etc/resolver" {
+		return nil, nil
+	}
+	entries, err := os.ReadDir(resolverDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var res []string
+	for _, e := range entries {
+		if !e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
+			res = append(res, e.Name())
+		}
+	}
+	return res, nil
+}
+
+// PruneMacOSResolvers scans /etc/resolver and deletes any file whose name is NOT in keepTLDs.
+func PruneMacOSResolvers(keepTLDs []string) ([]string, error) {
+	if runtime.GOOS != "darwin" && resolverDir == "/etc/resolver" {
+		return nil, nil
+	}
+	resolvers, err := ListMacOSResolvers()
+	if err != nil {
+		return nil, err
+	}
+
+	keepSet := make(map[string]bool)
+	for _, k := range keepTLDs {
+		cleaned := strings.TrimPrefix(strings.TrimSpace(strings.ToLower(k)), ".")
+		if cleaned != "" {
+			keepSet[cleaned] = true
+		}
+	}
+	// Always keep "oops"
+	keepSet["oops"] = true
+
+	var pruned []string
+	for _, r := range resolvers {
+		if !keepSet[strings.ToLower(r)] {
+			resolverPath := filepath.Join(resolverDir, r)
+			if err := removeResolverFile(resolverPath); err != nil {
+				return pruned, fmt.Errorf("failed to prune %s: %w", resolverPath, err)
+			}
+			pruned = append(pruned, r)
+		}
+	}
+	return pruned, nil
+}
+
+func writeResolverFile(dir, file, content string) error {
+	if err := os.MkdirAll(dir, 0755); err == nil {
+		if err := os.WriteFile(file, []byte(content), 0644); err == nil {
+			return nil
+		}
+	}
+	script := fmt.Sprintf("mkdir -p %s && printf '%s' > %s", dir, content, file)
 	cmd := exec.Command("sudo", "sh", "-c", script)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func removeResolverFile(file string) error {
+	if err := os.Remove(file); err == nil {
+		return nil
+	}
+	cmd := exec.Command("sudo", "rm", "-f", file)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func renameResolverFile(oldFile, newFile string) error {
+	if err := os.Rename(oldFile, newFile); err == nil {
+		return nil
+	}
+	cmd := exec.Command("sudo", "mv", oldFile, newFile)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

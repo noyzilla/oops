@@ -55,7 +55,12 @@ func BuildTunnelCommand(cfg *TunnelConfig, mappings []PortMapping) []string {
 		"-o", "ExitOnForwardFailure=yes",
 		"-o", "IgnoreUnknown=UseKeychain",
 	)
-	sshArgs = append(sshArgs, forwards...)
+
+	if cfg.Mode == "mesh" {
+		sshArgs = append(sshArgs, "-D", "0.0.0.0:1080")
+	} else {
+		sshArgs = append(sshArgs, forwards...)
+	}
 	sshArgs = append(sshArgs, cfg.Host)
 
 	var aliasSetup string
@@ -93,10 +98,11 @@ func BuildContainerConfig(cfg *TunnelConfig, mappings []PortMapping) (*container
 		svcsDesc = append(svcsDesc, fmt.Sprintf("%s:%d->%s:%d", m.Service, m.LocalPort, m.ContainerIP, m.RemotePort))
 		if m.LocalIP != "" && m.LocalIP != "0.0.0.0" {
 			dnsMappings = append(dnsMappings, fmt.Sprintf("%s=%s", cfg.ServiceDomain(m.Service), m.LocalIP))
+			dnsMappings = append(dnsMappings, fmt.Sprintf("%s=%s", cfg.LegacyServiceDomain(m.Service), m.LocalIP))
 		}
 	}
 
-	dnsHostnames := fmt.Sprintf(".%s.tunnel.oops,tunnel-%s.oops", cfg.RemoteName, cfg.RemoteName)
+	dnsHostnames := fmt.Sprintf(".%s,.%s.tunnel.oops,tunnel-%s.oops", cfg.RemoteName, cfg.RemoteName, cfg.RemoteName)
 
 	labels := map[string]string{
 		"oops.dns.hostname": dnsHostnames,

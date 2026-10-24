@@ -48,8 +48,13 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
     - `oops.dns.hostname: .<remote>.tunnel.oops,tunnel-<remote>.oops`
     - `oops.dns.mappings: <service1>.<remote>.tunnel.oops=<ip1>,<service2>.<remote>.tunnel.oops=<ip2>`
 - Developers and database GUIs connect via dedicated service domains:
-  - `<service>.<remote>.tunnel.oops:<port>` (e.g. `mysql.b9tpe.tunnel.oops:3306`, `redis.b9tpe.tunnel.oops:6379`)
-  - Backward-compatible shorthand: `tunnel-<remote>.oops:<port>`
+  - Single-TLD Primary Identity: `<service>.<remote>:<port>` (e.g. `mysql.b9tpe:3306`, `redis.b9tpe:6379`)
+  - Legacy subdomain: `<service>.<remote>.tunnel.oops:<port>`
+  - Shorthand: `tunnel-<remote>.oops:<port>`
+- **Dual-Mode Tunnel Runner (`port` vs `mesh`)**:
+  - `port` mode (default): Standard SSH forwarding (`-L`) with per-service local IP aliasing when local port collisions arise.
+  - `mesh` mode: User-space L3 routing via dynamic SOCKS5 proxy (`-D 0.0.0.0:1080`), routing all traffic destined for `network.subnet` (e.g. `10.240.0.0/16`) transparently through user-space tun2socks.
+  - Selected via `tunnel.mode: mesh | port` in `remote.yaml` or CLI flags `--mesh` / `--port`.
 - **Port Collision Invariant (Secondary IP Aliasing)**:
   - When multiple services share the same local port (e.g. `mysql1:3306` and `mysql2:3306`), the single tunnel container uses `--cap-add=NET_ADMIN` to bind secondary IP aliases (`ip addr add <ip>/16 dev eth0`).
   - Oops DNS resolves `mysql1.<remote>.tunnel.oops` to IP 1 and `mysql2.<remote>.tunnel.oops` to IP 2.

@@ -254,6 +254,7 @@ func init() {
 	rootCmd.AddCommand(newIPCmd())
 	rootCmd.AddCommand(newRemoteCmd())
 	rootCmd.AddCommand(newTunnelCmd())
+	rootCmd.AddCommand(newDoctorCmd())
 	rootCmd.AddCommand(newRxCmd())
 	rootCmd.AddCommand(newDeployCmd())
 }

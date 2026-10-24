@@ -14,12 +14,33 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - **Wildcard Hostname**: Container hostname prefixed with a dot `.` (e.g. `hostname: .web.oops`), matching both apex and all subdomains (`web.oops` and `*.web.oops`).
 - **Exact Hostname**: Container hostname without leading dot (e.g. `hostname: mail.test`), matching only that exact domain.
 - **Upstream Forwarder**: Stateless relay to external DNS servers (configured in `oops.yaml` under `dns.upstreams`) for unresolved public domains.
+- **Single-TLD Remote Identity**: Invariant guaranteeing `dns.tld == <remote_name>` (e.g. `b9tpe`), automatically registering all compose services under `<service>.<remote>` alongside `<service>.oops`.
+- **Zero Public Leakage Guard**: Invariant stating unmapped queries ending in `.oops`, `.<tld>`, or registered forwarder zones fail-fast with `NXDOMAIN` (0ms) and are never forwarded to public upstreams.
 
 ---
 
 ## Business Rules & Resolution Invariants
 
-### Hostname Resolution Rules
+### 1. Single-TLD Identity & Automated Compose Service Registration
+- On every Oopsbox capsule or workspace, `dns.tld` matches the environment identity (`b9tpe`, `anthole`, etc.).
+- When containers start, the DNS watcher automatically inspects:
+  - `com.docker.compose.service: "<service>"` -> registers `<service>.<tld>` and `<service>.oops`.
+  - `Config.Hostname` and `oops.dns.hostname` labels -> registered alongside compose service names.
+  - Short hex container IDs (12 chars) are omitted when a valid compose service name exists.
+
+### 2. Zero Public Leakage Guard
+- Queries matching `.oops`, `.<tld>`, or registered zone forwarders MUST NOT be relayed to external DNS relays.
+- If the domain is not found in the local resolver table or zone forwarder is unreachable, return `NXDOMAIN` immediately.
+
+### 3. macOS Resolver Lifecycle & Pruning
+- macOS host routing uses `/etc/resolver/<tld>` pointing to `nameserver <oops_container_ip>` (e.g. `192.168.97.3`).
+- One-time setup occurs during `oops remote connect @<name>`.
+- Automatic cleanup on `oops remote remove` and `oops remote rename`.
+- Stale resolver entries without active remotes or workspaces are pruned via `oops dns prune` (alias `oops dns fix`).
+
+---
+
+## Hostname Resolution Rules
 
 DNS `A` record queries are matched against active container hostnames in the following priority:
 

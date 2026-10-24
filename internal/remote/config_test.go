@@ -90,6 +90,19 @@ func TestRemoteConfigManagement(t *testing.T) {
 			t.Errorf("expected %s to be created in capsule: %v", expectedFile, err)
 		}
 	}
+
+	// Verify Remote Identity Invariant: tld == newbox and network.subnet default
+	oopsYamlContent, err := os.ReadFile(filepath.Join(capsuleDir, "oops.yaml"))
+	if err != nil {
+		t.Fatalf("failed reading capsule oops.yaml: %v", err)
+	}
+	if !strings.Contains(string(oopsYamlContent), "tld: newbox") {
+		t.Errorf("expected capsule oops.yaml to have 'tld: newbox', got:\n%s", string(oopsYamlContent))
+	}
+	if !strings.Contains(string(oopsYamlContent), "subnet: 10.240.0.0/16") {
+		t.Errorf("expected capsule oops.yaml to have 'subnet: 10.240.0.0/16', got:\n%s", string(oopsYamlContent))
+	}
+
 	for _, expectedDir := range []string{"config", "data", "backups"} {
 		if fi, err := os.Stat(filepath.Join(capsuleDir, expectedDir)); err != nil || !fi.IsDir() {
 			t.Errorf("expected %s directory in capsule, got: %v", expectedDir, err)

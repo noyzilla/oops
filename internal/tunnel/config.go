@@ -35,10 +35,17 @@ type TunnelConfig struct {
 	Path       string   `json:"path,omitempty"`
 	Hostname   string   `json:"hostname"`
 	Services   []string `json:"services,omitempty"`
+	Mode       string   `json:"mode,omitempty"`   // "port" or "mesh"
+	Subnet     string   `json:"subnet,omitempty"` // CIDR (e.g. 10.240.0.0/16)
 }
 
-// ServiceDomain returns dedicated subdomain for the service: <service>.<remote>.tunnel.oops
+// ServiceDomain returns Single-TLD remote domain: <service>.<remote>
 func (c *TunnelConfig) ServiceDomain(service string) string {
+	return fmt.Sprintf("%s.%s", service, c.RemoteName)
+}
+
+// LegacyServiceDomain returns legacy subdomain: <service>.<remote>.tunnel.oops
+func (c *TunnelConfig) LegacyServiceDomain(service string) string {
 	return fmt.Sprintf("%s.%s.tunnel.oops", service, c.RemoteName)
 }
 
@@ -136,11 +143,23 @@ func ResolveTunnelConfig(workDir, remoteTarget string) (*TunnelConfig, error) {
 
 	hostname := fmt.Sprintf("tunnel-%s.oops", cleanRemote)
 
+	mode := strings.ToLower(strings.TrimSpace(cfg.Tunnel.Mode))
+	if mode == "" {
+		mode = "port"
+	}
+
+	subnet := cfg.Network.Subnet
+	if subnet == "" {
+		subnet = "10.240.0.0/16"
+	}
+
 	return &TunnelConfig{
 		RemoteName: cleanRemote,
 		Host:       host,
 		Path:       cfg.Path,
 		Hostname:   hostname,
 		Services:   cfg.Tunnel.Services,
+		Mode:       mode,
+		Subnet:     subnet,
 	}, nil
 }

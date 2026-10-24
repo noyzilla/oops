@@ -51,7 +51,10 @@ When executing `oops remote connect @<remote>[:<path>]`:
   ```yaml
   host: user@192.168.1.50 # SSH connection target or ~/.ssh/config alias
   path: ~/oopsbox         # Remote working directory
+  network:
+    subnet: 10.240.0.0/16 # Deterministic non-overlapping L3 CIDR
   tunnel:
+    mode: port            # "port" (L4 forwarding) or "mesh" (L3 user-space routing)
     services:             # Default services forwarded by 'oops tunnel @<remote>'
       - mysql
       - redis
@@ -60,11 +63,12 @@ When executing `oops remote connect @<remote>[:<path>]`:
   - If remote server already contains `compose.yaml`, `oops.yaml`, or `.oopsallow`: Automatically pulls them down into `/@<host>/` following `.oopsallow`.
   - If remote server is fresh (no manifests): Generates capsule manifests from workspace blueprint templates:
     - `/@<host>/compose.yaml` initialized from `compose.yaml.example` (with safe commented `x-oops-stack:` and `oops_default` network).
-    - `/@<host>/oops.yaml` initialized from `oops.yaml.example` (pure `x-oops:` system configuration).
+    - `/@<host>/oops.yaml` initialized from `oops.yaml.example` enforcing **Single-TLD Identity** (`dns.tld: <remoteName>`).
     - `/@<host>/.oopsallow` initialized from `.oopsallow.example` (bidirectional sync whitelist).
     - `/@<host>/.env` initialized from `.env.example` with cryptographically secure random `OOPS_SECRET` and `OOPS_DB_*_PASSWORD` credentials.
-    - `/@<host>/remote.yaml` initialized with remote connection details and commented tunnel configuration blueprint.
+    - `/@<host>/remote.yaml` initialized with remote connection details, default subnet `10.240.0.0/16`, and commented tunnel configuration blueprint.
     - `/@<host>/{config,data,backups}/` initialized matching standard Oopsbox directory hierarchy to support `oops backup` and configuration overlays.
+  - **One-Time macOS Resolver Setup**: Upon successful connect, automatically configures `/etc/resolver/<remote>` pointing to local Oops container IP, eliminated recurring sudo prompts during daily tunnel up/down. Automatic resolver cleanup occurs when executing `oops remote remove` or `oops remote rename`.
 - **Remote Server Oopsbox Provisioning**:
   - Automatically ensures standard Oopsbox directory hierarchy exists on the remote host (`<remotePath>/{config,data,backups}`).
   - When connecting to a fresh remote host (`!remoteHasWorkspace`), performs initial streaming delivery of required stack manifests (`compose.<stack>.yaml`) and capsule overlay manifests directly to the remote server so the Oopsbox workspace is fully initialized and operational immediately upon connection.

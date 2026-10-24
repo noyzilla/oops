@@ -171,3 +171,102 @@ x-oops:
 		t.Errorf("expected tld override 'env-tld', got %q", cfgOverridden.DNS.TLD)
 	}
 }
+
+func TestLoadOopsConfig_NetworkSubnet(t *testing.T) {
+	dir := t.TempDir()
+	yml := `x-oops:
+  network:
+    subnet: 10.240.0.0/16
+  dns:
+    tld: b9tpe
+`
+	if err := os.WriteFile(filepath.Join(dir, "oops.yaml"), []byte(yml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadOopsConfig(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if cfg.Network.Subnet != "10.240.0.0/16" {
+		t.Errorf("expected subnet 10.240.0.0/16, got %q", cfg.Network.Subnet)
+	}
+	if cfg.DNS.TLD != "b9tpe" {
+		t.Errorf("expected tld b9tpe, got %q", cfg.DNS.TLD)
+	}
+
+	// Test env override
+	t.Setenv("OOPS_NETWORK_SUBNET", "10.50.0.0/16")
+	cfgEnv, err := LoadOopsConfig(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfgEnv.Network.Subnet != "10.50.0.0/16" {
+		t.Errorf("expected env override 10.50.0.0/16, got %q", cfgEnv.Network.Subnet)
+	}
+}
+
+func TestValidateNetworkSubnet(t *testing.T) {
+	valid := []string{
+		"",
+		"10.240.0.0/16",
+		"10.50.0.0/16",
+		"192.168.1.0/24",
+		"172.20.0.0/16",
+	}
+	for _, cidr := range valid {
+		if err := ValidateNetworkSubnet(cidr); err != nil {
+			t.Errorf("expected %q to be valid, got: %v", cidr, err)
+		}
+	}
+
+	invalid := []string{
+		"not-a-cidr",
+		"127.0.0.0/8",      // loopback blocked
+		"127.240.0.0/16",   // loopback blocked
+		"2001:db8::/32",    // IPv6 blocked
+		"10.0.0.0/6",       // prefix < /8
+		"10.0.0.0/30",      // prefix > /28
+	}
+	for _, cidr := range invalid {
+		if err := ValidateNetworkSubnet(cidr); err == nil {
+			t.Errorf("expected %q to be invalid, but validation passed", cidr)
+		}
+	}
+}
+
+func TestIsSubnetContained(t *testing.T) {
+	parent := "10.240.0.0/16"
+
+	// Valid children
+	contained := []string{
+		"10.240.0.0/16",
+		"10.240.1.0/24",
+		"10.240.2.0/24",
+		"10.240.254.0/24",
+	}
+	for _, child := range contained {
+		ok, err := IsSubnetContained(parent, child)
+		if err != nil || !ok {
+			t.Errorf("expected %q to be contained in %q, got ok=%v, err=%v", child, parent, ok, err)
+		}
+	}
+
+	// Invalid / outside children
+	outside := []string{
+		"10.241.0.0/16",
+		"172.20.0.0/16",
+		"10.0.0.0/8", // larger than parent
+		"192.168.1.0/24",
+	}
+	for _, child := range outside {
+		ok, err := IsSubnetContained(parent, child)
+		if err != nil {
+			t.Errorf("unexpected error for %q: %v", child, err)
+		}
+		if ok {
+			t.Errorf("expected %q NOT to be contained in %q", child, parent)
+		}
+	}
+}

@@ -38,6 +38,9 @@ func (r *Resolver) Register(containerID, rawHostname string, ip net.IP) {
 
 	// Clean trailing dots
 	trimmed = strings.TrimSuffix(trimmed, ".")
+	if strings.HasPrefix(trimmed, "*.") {
+		trimmed = strings.TrimPrefix(trimmed, "*")
+	}
 
 	if strings.HasPrefix(trimmed, ".") {
 		suffix := strings.TrimPrefix(trimmed, ".")
@@ -99,6 +102,9 @@ func (r *Resolver) SwapStatic(newRecords map[string]net.IP) {
 		trimmed = strings.TrimSuffix(trimmed, ".")
 		if trimmed == "" || trimmed == "localhost" {
 			continue
+		}
+		if strings.HasPrefix(trimmed, "*.") {
+			trimmed = strings.TrimPrefix(trimmed, "*")
 		}
 
 		if strings.HasPrefix(trimmed, ".") {
