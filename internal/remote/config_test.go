@@ -3,6 +3,7 @@ package remote
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -89,7 +90,21 @@ func TestRemoteConfigManagement(t *testing.T) {
 			t.Errorf("expected %s to be created in capsule: %v", expectedFile, err)
 		}
 	}
-	if fi, err := os.Stat(filepath.Join(capsuleDir, "config")); err != nil || !fi.IsDir() {
-		t.Errorf("expected config directory in capsule, got: %v", err)
+	for _, expectedDir := range []string{"config", "data", "backups"} {
+		if fi, err := os.Stat(filepath.Join(capsuleDir, expectedDir)); err != nil || !fi.IsDir() {
+			t.Errorf("expected %s directory in capsule, got: %v", expectedDir, err)
+		}
+	}
+
+	// 6. Test SaveConfig with empty tunnel writes commented template
+	if err := SaveConfig(tempDir, "empty-tunnel", &Config{Host: "host.local", Path: "~/oopsbox"}); err != nil {
+		t.Fatalf("SaveConfig empty-tunnel failed: %v", err)
+	}
+	content, err := os.ReadFile(filepath.Join(tempDir, "@empty-tunnel", "remote.yaml"))
+	if err != nil {
+		t.Fatalf("failed reading remote.yaml: %v", err)
+	}
+	if !strings.Contains(string(content), "# tunnel:") || !strings.Contains(string(content), "#   services:") {
+		t.Errorf("expected commented tunnel template in remote.yaml, got:\n%s", string(content))
 	}
 }

@@ -59,11 +59,12 @@ When executing `oops remote connect @<remote>[:<path>]`:
 - **Blueprint-Driven Initialization [การสร้างค่าเริ่มต้นเมื่อเชื่อมต่อเครื่องใหม่]**:
   - If remote server already contains `compose.yaml`, `oops.yaml`, or `.oopsallow`: Automatically pulls them down into `/@<host>/` following `.oopsallow`.
   - If remote server is fresh (no manifests): Generates capsule manifests from workspace blueprint templates:
-    - `/@<host>/compose.yaml` initialized from `compose.yaml.example` (with `x-oops-stack:` and `oops_default` network).
+    - `/@<host>/compose.yaml` initialized from `compose.yaml.example` (with safe commented `x-oops-stack:` and `oops_default` network).
     - `/@<host>/oops.yaml` initialized from `oops.yaml.example` (pure `x-oops:` system configuration).
     - `/@<host>/.oopsallow` initialized from `.oopsallow.example` (bidirectional sync whitelist).
     - `/@<host>/.env` initialized from `.env.example` with cryptographically secure random `OOPS_SECRET` and `OOPS_DB_*_PASSWORD` credentials.
-    - `/@<host>/config/` initialized for host-specific configuration overlays.
+    - `/@<host>/remote.yaml` initialized with remote connection details and commented tunnel configuration blueprint.
+    - `/@<host>/{config,data,backups}/` initialized matching standard Oopsbox directory hierarchy to support `oops backup` and configuration overlays.
 - **Remote Server Oopsbox Provisioning**:
   - Automatically ensures standard Oopsbox directory hierarchy exists on the remote host (`<remotePath>/{config,data,backups}`).
   - When connecting to a fresh remote host (`!remoteHasWorkspace`), performs initial streaming delivery of required stack manifests (`compose.<stack>.yaml`) and capsule overlay manifests directly to the remote server so the Oopsbox workspace is fully initialized and operational immediately upon connection.

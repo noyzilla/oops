@@ -72,9 +72,32 @@ func SaveConfig(workDir, remoteName string, cfg *Config) error {
 		cfg.Path = "~/oopsbox"
 	}
 
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to marshal remote config: %w", err)
+	var data []byte
+	if len(cfg.Tunnel.Services) > 0 {
+		var err error
+		data, err = yaml.Marshal(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to marshal remote config: %w", err)
+		}
+	} else {
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("host: %s\n", cfg.Host))
+		sb.WriteString(fmt.Sprintf("path: %s\n", cfg.Path))
+		if cfg.Zone != "" {
+			sb.WriteString(fmt.Sprintf("zone: %s\n", cfg.Zone))
+		}
+		if cfg.Project != "" {
+			sb.WriteString(fmt.Sprintf("project: %s\n", cfg.Project))
+		}
+		sb.WriteString(fmt.Sprintf(`
+# Tunnel configuration for secure remote database access (oops tunnel @%s)
+# tunnel:
+#   services:
+#     - mysql              # auto-detect remote port 3306
+#     - redis              # auto-detect remote port 6379
+#     # - custom:8080      # or specify custom port mapping
+`, remoteName))
+		data = []byte(sb.String())
 	}
 
 	cfgPath := ConfigPath(workDir, remoteName)

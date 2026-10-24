@@ -29,8 +29,8 @@ const defaultComposeExample = `# ===============================================
 # name: oops
 
 x-oops-stack:
-  - /edge
-  - /db
+  # - /edge
+  # - /db
   # - /storage
   # - /tools
   # - /db/mysql
@@ -145,10 +145,13 @@ func InitCapsuleBlueprints(workDir, remoteName string) ([]string, error) {
 		created = append(created, item.targetName)
 	}
 
-	// Initialize config/ directory
-	configDir := filepath.Join(capsule, "config")
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		return created, fmt.Errorf("failed to create capsule config dir %s: %w", configDir, err)
+	// Initialize standard Oopsbox directory hierarchy (config, data, backups)
+	standardDirs := []string{"config", "data", "backups"}
+	for _, dirName := range standardDirs {
+		dirPath := filepath.Join(capsule, dirName)
+		if err := os.MkdirAll(dirPath, 0755); err != nil {
+			return created, fmt.Errorf("failed to create capsule %s dir %s: %w", dirName, dirPath, err)
+		}
 	}
 
 	// Initialize .env with strong credentials if missing
