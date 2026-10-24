@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.17.0] - 2026-10-24
+
 ### Added
 - **Capsule Standard Directory Hierarchy (`config`, `data`, `backups`)**: Initialized standard Oopsbox directories (`config/`, `data/`, `backups/`) in remote capsules (`/@<remote>/`) to fully support `oops backup` operations and operational directory parity (`internal/remote/blueprint.go`, `internal/remote/config_test.go`, `docs/specs/remote.md`).
 - **Commented Tunnel Template in `remote.yaml`**: Automatically generates commented `tunnel:` configuration blueprint with service discovery examples in `remote.yaml` on new remote connections (`internal/remote/config.go`, `internal/remote/config_test.go`, `docs/specs/remote.md`).
