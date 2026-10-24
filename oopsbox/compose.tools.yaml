@@ -37,7 +37,3 @@ services:
       caddy.reverse_proxy: "{{upstreams 8025}}"
     networks:
       - default
-
-networks:
-  default:
-    name: oops_default

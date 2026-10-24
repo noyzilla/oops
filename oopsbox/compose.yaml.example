@@ -20,4 +20,6 @@ networks:
     name: oops_default
     ipam:
       config:
-        - subnet: 10.240.0.0/16
+        - subnet: 10.240.0.0/24
+          ip_range: 10.240.0.128/25
+          gateway: 10.240.0.1

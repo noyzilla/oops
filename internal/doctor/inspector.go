@@ -254,7 +254,7 @@ func extractServiceStaticIPs(composePath, svcName string, node *yaml.Node, subne
 				}
 
 				// Check .2 DNS reservation
-				if ip4[3] == 2 {
+				if ip4[3] == 2 && svcName != "oops" {
 					*issues = append(*issues, AuditIssue{
 						Scope:      "compose",
 						Target:     fmt.Sprintf("%s (service: %s)", composePath, svcName),
