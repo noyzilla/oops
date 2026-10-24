@@ -6,6 +6,17 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.19.0] - 2026-10-25
+
+### Added
+- **Compact Trusted Core Subnet (`10.240.0.0/24`) & IPAM Range**: Adopted compact `/24` subnet with deterministic dynamic IP range (`ip_range: 10.240.0.128/25`), reserving `10.240.0.2` – `10.240.0.127` for static core services (`oops`, `caddy-proxy`) without risk of dynamic IP allocation collision.
+- **Multi-Host Subnet Sizing Policy in `oops.yaml`**: Standardized default `x-oops.network.subnet: 10.240.0.0/24` with comprehensive inline documentation covering single-network host defaults, multi-remote mesh routing without route collision (`@server1: 10.240.0.0/24`, `@server2: 10.240.1.0/24`), and multi-network expansion (`/16`).
+- **Oops Daemon IP Precedence**: Placed `oops` service definition ahead of `caddy-proxy` in `compose.edge.yaml` with fixed IP `10.240.0.2` and updated doctor compose to recognize `.2` reservation for `oops`.
+
+### Changed
+- **Clean Compose Architecture**: Removed redundant service-level `networks: - default` and root-level `networks:` blocks from stack manifests (`compose.edge.yaml`, `compose.db.yaml`, `compose.tools.yaml`, `compose.storage.yaml`), relying on Docker Compose's automatic `default` network inheritance.
+- **Storage Stack Unification**: Replaced separate `oops_storage` network with the trusted core `default` (`oops_default`) network for `seaweedfs`.
+
 ## [v1.18.0] - 2026-10-24
 
 ### Added
