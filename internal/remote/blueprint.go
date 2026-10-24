@@ -73,7 +73,13 @@ x-oops:
     data: []
 
   network:
-    subnet: 10.240.0.0/16
+    # Authoritative L3 subnet envelope for this host / remote capsule.
+    # Default: 10.240.0.0/24 (Single network: matches compose.yaml oops_default).
+    # Multi-network expansion: Use /16 (e.g. 10.240.0.0/16) if hosting multiple
+    # isolated subnets on this single host.
+    # Multi-host mesh: Assign distinct /24 subnets across remote hosts
+    # (e.g. @server1: 10.240.0.0/24, @server2: 10.240.1.0/24) to prevent routing collisions.
+    subnet: 10.240.0.0/24
 
   dns:
     tld: oops

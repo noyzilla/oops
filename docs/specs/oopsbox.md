@@ -42,14 +42,15 @@ When provisioning a new workspace via `oops box init [path]`:
 
 ### Manifest Architecture & Stack-Scoped Network Isolation
 Oopsbox enforces a **Pure Stack Architecture** with network micro-segmentation, shared service extensions, and pure configuration separation:
-- **`compose.yaml`**: The primary root compose manifest defining `x-oops-stack:` (boot order and auto-start whitelist, e.g. `[/edge, /db, /tools]`), and the default untrusted bridge network (`default: name: oops_default`). Containers without an explicit `networks:` block fall into `oops_default` and cannot access databases or internal services.
+- **`compose.yaml`**: The primary root compose manifest defining `x-oops-stack:` (boot order and auto-start whitelist, e.g. `[/edge, /db, /tools]`), and the default network (`default: name: oops_default`) with compact subnet `10.240.0.0/24` and dynamic pool `ip_range: 10.240.0.128/25` (reserving `10.240.0.2` - `10.240.0.127` for static core services). Containers without an explicit `networks:` block automatically join `oops_default`.
 - **`common.yaml`**: Common service extensions defining shared configurations such as `common-logging` (`json-file`, `max-size: 10m`, `max-file: 3`), inherited across stack manifests via Compose `extends: { file: common.yaml, service: common-logging }`.
-- **`compose.<stack>.yaml`**: Self-contained infrastructure and application stack files inheriting common service extensions from `common.yaml`, declaring their own services, internal `x-oops-stack:` auto-start order, and stack-scoped bridge networks:
-  - `compose.edge.yaml`: Contains `caddy-proxy` and `oops` (daemon), and defines `oops_edge` bridge network.
-  - `compose.db.yaml`: Contains `mysql`, `postgres`, and `redis`, and defines `oops_db` bridge network.
-  - `compose.storage.yaml`: Contains `seaweedfs` object storage and defines `oops_storage` bridge network.
-  - `compose.tools.yaml`: Contains developer utilities (`httpbin`, `mailpit`) joined to `oops_edge`.
-- **`oops.yaml`**: Pure Oops system configuration file holding `x-oops:` settings (`secret`, `db`, `orchestrator`, `backup`, `dns`, `volume`, `registries`). It contains NO `services:` or `networks:` definitions.
+- **`compose.<stack>.yaml`**: Self-contained infrastructure and application stack files inheriting common service extensions from `common.yaml`, declaring their own services, internal `x-oops-stack:` auto-start order, and connecting to the trusted core `default` network (`oops_default`):
+  - `compose.edge.yaml`: Contains `oops` (daemon, static IP `10.240.0.2`) and `caddy-proxy` (ingress, static IP `10.240.0.3`).
+  - `compose.db.yaml`: Contains persistent databases and caches (`mysql`, `postgres`, `redis`).
+  - `compose.storage.yaml`: Contains `seaweedfs` object storage.
+  - `compose.tools.yaml`: Contains developer utilities (`httpbin`, `mailpit`).
+- **`oops.yaml`**: Pure Oops system configuration file holding `x-oops:` settings (`secret`, `db`, `orchestrator`, `backup`, `network`, `dns`, `volume`, `registries`). It contains NO `services:` or `networks:` definitions.
+  - `network.subnet`: Authoritative L3 subnet envelope for this host / remote capsule. Defaults to `10.240.0.0/24` (single network). Operators assign distinct `/24` subnets across remote hosts (`@server1: 10.240.0.0/24`, `@server2: 10.240.1.0/24`) for collision-free mesh VPN tunnels, or expand to `/16` (`10.240.0.0/16`) if running multiple internal Docker networks on a single host.
 
 ### Environment Variable Synchronization (`OOPS_IP`, `UID`, `GID`)
 To ensure zero-configuration compatibility across compose stacks:

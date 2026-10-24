@@ -54,10 +54,8 @@ graph TD
     style Worker fill:#f59e0b,stroke:#b45309,color:#fff
 ```
 
-- **`oops_default`**: Declared in `compose.yaml` as the default network. Untrusted or third-party containers without an explicit `networks:` block are isolated here and cannot reach `oops_db`.
-- **`oops_edge`**: Declared in `compose.edge.yaml` for public Ingress traffic only. Databases and background workers are **never** joined to this network.
-- **`oops_db`**: Declared in `compose.db.yaml` for internal persistence and cache. Completely isolated from the internet and untrusted containers.
-- **`oops_storage`**: Declared in `compose.storage.yaml` for internal object storage (`seaweedfs`).
+- **`oops_default`**: Declared in `compose.yaml` as the trusted core network (`subnet: 10.240.0.0/24`, `ip_range: 10.240.0.128/25`). Static IPs are reserved for core infrastructure (`10.240.0.2` for Oops daemon, `10.240.0.3` for Caddy edge proxy), while all dynamic containers receive IPs starting from `10.240.0.128` upwards.
+- **`network.subnet` in `oops.yaml`**: Authoritative L3 subnet envelope for this host / remote capsule (`10.240.0.0/24`). For multi-remote setups, assign distinct `/24` subnets (e.g. `@server1: 10.240.0.0/24`, `@server2: 10.240.1.0/24`) to prevent tunnel routing collisions. If hosting multiple isolated networks on a single machine, expand the host envelope to `/16` (`10.240.0.0/16`).
 
 ---
 

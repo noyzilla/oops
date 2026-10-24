@@ -99,8 +99,8 @@ func TestRemoteConfigManagement(t *testing.T) {
 	if !strings.Contains(string(oopsYamlContent), "tld: newbox") {
 		t.Errorf("expected capsule oops.yaml to have 'tld: newbox', got:\n%s", string(oopsYamlContent))
 	}
-	if !strings.Contains(string(oopsYamlContent), "subnet: 10.240.0.0/16") {
-		t.Errorf("expected capsule oops.yaml to have 'subnet: 10.240.0.0/16', got:\n%s", string(oopsYamlContent))
+	if !strings.Contains(string(oopsYamlContent), "subnet: 10.240.0.0/24") {
+		t.Errorf("expected capsule oops.yaml to have 'subnet: 10.240.0.0/24', got:\n%s", string(oopsYamlContent))
 	}
 
 	for _, expectedDir := range []string{"config", "data", "backups"} {

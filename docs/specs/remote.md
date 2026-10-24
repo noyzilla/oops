@@ -61,7 +61,10 @@ When executing `oops remote connect @<remote>[:<path>]`:
   - If remote server already contains `compose.yaml`, `oops.yaml`, or `.oopsallow`: Automatically pulls them down into `/@<host>/` following `.oopsallow`.
   - If remote server is fresh (no manifests): Generates capsule manifests from workspace blueprint templates:
     - `/@<host>/compose.yaml` initialized from `compose.yaml.example` (with safe commented `x-oops-stack:` and `oops_default` network).
-    - `/@<host>/oops.yaml` initialized from `oops.yaml.example` enforcing **Single-TLD Identity** (`dns.tld: <remoteName>`) and default subnet (`network.subnet: 10.240.0.0/16`).
+    - `/@<host>/oops.yaml` initialized from `oops.yaml.example` enforcing **Single-TLD Identity** (`dns.tld: <remoteName>`) and default subnet (`network.subnet: 10.240.0.0/24`).
+      - Single-network host: Defaults to `/24` (`10.240.0.0/24`) aligning with `compose.yaml` `oops_default`.
+      - Multi-remote mesh: Operators assign distinct `/24` subnets (e.g. `@server1: 10.240.0.0/24`, `@server2: 10.240.1.0/24`) to eliminate tunnel route collisions.
+      - Multi-network host: Expand to `/16` (e.g. `10.240.0.0/16`) if hosting multiple isolated internal Docker networks.
     - `/@<host>/.oopsallow` initialized from `.oopsallow.example` (bidirectional sync whitelist).
     - `/@<host>/.env` initialized from `.env.example` with cryptographically secure random `OOPS_SECRET` and `OOPS_DB_*_PASSWORD` credentials.
     - `/@<host>/remote.yaml` initialized with remote connection details and commented tunnel configuration blueprint.
