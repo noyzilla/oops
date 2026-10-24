@@ -284,9 +284,13 @@ func AuditComposeAll(workDir string) []AuditIssue {
 
 	for _, r := range remotes {
 		capsuleDir := remote.CapsuleDir(workDir, r)
-		manifest, err := remote.LoadConfig(workDir, r)
+		manifest, _ := remote.LoadConfig(workDir, r)
+		capsuleOops, _ := docker.LoadOopsConfig(capsuleDir)
+
 		declaredSubnet := ""
-		if err == nil && manifest.Network.Subnet != "" {
+		if capsuleOops != nil && capsuleOops.Network.Subnet != "" {
+			declaredSubnet = capsuleOops.Network.Subnet
+		} else if manifest != nil && manifest.Network.Subnet != "" {
 			declaredSubnet = manifest.Network.Subnet
 		}
 

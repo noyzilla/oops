@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/noyzilla/oops/internal/doctor"
+	"github.com/noyzilla/oops/internal/docker"
 	"github.com/noyzilla/oops/internal/remote"
 	"github.com/spf13/cobra"
 )
@@ -57,8 +58,12 @@ func newDoctorComposeCmd() *cobra.Command {
 				remoteTarget := strings.TrimPrefix(args[0], "@")
 				capsuleDir := remote.CapsuleDir(workDir, remoteTarget)
 				manifest, _ := remote.LoadConfig(workDir, remoteTarget)
+				capsuleOops, _ := docker.LoadOopsConfig(capsuleDir)
+
 				declaredSubnet := ""
-				if manifest != nil {
+				if capsuleOops != nil && capsuleOops.Network.Subnet != "" {
+					declaredSubnet = capsuleOops.Network.Subnet
+				} else if manifest != nil {
 					declaredSubnet = manifest.Network.Subnet
 				}
 				capsuleCompose := filepath.Join(capsuleDir, "compose.yaml")

@@ -23,6 +23,9 @@ x-oops:
     retention: 7d
     data: []
 
+  network:
+    subnet: 10.240.0.0/16
+
   dns:
     tld: oops
     upstreams:

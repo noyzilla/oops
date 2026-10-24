@@ -90,11 +90,13 @@ func TestAuditComposeAll_SubnetCollisionBetweenRemotes(t *testing.T) {
 	_ = os.MkdirAll(b9tpeDir, 0755)
 	_ = os.MkdirAll(antholeDir, 0755)
 
-	manifestB9tpe := "host: b9tpe.example.com\nnetwork:\n  subnet: \"10.240.0.0/16\"\n"
-	manifestAnthole := "host: anthole.example.com\nnetwork:\n  subnet: \"10.240.0.0/16\"\n"
+	oopsB9tpe := "x-oops:\n  network:\n    subnet: \"10.240.0.0/16\"\n"
+	oopsAnthole := "x-oops:\n  network:\n    subnet: \"10.240.0.0/16\"\n"
 
-	_ = os.WriteFile(filepath.Join(b9tpeDir, "remote.yaml"), []byte(manifestB9tpe), 0644)
-	_ = os.WriteFile(filepath.Join(antholeDir, "remote.yaml"), []byte(manifestAnthole), 0644)
+	_ = os.WriteFile(filepath.Join(b9tpeDir, "oops.yaml"), []byte(oopsB9tpe), 0644)
+	_ = os.WriteFile(filepath.Join(antholeDir, "oops.yaml"), []byte(oopsAnthole), 0644)
+	_ = os.WriteFile(filepath.Join(b9tpeDir, "remote.yaml"), []byte("host: b9tpe.example.com\n"), 0644)
+	_ = os.WriteFile(filepath.Join(antholeDir, "remote.yaml"), []byte("host: anthole.example.com\n"), 0644)
 
 	issues := AuditComposeAll(tempDir)
 	hasCollision := false

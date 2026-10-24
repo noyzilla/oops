@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/noyzilla/oops/internal/docker"
 	"github.com/noyzilla/oops/internal/remote"
 )
 
@@ -148,8 +149,12 @@ func ResolveTunnelConfig(workDir, remoteTarget string) (*TunnelConfig, error) {
 		mode = "port"
 	}
 
-	subnet := cfg.Network.Subnet
-	if subnet == "" {
+	subnet := ""
+	if capsuleOops, err := docker.LoadOopsConfig(remote.CapsuleDir(workDir, cleanRemote)); err == nil && capsuleOops != nil && capsuleOops.Network.Subnet != "" {
+		subnet = capsuleOops.Network.Subnet
+	} else if cfg.Network.Subnet != "" {
+		subnet = cfg.Network.Subnet
+	} else {
 		subnet = "10.240.0.0/16"
 	}
 
