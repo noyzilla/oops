@@ -20,8 +20,6 @@ services:
       oops.enable: "true"
       caddy: "httpbin.web.oops"
       caddy.reverse_proxy: "{{upstreams 8080}}"
-    networks:
-      - default
 
   mailpit:
     image: axllent/mailpit:latest
@@ -35,5 +33,3 @@ services:
       oops.enable: "true"
       caddy: "mailpit.web.oops"
       caddy.reverse_proxy: "{{upstreams 8025}}"
-    networks:
-      - default

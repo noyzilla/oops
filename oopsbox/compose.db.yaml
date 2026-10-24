@@ -21,8 +21,6 @@ services:
       MYSQL_ROOT_PASSWORD: ${OOPS_DB_MYSQL_PASSWORD:?OOPS_DB_MYSQL_PASSWORD must be set}
     volumes:
       - ./data/mysql:/var/lib/mysql
-    networks:
-      - default
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}" ]
       interval: 5s
@@ -41,8 +39,6 @@ services:
       POSTGRES_PASSWORD: ${OOPS_DB_POSTGRES_PASSWORD:?OOPS_DB_POSTGRES_PASSWORD must be set}
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
-    networks:
-      - default
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
@@ -98,8 +94,6 @@ services:
       - "60"
       - --timeout
       - "1800"
-    networks:
-      - default
     healthcheck:
       test: [ "CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG; else redis-cli ping | grep PONG; fi" ]
       interval: 10s

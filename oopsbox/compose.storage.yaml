@@ -1,7 +1,7 @@
 # ==============================================================================
 # Oops Storage Stack Manifest (compose.storage.yaml)
 # ==============================================================================
-# S3-compatible distributed object storage on the oops_storage bridge network.
+# S3-compatible distributed object storage connected to default network.
 # ==============================================================================
 x-oops-stack:
   - seaweedfs
@@ -18,10 +18,3 @@ services:
     command: "server -s3 -dir=/data"
     volumes:
       - ./data/storage:/data
-    networks:
-      - oops_storage
-
-networks:
-  oops_storage:
-    name: oops_storage
-    driver: bridge
