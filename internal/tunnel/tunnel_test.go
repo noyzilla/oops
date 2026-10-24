@@ -220,6 +220,20 @@ func TestBuildContainerConfig_CapNetAdminAndDnsMappings(t *testing.T) {
 		t.Errorf("missing CLOUDSDK_CORE_DISABLE_FILE_LOGGING env: %v", cConfig.Env)
 	}
 
+	// Test env propagation
+	t.Setenv("CLOUDSDK_CORE_PROJECT", "test-proj-123")
+	cConfig2, _, _ := BuildContainerConfig(cfg, mappings)
+	foundProj := false
+	for _, e := range cConfig2.Env {
+		if e == "CLOUDSDK_CORE_PROJECT=test-proj-123" {
+			foundProj = true
+			break
+		}
+	}
+	if !foundProj {
+		t.Errorf("expected CLOUDSDK_CORE_PROJECT to be propagated, got %v", cConfig2.Env)
+	}
+
 	foundCap := false
 	for _, cap := range hConfig.CapAdd {
 		if cap == "NET_ADMIN" {
