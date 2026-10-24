@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.15.0] - 2026-10-24
+
 ### Added
 - **Smart SSH Config & External Key Mount Inspector (`ResolveSSHReferencedDirectories`)**: Dynamically resolves OpenSSH `IdentityFile`, `CertificateFile`, and `Include` targets via `ssh -G <host>` and parses `~/.ssh/config`. Automatically mounts any external key directories outside `~/.ssh` into the tunnel container as read-only (`:ro`) with dual-path mapping (host absolute path and container `/root` path), eliminating missing identity errors without hardcoded paths or host permission pollution (`internal/tunnel/container.go`, `internal/tunnel/container_mount_test.go`, `docs/specs/tunnel.md`).
 
