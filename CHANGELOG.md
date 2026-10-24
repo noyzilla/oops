@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.18.0] - 2026-10-24
+
 ### Added
 - **Mesh VPN L3 Subnet & IPAM Schema**: Introduced deterministic `network.subnet` in `remote.yaml` (default `10.240.0.0/16`) and root `compose.yaml` `x-oops.network.subnet`, with IP containment validation (`ValidateNetworkSubnet`, `IsSubnetContained`) and deterministic IP reservations (`.1` Gateway, `.2` DNS) (`internal/docker/config.go`, `internal/remote/blueprint.go`, `docs/specs/remote.md`).
 - **Single-TLD Remote Identity & Automated Compose Service Registration**: Enforced `dns.tld == <remote_name>` on every capsule, automatically registering `com.docker.compose.service` as `<service>.<tld>` alongside `<service>.oops`, paired TLD routing, and Zero Public Leakage Guard with instant NXDOMAIN fail-fast (`internal/dns/resolver.go`, `internal/dns/watcher.go`, `internal/dns/server.go`, `docs/specs/dns.md`).
