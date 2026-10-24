@@ -60,7 +60,12 @@ func BuildTunnelCommand(cfg *TunnelConfig, mappings []PortMapping) []string {
 		aliasSetup = strings.Join(aliasCommands, "\n") + "\n"
 	}
 
-	script := fmt.Sprintf(`mkdir -p /root/.ssh
+	script := fmt.Sprintf(`mkdir -p /root/.config/gcloud
+if [ -d /root/.config/gcloud-host ]; then
+  cp -rn /root/.config/gcloud-host/* /root/.config/gcloud/ 2>/dev/null || true
+  chmod -R 700 /root/.config/gcloud 2>/dev/null || true
+fi
+mkdir -p /root/.ssh
 if [ -d /root/.ssh-host ]; then
   cp -rn /root/.ssh-host/* /root/.ssh/ 2>/dev/null || true
   chmod 700 /root/.ssh
@@ -109,7 +114,7 @@ func BuildContainerConfig(cfg *TunnelConfig, mappings []PortMapping) (*container
 			mounts = append(mounts, mount.Mount{
 				Type:     mount.TypeBind,
 				Source:   gcloudDir,
-				Target:   "/root/.config/gcloud",
+				Target:   "/root/.config/gcloud-host",
 				ReadOnly: true,
 			})
 		}
@@ -130,6 +135,7 @@ func BuildContainerConfig(cfg *TunnelConfig, mappings []PortMapping) (*container
 		Cmd:      cmd,
 		Hostname: cfg.Hostname,
 		Labels:   labels,
+		Env:      []string{"CLOUDSDK_CORE_DISABLE_FILE_LOGGING=true"},
 	}
 
 	hostConfig := &container.HostConfig{

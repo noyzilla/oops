@@ -176,6 +176,9 @@ func TestBuildTunnelCommand_StandardSSH(t *testing.T) {
 	if !strings.Contains(script, "exec ssh ") {
 		t.Errorf("script should execute standard ssh: %s", script)
 	}
+	if !strings.Contains(script, "/root/.config/gcloud-host") {
+		t.Errorf("script missing gcloud-host staging copy: %s", script)
+	}
 	if !strings.Contains(script, "IgnoreUnknown=UseKeychain") {
 		t.Errorf("script missing IgnoreUnknown=UseKeychain: %s", script)
 	}
@@ -211,6 +214,10 @@ func TestBuildContainerConfig_CapNetAdminAndDnsMappings(t *testing.T) {
 	dnsMap := cConfig.Labels["oops.dns.mappings"]
 	if !strings.Contains(dnsMap, "mysql1.b9tpe.tunnel.oops=172.18.0.10") {
 		t.Errorf("missing dns mapping for mysql1: %s", dnsMap)
+	}
+
+	if len(cConfig.Env) == 0 || cConfig.Env[0] != "CLOUDSDK_CORE_DISABLE_FILE_LOGGING=true" {
+		t.Errorf("missing CLOUDSDK_CORE_DISABLE_FILE_LOGGING env: %v", cConfig.Env)
 	}
 
 	foundCap := false

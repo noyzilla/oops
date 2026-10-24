@@ -87,6 +87,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - For GCP instances, `~/.ssh/config` defines `ProxyCommand gcloud compute start-iap-tunnel ...` which OpenSSH executes seamlessly.
 - For non-GCP hosts (AWS, Hetzner, Bare-Metal), standard SSH connects directly without configuration changes.
 - **macOS SSH Config Sanitization**: When mounting `~/.ssh` from macOS host machines into the Linux tunnel container, Apple-specific options (such as `UseKeychain yes`) are automatically stripped from the container's local `/root/.ssh/config` copy and overridden via `-o IgnoreUnknown=UseKeychain` to prevent OpenSSH option rejection crashes.
+- **gcloud Runtime Staging**: Host `~/.config/gcloud` is mounted read-only to `/root/.config/gcloud-host` and staged into a local container-writable `/root/.config/gcloud` at boot with `CLOUDSDK_CORE_DISABLE_FILE_LOGGING=true`. This enables `gcloud` to write runtime tokens to `credentials.db` during IAP tunnel negotiation without read-only filesystem errors or mutating host credential ownership.
 
 ---
 
@@ -105,7 +106,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
        ├── Image: google/cloud-sdk:alpine
        ├── Container Name: oops-tunnel-b9tpe
        ├── Hostname & Label: tunnel-b9tpe.oops, b9tpe.oops
-       ├── Volumes: ~/.config/gcloud:/root/.config/gcloud:ro, ~/.ssh:/root/.ssh-host:ro
+       ├── Volumes: ~/.config/gcloud:/root/.config/gcloud-host:ro, ~/.ssh:/root/.ssh-host:ro
        └── Command: gcloud compute ssh <host> --zone=<zone> --tunnel-through-iap -- \
                     -N -g -L 0.0.0.0:3306:172.18.0.5:3306 -L 0.0.0.0:6379:172.18.0.6:6379 ...
        ▼

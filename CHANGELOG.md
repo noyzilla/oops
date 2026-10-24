@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Fixed
+- **Tunnel GCP IAP Writable Staging (`~/.config/gcloud`)**: Mounted host `~/.config/gcloud` to read-only staging `/root/.config/gcloud-host` and copied to a local writable `/root/.config/gcloud` inside the tunnel container at startup. Added `CLOUDSDK_CORE_DISABLE_FILE_LOGGING=true`, preventing `[Errno 30] Read-only file system` errors on `credentials.db` during Google Cloud IAP tunnel establishment (`internal/tunnel/container.go`, `internal/tunnel/tunnel_test.go`, `docs/specs/tunnel.md`).
+
 ## [v1.14.2] - 2026-10-24
 
 ### Fixed
