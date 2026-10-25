@@ -190,7 +190,7 @@ func RestoreRedis(ctx context.Context, containerTarget string, rdbReader io.Read
 	out, _ := inspectCmd.Output()
 	redisImage := strings.TrimSpace(string(out))
 	if redisImage == "" {
-		redisImage = "redis:8.10.2-alpine"
+		redisImage = "redis:8-alpine"
 	}
 
 	// 2. Stop running main Redis container to freeze memory and prevent shutdown overwrite
