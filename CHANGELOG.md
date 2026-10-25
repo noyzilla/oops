@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.24.0] - 2026-10-25
+
 ### Added
 - **macOS DNS Resolver Repair (`oops dns repair`, alias `fix`)**: Added command to inspect all active workspace and remote resolvers in `/etc/resolver/` and synchronize their `nameserver` IPs to the active `edge/oops` container IP, with automatic macOS DNS cache flushing (`dscacheutil -flushcache`) and `--dry-run` preview support (`cmd/dns.go`, `internal/box/engine.go`, `docs/specs/cli.md`, `docs/specs/dns.md`).
 - **Doctor Stale Resolver Nameserver IP Audit**: Enhanced `oops doctor` and `oops doctor dns` to audit the `nameserver` IP inside `/etc/resolver/*` files against the active `edge/oops` container IP, alerting on outdated/stale resolver configurations and directing users to `oops dns repair` (`internal/doctor/inspector.go`).
