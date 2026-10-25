@@ -51,6 +51,33 @@ func BuildRedisDropACL(username string) []string {
 	}
 }
 
+// BuildRedisRepairACL builds arguments for repairing a Redis user's ACL and password cleanly
+func BuildRedisRepairACL(username, password, prefix string, readonly bool) []string {
+	if readonly {
+		return []string{
+			"ACL", "SETUSER", username,
+			"on",
+			"resetpass",
+			">" + password,
+			"~" + prefix + ":*",
+			"&*",
+			"+@read",
+			"+info",
+		}
+	}
+	return []string{
+		"ACL", "SETUSER", username,
+		"on",
+		"resetpass",
+		">" + password,
+		"~" + prefix + ":*",
+		"&*",
+		"+@all",
+		"-@dangerous",
+		"+info",
+	}
+}
+
 // CheckRedisUserExists checks if an ACL user already exists in Redis
 func CheckRedisUserExists(ctx context.Context, containerTarget, username string) (bool, error) {
 	out, err := ExecuteRedis(ctx, containerTarget, "ACL", "USERS")

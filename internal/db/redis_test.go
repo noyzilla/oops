@@ -64,3 +64,36 @@ func TestBuildRedisDropACL(t *testing.T) {
 	}
 }
 
+func TestBuildRedisRepairACL(t *testing.T) {
+	args := BuildRedisRepairACL("myapp", "secret123", "myapp", false)
+	expected := []string{
+		"ACL", "SETUSER", "myapp",
+		"on",
+		"resetpass",
+		">secret123",
+		"~myapp:*",
+		"&*",
+		"+@all",
+		"-@dangerous",
+		"+info",
+	}
+	if !reflect.DeepEqual(args, expected) {
+		t.Errorf("BuildRedisRepairACL(normal) = %v, want %v", args, expected)
+	}
+
+	roArgs := BuildRedisRepairACL("myapp__ro_worker", "secret123", "myapp", true)
+	roExpected := []string{
+		"ACL", "SETUSER", "myapp__ro_worker",
+		"on",
+		"resetpass",
+		">secret123",
+		"~myapp:*",
+		"&*",
+		"+@read",
+		"+info",
+	}
+	if !reflect.DeepEqual(roArgs, roExpected) {
+		t.Errorf("BuildRedisRepairACL(readonly) = %v, want %v", roArgs, roExpected)
+	}
+}
+

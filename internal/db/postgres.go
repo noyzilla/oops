@@ -43,6 +43,35 @@ func BuildPostgresPasswdSQL(username, newPassword string) string {
 	return fmt.Sprintf("ALTER ROLE \"%s\" WITH PASSWORD '%s';", username, newPassword)
 }
 
+// BuildPostgresRepairSQL builds query to repair role with privileges matching password
+func BuildPostgresRepairSQL(dbName, username, password, topUser string, readonly bool) string {
+	if readonly {
+		return fmt.Sprintf(
+			"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '%s') THEN "+
+				"CREATE ROLE \"%s\" WITH LOGIN PASSWORD '%s'; ELSE "+
+				"ALTER ROLE \"%s\" WITH PASSWORD '%s'; END IF; END $$; "+
+				"GRANT CONNECT ON DATABASE \"%s\" TO \"%s\"; "+
+				"\\c \"%s\"; "+
+				"GRANT USAGE ON SCHEMA public TO \"%s\"; "+
+				"GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"%s\"; "+
+				"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO \"%s\";",
+			username, username, password, username, password, dbName, username, dbName, username, username, username,
+		)
+	}
+	sql := fmt.Sprintf(
+		"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '%s') THEN "+
+			"CREATE ROLE \"%s\" WITH LOGIN PASSWORD '%s'; ELSE "+
+			"ALTER ROLE \"%s\" WITH PASSWORD '%s'; END IF; END $$; "+
+			"GRANT ALL PRIVILEGES ON DATABASE \"%s\" TO \"%s\"; "+
+			"\\c \"%s\"; GRANT ALL ON SCHEMA public TO \"%s\";",
+		username, username, password, username, password, dbName, username, dbName, username,
+	)
+	if topUser != "" {
+		sql += fmt.Sprintf(" GRANT ALL PRIVILEGES ON DATABASE \"%s\" TO \"%s\";", dbName, topUser)
+	}
+	return sql
+}
+
 // ExecutePostgres runs a query inside the target PostgreSQL container
 func ExecutePostgres(ctx context.Context, containerTarget, query string) (string, error) {
 	if containerTarget == "" {

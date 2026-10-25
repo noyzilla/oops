@@ -41,6 +41,31 @@ func BuildMySQLPasswdSQL(username, newPassword string) string {
 	)
 }
 
+// BuildMySQLRepairSQL builds queries to repair a user and database credentials to match password
+func BuildMySQLRepairSQL(dbName, username, password string, isLevel1, readonly bool) string {
+	if readonly {
+		return fmt.Sprintf(
+			"CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '%s'; "+
+				"ALTER USER '%s'@'%%' IDENTIFIED BY '%s'; "+
+				"GRANT SELECT ON `%s`.* TO '%s'@'%%'; "+
+				"FLUSH PRIVILEGES;",
+			username, password, username, password, dbName, username,
+		)
+	}
+	sql := fmt.Sprintf(
+		"CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; "+
+			"CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '%s'; "+
+			"ALTER USER '%s'@'%%' IDENTIFIED BY '%s'; "+
+			"GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'%%'; ",
+		dbName, username, password, username, password, dbName, username,
+	)
+	if isLevel1 {
+		sql += fmt.Sprintf("GRANT ALL PRIVILEGES ON `%s\\_%%`.* TO '%s'@'%%'; ", dbName, username)
+	}
+	sql += "FLUSH PRIVILEGES;"
+	return sql
+}
+
 // ExecuteMySQL runs a query inside the target MySQL container
 func ExecuteMySQL(ctx context.Context, containerTarget, query string) (string, error) {
 	if containerTarget == "" {

@@ -51,3 +51,36 @@ func TestBuildPostgresCreateSQL(t *testing.T) {
 		t.Errorf("missing top-user grant: %s", sql)
 	}
 }
+
+func TestBuildMySQLRepairSQL(t *testing.T) {
+	sqlNormal := db.BuildMySQLRepairSQL("myapp", "myapp", "pass123", true, false)
+	if !strings.Contains(sqlNormal, "CREATE USER IF NOT EXISTS 'myapp'@'%' IDENTIFIED BY 'pass123'") {
+		t.Errorf("missing create user: %s", sqlNormal)
+	}
+	if !strings.Contains(sqlNormal, "ALTER USER 'myapp'@'%' IDENTIFIED BY 'pass123'") {
+		t.Errorf("missing alter user: %s", sqlNormal)
+	}
+	if !strings.Contains(sqlNormal, "GRANT ALL PRIVILEGES ON `myapp`.* TO 'myapp'@'%'") {
+		t.Errorf("missing grant: %s", sqlNormal)
+	}
+
+	sqlRO := db.BuildMySQLRepairSQL("myapp", "myapp__ro_app", "pass123", false, true)
+	if !strings.Contains(sqlRO, "GRANT SELECT ON `myapp`.* TO 'myapp__ro_app'@'%'") {
+		t.Errorf("missing readonly grant: %s", sqlRO)
+	}
+}
+
+func TestBuildPostgresRepairSQL(t *testing.T) {
+	sqlNormal := db.BuildPostgresRepairSQL("myapp_db", "myapp_db", "pass123", "myapp", false)
+	if !strings.Contains(sqlNormal, "CREATE ROLE \"myapp_db\" WITH LOGIN PASSWORD 'pass123'") {
+		t.Errorf("missing create role: %s", sqlNormal)
+	}
+	if !strings.Contains(sqlNormal, "ALTER ROLE \"myapp_db\" WITH PASSWORD 'pass123'") {
+		t.Errorf("missing alter role: %s", sqlNormal)
+	}
+
+	sqlRO := db.BuildPostgresRepairSQL("myapp_db", "myapp__ro_app", "pass123", "", true)
+	if !strings.Contains(sqlRO, "GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"myapp__ro_app\"") {
+		t.Errorf("missing readonly select: %s", sqlRO)
+	}
+}

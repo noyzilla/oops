@@ -113,11 +113,12 @@ For each matched service in target order:
 
 ### Database Management (`oops db <mysql|postgres|redis>[:<target>] <action>`)
 - **Supported Engines**: `mysql`, `postgres`, `redis`
-- **Actions**: `create`, `readonly`, `passwd`, `list`, `drop`
+- **Actions**: `create`, `readonly`, `passwd`, `list`, `drop`, `repair`
 - **Naming Rule & Terminology**: Relational database names (`mysql`, `postgres`) contain at most one underscore (`_`), restricting databases to 2 levels. For Redis, this serves as the Key Prefix namespace (`~<prefix>:*`) without underscore count restriction; output labels and CLI usage messages dynamically use `Prefix` and `<prefix>` instead of `Database` and `<db_name>`.
 - **Redis ACL Permissions**: Redis ACL users are granted `+@all -@dangerous +info` (`+@read +info` for readonly), permitting standard client library health and ready checks via `INFO` while blocking blocking operations like `KEYS` in favor of cursor-based `SCAN`.
 - **Duplicate Creation Protection**: Creating an already existing database or user (`create` or `readonly`) fails fast with an explicit error directing the operator to `oops db <engine> passwd <user> [new_password]`.
 - **Password Rotation & Clean State**: `passwd` rotates credentials and cleans up legacy state (executing `ACL SETUSER <user> resetpass ><new_password> +info` on Redis to purge multiple accumulated passwords and ensure `+info` is granted), updating all corresponding `.env` files.
+- **Credential Synchronization & Repair (`oops db <engine> repair [user]`)**: Scans `config/env/` for credential files matching `<engine>` (or a specific user if specified) and synchronizes database container users and permissions directly to match passwords in `.env` files. For Redis, this purges multiple password accumulation via `resetpass` and guarantees `+info` permission.
 - **Auto Credential Export**: Automatically exports pure engine-scoped credentials to `config/env/<engine>.<db_name>.env` without generic `DB_*` variable collisions:
   - MySQL: `DB_ENGINE=mysql`, `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_URL`
   - PostgreSQL: `DB_ENGINE=postgres`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DATABASE`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_URL`
@@ -150,7 +151,7 @@ For each matched service in target order:
 | `oops logs` | `[targets...] [--tail 50] [-f]` | Tail service logs |
 | `oops pull` | `[targets...] [--all]` | Pulls images for targets |
 | `oops update` | `[targets...] [--all] [-i <img/alias>] [-d 0s]` | Executes sequential rolling update with health check |
-| `oops db` | `<mysql\|postgres\|redis>[:<target>] <action>` | DB provisioning: `create`, `readonly`, `passwd`, `list`, `drop` |
+| `oops db` | `<mysql\|postgres\|redis>[:<target>] <action>` | DB provisioning: `create`, `readonly`, `passwd`, `list`, `drop`, `repair` |
 | `oops backup` | `[-r 7d]` | Full backup (DB + volumes) and retention prune |
 | `oops backup-db` | `[targets...] [-r 7d]` | DB dump and retention prune |
 | `oops backup-data` | `[targets...] [-r 7d]` | Data volume tar archives and retention prune |

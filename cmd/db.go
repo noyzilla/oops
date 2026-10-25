@@ -29,12 +29,15 @@ Actions:
   readonly  Create a read-only user for an existing database
   passwd    Update password for a database user
   list      List databases and users
-  drop      Drop a database and its associated user`,
+  drop      Drop a database and its associated user
+  repair    Repair and synchronize database credentials with config/env`,
 		Example: `  oops db mysql create myapp
   oops db postgres readonly myapp_ro
   oops db redis list
   oops db mysql passwd myapp newsecret
-  oops db postgres drop myapp`,
+  oops db postgres drop myapp
+  oops db redis repair
+  oops db mysql repair b9w_demo`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 2 {
 				return cmd.Help()
@@ -357,6 +360,153 @@ Actions:
 				}
 				return nil
 
+			case "repair":
+				if containerTarget == "" {
+					containerTarget = engine
+				}
+				var targetUser string
+				if len(remainingArgs) > 0 {
+					targetUser = remainingArgs[0]
+				}
+
+				envDir := filepath.Join(workDir, "config", "env")
+				entries, err := os.ReadDir(envDir)
+				if err != nil {
+					return fmt.Errorf("failed to read env directory %s: %w", envDir, err)
+				}
+
+				repairedCount := 0
+				for _, entry := range entries {
+					if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".env") {
+						continue
+					}
+
+					filePath := filepath.Join(envDir, entry.Name())
+					data, err := os.ReadFile(filePath)
+					if err != nil {
+						continue
+					}
+
+					envMap := parseEnvContent(string(data))
+
+					// Detect engine from file
+					fileEngine := strings.ToLower(envMap["DB_ENGINE"])
+					if fileEngine == "" {
+						if strings.HasPrefix(entry.Name(), "mysql.") || envMap["MYSQL_USER"] != "" {
+							fileEngine = "mysql"
+						} else if strings.HasPrefix(entry.Name(), "postgres.") || envMap["POSTGRES_USER"] != "" {
+							fileEngine = "postgres"
+						} else if strings.HasPrefix(entry.Name(), "redis.") || envMap["REDIS_USER"] != "" {
+							fileEngine = "redis"
+						}
+					}
+
+					if fileEngine != engine {
+						continue
+					}
+
+					// Extract user, password, dbName
+					var user, pass, dbName string
+					switch engine {
+					case "mysql":
+						user = envMap["MYSQL_USER"]
+						pass = envMap["MYSQL_PASSWORD"]
+						dbName = envMap["MYSQL_DATABASE"]
+					case "postgres":
+						user = envMap["POSTGRES_USER"]
+						pass = envMap["POSTGRES_PASSWORD"]
+						dbName = envMap["POSTGRES_DATABASE"]
+					case "redis":
+						user = envMap["REDIS_USER"]
+						pass = envMap["REDIS_PASSWORD"]
+						dbName = envMap["REDIS_PREFIX"]
+					}
+
+					// Fallback to generic DB_* variables for older files
+					if user == "" {
+						user = envMap["DB_USER"]
+					}
+					if pass == "" {
+						pass = envMap["DB_PASSWORD"]
+					}
+					if dbName == "" {
+						dbName = envMap["DB_NAME"]
+					}
+
+					// Fallback from filename if user is still empty
+					if user == "" {
+						parts := strings.Split(strings.TrimSuffix(entry.Name(), ".env"), ".")
+						if len(parts) >= 2 {
+							user = parts[len(parts)-1]
+						}
+					}
+					if dbName == "" {
+						dbName = user
+					}
+
+					if user == "" || pass == "" {
+						continue
+					}
+
+					// Filter by targetUser if specified
+					if targetUser != "" && user != targetUser {
+						continue
+					}
+
+					isReadonly := strings.Contains(user, "__ro_")
+
+					switch engine {
+					case "mysql":
+						isLevel1 := len(strings.Split(dbName, "_")) == 1
+						sql := db.BuildMySQLRepairSQL(dbName, user, pass, isLevel1, isReadonly)
+						_, err := db.ExecuteMySQL(context.Background(), containerTarget, sql)
+						if err != nil {
+							return fmt.Errorf("failed to repair mysql user %s: %w", user, err)
+						}
+						fmt.Printf("[mysql] Repaired credentials for user '%s' (database: '%s') from %s\n", user, dbName, entry.Name())
+						repairedCount++
+
+					case "postgres":
+						if !isReadonly {
+							if exists, _, err := db.CheckPostgresUserOrDBExists(context.Background(), containerTarget, dbName, ""); err == nil && !exists {
+								_, _ = db.ExecutePostgres(context.Background(), containerTarget, fmt.Sprintf("CREATE DATABASE \"%s\" OWNER \"%s\";", dbName, user))
+							}
+						}
+						dbParts := strings.Split(dbName, "_")
+						var topUser string
+						if len(dbParts) > 1 {
+							topUser = dbParts[0]
+						}
+						sql := db.BuildPostgresRepairSQL(dbName, user, pass, topUser, isReadonly)
+						_, err := db.ExecutePostgres(context.Background(), containerTarget, sql)
+						if err != nil {
+							return fmt.Errorf("failed to repair postgres user %s: %w", user, err)
+						}
+						fmt.Printf("[postgres] Repaired credentials for user '%s' (database: '%s') from %s\n", user, dbName, entry.Name())
+						repairedCount++
+
+					case "redis":
+						aclArgs := db.BuildRedisRepairACL(user, pass, dbName, isReadonly)
+						_, err := db.ExecuteRedis(context.Background(), containerTarget, aclArgs...)
+						if err != nil {
+							return fmt.Errorf("failed to repair redis user %s: %w", user, err)
+						}
+						fmt.Printf("[redis] Repaired credentials for user '%s' (prefix: '%s') from %s\n", user, dbName, entry.Name())
+						repairedCount++
+					}
+				}
+
+				if repairedCount == 0 {
+					if targetUser != "" {
+						return fmt.Errorf("no matching %s credential file found for user '%s' under config/env/", engine, targetUser)
+					}
+					fmt.Printf("No %s credential files found under config/env/ to repair.\n", engine)
+					return nil
+				}
+
+				fmt.Printf("Successfully repaired %d %s credential(s).\n", repairedCount, engine)
+				return nil
+
 			default:
 				return fmt.Errorf("unknown db action: %s", action)
 			}
@@ -509,4 +659,22 @@ REDIS_PASSWORD=%s
 		fmt.Printf("Exported credentials to: %s\n", filePath)
 	}
 	return err
+}
+
+func parseEnvContent(content string) map[string]string {
+	m := make(map[string]string)
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		parts := strings.SplitN(trimmed, "=", 2)
+		if len(parts) == 2 {
+			k := strings.TrimSpace(parts[0])
+			v := strings.TrimSpace(parts[1])
+			v = strings.Trim(v, `"'`)
+			m[k] = v
+		}
+	}
+	return m
 }
