@@ -64,31 +64,49 @@ func formatContainerImage(image string, full bool) string {
 	return image
 }
 
-func extractContainerStackName(labels map[string]string) string {
+func extractContainerStackName(labels map[string]string, containerName ...string) string {
+	var cName string
+	if len(containerName) > 0 {
+		cName = containerName[0]
+	}
+
+	if labels["oops.tunnel.remote"] != "" || (cName != "" && strings.HasPrefix(cName, "oops-tunnel-")) {
+		return "/tunnel"
+	}
+
 	if cFiles, ok := labels["com.docker.compose.project.config_files"]; ok && cFiles != "" {
 		var matchedStack string
+		hasRoot := false
 		for _, part := range strings.Split(cFiles, ",") {
 			base := filepath.Base(strings.TrimSpace(part))
+			if base == "compose.yaml" || base == "compose.yml" {
+				hasRoot = true
+				continue
+			}
 			if strings.HasPrefix(base, "compose.") && strings.HasSuffix(base, ".yaml") && !strings.HasSuffix(base, ".local.yaml") {
 				stack := strings.TrimSuffix(strings.TrimPrefix(base, "compose."), ".yaml")
 				if stack != "" {
-					matchedStack = stack
+					matchedStack = "/" + stack
 				}
 			}
 		}
 		if matchedStack != "" {
 			return matchedStack
 		}
+		if hasRoot {
+			return "/"
+		}
 	}
-	if proj := labels["com.docker.compose.project"]; proj != "" {
-		return proj
-	}
-	return "default"
+
+	return "%"
 }
 
 func formatStackService(stackName, serviceName string) string {
-	if stackName == "" || stackName == "." {
+	if stackName == "" || stackName == "." || stackName == "/" {
 		return "/" + serviceName
+	}
+	if stackName == "%" {
+		return "%" + serviceName
 	}
 	return fmt.Sprintf("/%s/%s", strings.TrimPrefix(stackName, "/"), serviceName)
 }
@@ -188,8 +206,11 @@ func runPs(cmd *cobra.Command, args []string, fullImage bool, showAll bool) erro
 			for _, r := range resolved {
 				targetMap[r.ContainerName] = true
 				targetMap[r.ServiceName] = true
-				if r.StackName != "" {
-					targetMap[fmt.Sprintf("/%s/%s", r.StackName, r.ServiceName)] = true
+				if r.StackName == "." || r.StackName == "" || r.StackName == "/" {
+					targetMap["/"+r.ServiceName] = true
+				} else {
+					cleanStack := strings.TrimPrefix(r.StackName, "/")
+					targetMap[fmt.Sprintf("/%s/%s", cleanStack, r.ServiceName)] = true
 				}
 			}
 		}
@@ -207,23 +228,40 @@ func runPs(cmd *cobra.Command, args []string, fullImage bool, showAll bool) erro
 		cName := strings.TrimPrefix(inspect.Name, "/")
 		svcName := inspect.Config.Labels["com.docker.compose.service"]
 		if svcName == "" {
-			svcName = cName
+			if remote := inspect.Config.Labels["oops.tunnel.remote"]; remote != "" {
+				svcName = remote
+			} else if strings.HasPrefix(cName, "oops-tunnel-") {
+				svcName = strings.TrimPrefix(cName, "oops-tunnel-")
+			} else {
+				svcName = cName
+			}
 		}
 
-		stackName := extractContainerStackName(inspect.Config.Labels)
+		stackName := extractContainerStackName(inspect.Config.Labels, cName)
 		stackService := formatStackService(stackName, svcName)
 		projectLabel := inspect.Config.Labels["com.docker.compose.project"]
 
 		// Target filtering check
-		if targetMap != nil {
-			matched := targetMap[cName] || targetMap[svcName] || targetMap[stackName] || targetMap[stackService] || targetMap[projectLabel]
+		if len(args) > 0 {
+			matched := false
+			if targetMap != nil {
+				matched = targetMap[cName] || targetMap[svcName] || targetMap[stackService] || targetMap[projectLabel]
+			}
 			if !matched {
 				for _, arg := range args {
 					argClean := strings.TrimPrefix(arg, "/")
+					stackClean := strings.TrimPrefix(stackName, "/")
+					srvClean := strings.TrimPrefix(stackService, "/")
 					if strings.EqualFold(cName, argClean) ||
+						strings.EqualFold(cName, arg) ||
 						strings.EqualFold(svcName, argClean) ||
-						strings.EqualFold(stackName, argClean) ||
-						strings.EqualFold(strings.TrimPrefix(stackService, "/"), argClean) ||
+						strings.EqualFold(svcName, arg) ||
+						strings.EqualFold(stackClean, argClean) ||
+						strings.EqualFold(stackName, arg) ||
+						strings.EqualFold(srvClean, argClean) ||
+						strings.EqualFold(stackService, arg) ||
+						(stackName == "/" && (arg == "/" || arg == "." || strings.EqualFold(arg, "root"))) ||
+						(stackName == "%" && (arg == "%" || strings.EqualFold(arg, "external"))) ||
 						strings.Contains(strings.ToLower(cName), strings.ToLower(argClean)) {
 						matched = true
 						break
@@ -236,7 +274,8 @@ func runPs(cmd *cobra.Command, args []string, fullImage bool, showAll bool) erro
 		}
 
 		// Track existing service by stack+service and containerName
-		existingServices[fmt.Sprintf("%s/%s", stackName, svcName)] = true
+		existingServices[stackService] = true
+		existingServices[fmt.Sprintf("%s/%s", strings.TrimPrefix(stackName, "/"), svcName)] = true
 		existingServices[cName] = true
 		existingServices[svcName] = true
 
@@ -291,29 +330,41 @@ func runPs(cmd *cobra.Command, args []string, fullImage bool, showAll bool) erro
 				}
 
 				for svcName, svc := range cfg.Services {
-					stackServiceKey := fmt.Sprintf("%s/%s", stack, svcName)
+					displayStack := "/"
+					if stack != "." {
+						displayStack = "/" + strings.TrimPrefix(stack, "/")
+					}
+					stackService := formatStackService(displayStack, svcName)
 					cName := svc.ContainerName
 					if cName == "" {
 						cName = svcName
 					}
 
 					// Check if container already listed
-					if existingServices[stackServiceKey] || (svc.ContainerName != "" && existingServices[svc.ContainerName]) {
+					if existingServices[stackService] || existingServices[cName] || existingServices[svcName] || (svc.ContainerName != "" && existingServices[svc.ContainerName]) {
 						continue
 					}
 
-					stackService := formatStackService(stack, svcName)
-
 					// Target filtering check for missing services
-					if targetMap != nil {
-						matched := targetMap[cName] || targetMap[svcName] || targetMap[stack] || targetMap[stackService]
+					if len(args) > 0 {
+						matched := false
+						if targetMap != nil {
+							matched = targetMap[cName] || targetMap[svcName] || targetMap[stackService]
+						}
 						if !matched {
 							for _, arg := range args {
 								argClean := strings.TrimPrefix(arg, "/")
+								displayStackClean := strings.TrimPrefix(displayStack, "/")
+								srvClean := strings.TrimPrefix(stackService, "/")
 								if strings.EqualFold(cName, argClean) ||
+									strings.EqualFold(cName, arg) ||
 									strings.EqualFold(svcName, argClean) ||
-									strings.EqualFold(stack, argClean) ||
-									strings.EqualFold(strings.TrimPrefix(stackService, "/"), argClean) ||
+									strings.EqualFold(svcName, arg) ||
+									strings.EqualFold(displayStackClean, argClean) ||
+									strings.EqualFold(displayStack, arg) ||
+									strings.EqualFold(srvClean, argClean) ||
+									strings.EqualFold(stackService, arg) ||
+									(displayStack == "/" && (arg == "/" || arg == "." || strings.EqualFold(arg, "root"))) ||
 									strings.Contains(strings.ToLower(cName), strings.ToLower(argClean)) {
 									matched = true
 									break
@@ -339,7 +390,7 @@ func runPs(cmd *cobra.Command, args []string, fullImage bool, showAll bool) erro
 
 					items = append(items, containerStatusItem{
 						ContainerID:  "-",
-						Stack:        stack,
+						Stack:        displayStack,
 						Service:      svcName,
 						StackService: stackService,
 						Container:    cName,
@@ -358,8 +409,29 @@ func runPs(cmd *cobra.Command, args []string, fullImage bool, showAll bool) erro
 		return nil
 	}
 
-	// Sort items by Stack, then Service
+	// Sort items:
+	// 1. Root stack "/" first
+	// 2. Named stacks "/<name>" alphabetically ("/db", "/edge", "/tunnel")
+	// 3. External "%" last
+	// Within the same stack, sort by Service name
 	sort.Slice(items, func(i, j int) bool {
+		stackWeight := func(s string) int {
+			if s == "/" {
+				return 0
+			}
+			if strings.HasPrefix(s, "/") {
+				return 1
+			}
+			if s == "%" {
+				return 3
+			}
+			return 2
+		}
+		wI := stackWeight(items[i].Stack)
+		wJ := stackWeight(items[j].Stack)
+		if wI != wJ {
+			return wI < wJ
+		}
 		if items[i].Stack != items[j].Stack {
 			return items[i].Stack < items[j].Stack
 		}

@@ -147,7 +147,7 @@ For each matched service in target order:
 | `oops stop` | `[targets...] [-x, --except <tgt>] [-d 0s]` | Gracefully stops target services |
 | `oops restart`| `[targets...] [-d 0s] [-i <img/alias>]` | Restarts target services with stop hooks and delay |
 | `oops down` | `[-d 0s] [--wipe-all] [-y]` | Tears down running containers |
-| `oops ps` | `[targets...] [-a, --all] [--full, -fl]` | Formatted table of `CONTAINER ID`, `STACK`, `SERVICE`, `IMAGE` (shortened by default, full path with `--full` / `-fl`), `STATUS` (with uptime & health; uncreated services shown as `missing` with `-a`), `IP`, and `PORTS` |
+| `oops ps` | `[targets...] [-a, --all] [--full, -fl]` | Formatted table of `CONTAINER ID`, `STACK` (`/` for root compose, `/<stack>` for sub-stacks, `/tunnel` for oops tunnels, `%` for external containers), `SERVICE` (remote name for tunnels), `IMAGE` (shortened by default, full path with `--full` / `-fl`), `STATUS` (with uptime & health; uncreated services shown as `missing` with `-a`), `IP`, and `PORTS` |
 | `oops logs` | `[targets...] [--tail 50] [-f]` | Tail service logs |
 | `oops pull` | `[targets...] [--all]` | Pulls images for targets |
 | `oops update` | `[targets...] [--all] [-i <img/alias>] [-d 0s]` | Executes sequential rolling update with health check |

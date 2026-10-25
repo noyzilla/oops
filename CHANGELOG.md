@@ -7,6 +7,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Changed
+- **Stack Path Notation in `oops ps`**: Standardized the `STACK` column to use path notation: `/` for root compose manifests (`compose.yaml`), `/<stack>` for sub-stacks (`/db`, `/edge`, etc.), `/tunnel` for tunnel containers (with remote name in `SERVICE`), and `%` for external containers. Added ordered table sorting (`/` first, named stacks alphabetically, `%` external last) and fixed root compose string-trimming bug (`cmd/ps.go`, `docs/specs/cli.md`).
 - **Default Redis 8 Blueprint (`redis:8-alpine`)**: Updated the default Redis stack image and restore fallback from `redis:7-alpine` to `redis:8-alpine`, providing native RedisJSON, RediSearch capabilities, and rolling security updates (`oopsbox/compose.db.yaml`, `internal/backup/restore.go`).
 
 ## [v1.22.0] - 2026-10-25

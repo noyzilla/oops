@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -132,15 +133,52 @@ func TestFormatContainerImage(t *testing.T) {
 }
 
 func TestExtractContainerStackName(t *testing.T) {
-	labels := map[string]string{
+	// Sub-stack compose file
+	labelsEdge := map[string]string{
 		"com.docker.compose.project":              "oopsbox",
 		"com.docker.compose.project.config_files": "/home/captain/oopsbox/compose.yaml,/home/captain/oopsbox/compose.edge.yaml",
 	}
-	if got := extractContainerStackName(labels); got != "edge" {
-		t.Errorf("extractContainerStackName() = %q, want %q", got, "edge")
+	if got := extractContainerStackName(labelsEdge); got != "/edge" {
+		t.Errorf("extractContainerStackName(edge) = %q, want %q", got, "/edge")
 	}
-	if got := formatStackService("edge", "caddy-proxy"); got != "/edge/caddy-proxy" {
-		t.Errorf("formatStackService() = %q, want /edge/caddy-proxy", got)
+
+	// Root compose file
+	labelsRoot := map[string]string{
+		"com.docker.compose.project":              "oopsbox",
+		"com.docker.compose.project.config_files": "/home/captain/oopsbox/compose.yaml",
+	}
+	if got := extractContainerStackName(labelsRoot); got != "/" {
+		t.Errorf("extractContainerStackName(root) = %q, want %q", got, "/")
+	}
+
+	// Tunnel container
+	labelsTunnel := map[string]string{
+		"oops.tunnel.remote": "b9tpe",
+	}
+	if got := extractContainerStackName(labelsTunnel, "oops-tunnel-b9tpe"); got != "/tunnel" {
+		t.Errorf("extractContainerStackName(tunnel) = %q, want %q", got, "/tunnel")
+	}
+
+	// External container
+	labelsExternal := map[string]string{
+		"com.docker.compose.project": "third-party",
+	}
+	if got := extractContainerStackName(labelsExternal, "third-party-app"); got != "%" {
+		t.Errorf("extractContainerStackName(external) = %q, want %q", got, "%")
+	}
+
+	// FormatStackService checks
+	if got := formatStackService("/", "filebrowser"); got != "/filebrowser" {
+		t.Errorf("formatStackService(/, filebrowser) = %q, want /filebrowser", got)
+	}
+	if got := formatStackService("/edge", "caddy-proxy"); got != "/edge/caddy-proxy" {
+		t.Errorf("formatStackService(/edge, caddy-proxy) = %q, want /edge/caddy-proxy", got)
+	}
+	if got := formatStackService("/tunnel", "b9tpe"); got != "/tunnel/b9tpe" {
+		t.Errorf("formatStackService(/tunnel, b9tpe) = %q, want /tunnel/b9tpe", got)
+	}
+	if got := formatStackService("%", "myapp"); got != "%myapp" {
+		t.Errorf("formatStackService(%%, myapp) = %q, want %%myapp", got)
 	}
 }
 
@@ -155,7 +193,7 @@ func TestRenderStatusTableAlignment(t *testing.T) {
 	items := []containerStatusItem{
 		{
 			ContainerID:  "3d285d623b64",
-			Stack:        "edge",
+			Stack:        "/edge",
 			Service:      "caddy-proxy",
 			StackService: "/edge/caddy-proxy",
 			Image:        "caddy-docker-proxy:alpine",
@@ -165,7 +203,7 @@ func TestRenderStatusTableAlignment(t *testing.T) {
 		},
 		{
 			ContainerID:  "64cd605d59a8",
-			Stack:        "db",
+			Stack:        "/db",
 			Service:      "mysql",
 			StackService: "/db/mysql",
 			Image:        "mysql:8.4",
@@ -190,7 +228,7 @@ func TestRenderStatusTableAlignment(t *testing.T) {
 		rowVal    string
 	}{
 		{"CONTAINER ID", "3d285d623b64"},
-		{"STACK", "edge"},
+		{"STACK", "/edge"},
 		{"SERVICE", "caddy-proxy"},
 		{"IMAGE", "caddy-docker-proxy:alpine"},
 		{"STATUS", "Up About a minute"},
@@ -212,7 +250,7 @@ func TestRenderStatusTableMissingService(t *testing.T) {
 	items := []containerStatusItem{
 		{
 			ContainerID:  "-",
-			Stack:        "db",
+			Stack:        "/db",
 			Service:      "redis",
 			StackService: "/db/redis",
 			Image:        "redis:alpine",
@@ -275,4 +313,60 @@ func TestResolveServiceImageAndPorts_Extends(t *testing.T) {
 		t.Errorf("resolveServiceImageAndPorts() ports = %v, want ['8080:8080']", gotPorts)
 	}
 }
+
+func TestStatusItemSorting(t *testing.T) {
+	items := []containerStatusItem{
+		{Stack: "%", Service: "my-external-app"},
+		{Stack: "/edge", Service: "caddy-proxy"},
+		{Stack: "/tunnel", Service: "b9tpe"},
+		{Stack: "/db", Service: "redis"},
+		{Stack: "/", Service: "homeassistant"},
+		{Stack: "/db", Service: "mysql"},
+		{Stack: "/", Service: "filebrowser"},
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		stackWeight := func(s string) int {
+			if s == "/" {
+				return 0
+			}
+			if strings.HasPrefix(s, "/") {
+				return 1
+			}
+			if s == "%" {
+				return 3
+			}
+			return 2
+		}
+		wI := stackWeight(items[i].Stack)
+		wJ := stackWeight(items[j].Stack)
+		if wI != wJ {
+			return wI < wJ
+		}
+		if items[i].Stack != items[j].Stack {
+			return items[i].Stack < items[j].Stack
+		}
+		return items[i].Service < items[j].Service
+	})
+
+	expected := []struct {
+		stack   string
+		service string
+	}{
+		{"/", "filebrowser"},
+		{"/", "homeassistant"},
+		{"/db", "mysql"},
+		{"/db", "redis"},
+		{"/edge", "caddy-proxy"},
+		{"/tunnel", "b9tpe"},
+		{"%", "my-external-app"},
+	}
+
+	for i, exp := range expected {
+		if items[i].Stack != exp.stack || items[i].Service != exp.service {
+			t.Errorf("item[%d] = {%q, %q}, want {%q, %q}", i, items[i].Stack, items[i].Service, exp.stack, exp.service)
+		}
+	}
+}
+
 
