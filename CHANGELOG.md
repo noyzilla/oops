@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.20.0] - 2026-10-25
+
+### Added
+- **Structured Database CLI Help (`oops db`)**: Separated supported engines (`mysql`, `postgres`, `redis`) and provisioning actions (`create`, `readonly`, `passwd`, `list`, `drop`) into distinct formatted sections with practical usage examples (`cmd/db.go`).
+
 ## [v1.19.0] - 2026-10-25
 
 ### Added
