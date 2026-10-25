@@ -7,9 +7,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
+- **Duplicate Database & User Creation Protection**: Added pre-creation existence checks across MySQL, PostgreSQL, and Redis in `oops db create` and `readonly`, failing fast if the database or user already exists and providing explicit guidance to use `oops db <engine> passwd <user>` (`cmd/db.go`, `internal/db/`, `docs/specs/cli.md`).
 - **Redis ACL Client Ready Check Support (`+info`)**: Added `+info` permission to Redis ACL generation (`BuildRedisCreateACL` and `BuildRedisReadonlyACL`), enabling standard client library connection handshakes (such as ioredis `enableReadyCheck`) without opening server-blocking commands like `KEYS` (`internal/db/redis.go`, `docs/specs/cli.md`).
 
 ### Fixed
+- **Redis Stale Password Purge on `passwd` (`resetpass`)**: Fixed `BuildRedisPasswdACL` to include `resetpass` before setting a new password, purging legacy multi-password accumulation and guaranteeing `+info` permission on rotated Redis users (`internal/db/redis.go`, `docs/specs/cli.md`).
 - **Redis Prefix Terminology in CLI (`oops db redis`)**: Replaced `Database:` label and `<db_name>` parameter terminology with `Prefix:` and `<prefix>` across `create`, `readonly`, and `drop` subcommands, reflecting Redis key-pattern ACLs and lifting the 2-level underscore restriction for Redis namespaces (`cmd/db.go`, `docs/specs/cli.md`).
 
 ## [v1.21.0] - 2026-10-25

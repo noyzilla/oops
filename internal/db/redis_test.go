@@ -42,7 +42,10 @@ func TestBuildRedisPasswdACL(t *testing.T) {
 	args := BuildRedisPasswdACL("myapp", "newpass456")
 	expected := []string{
 		"ACL", "SETUSER", "myapp",
-		"on", ">newpass456",
+		"on",
+		"resetpass",
+		">newpass456",
+		"+info",
 	}
 
 	if !reflect.DeepEqual(args, expected) {

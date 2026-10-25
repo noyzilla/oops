@@ -33,11 +33,14 @@ func BuildRedisReadonlyACL(username, password, dbName string) []string {
 	}
 }
 
-// BuildRedisPasswdACL builds arguments for updating a Redis ACL user's password
+// BuildRedisPasswdACL builds arguments for updating a Redis ACL user's password, resetting old passwords and ensuring +info
 func BuildRedisPasswdACL(username, newPassword string) []string {
 	return []string{
 		"ACL", "SETUSER", username,
-		"on", ">" + newPassword,
+		"on",
+		"resetpass",
+		">" + newPassword,
+		"+info",
 	}
 }
 
@@ -46,6 +49,20 @@ func BuildRedisDropACL(username string) []string {
 	return []string{
 		"ACL", "DELUSER", username,
 	}
+}
+
+// CheckRedisUserExists checks if an ACL user already exists in Redis
+func CheckRedisUserExists(ctx context.Context, containerTarget, username string) (bool, error) {
+	out, err := ExecuteRedis(ctx, containerTarget, "ACL", "USERS")
+	if err != nil {
+		return false, err
+	}
+	for _, u := range strings.Split(out, "\n") {
+		if strings.TrimSpace(u) == username {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // ExecuteRedis runs redis-cli commands inside target Redis container and persists ACL changes

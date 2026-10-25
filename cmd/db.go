@@ -92,6 +92,9 @@ Actions:
 					if containerTarget == "" {
 						containerTarget = "mysql"
 					}
+					if exists, what, err := db.CheckMySQLUserOrDBExists(context.Background(), containerTarget, dbName, userName); err == nil && exists {
+						return fmt.Errorf("%s '%s' already exists in mysql. To rotate password, run: oops db %s passwd %s [new_password]", what, userName, engineSpec, userName)
+					}
 					sql := db.BuildMySQLCreateSQL(dbName, password, isLevel1)
 					_, err := db.ExecuteMySQL(context.Background(), containerTarget, sql)
 					if err != nil {
@@ -101,6 +104,9 @@ Actions:
 					if containerTarget == "" {
 						containerTarget = "postgres"
 					}
+					if exists, what, err := db.CheckPostgresUserOrDBExists(context.Background(), containerTarget, dbName, userName); err == nil && exists {
+						return fmt.Errorf("%s '%s' already exists in postgres. To rotate password, run: oops db %s passwd %s [new_password]", what, userName, engineSpec, userName)
+					}
 					sql := db.BuildPostgresCreateSQL(dbName, password, topUser)
 					_, err := db.ExecutePostgres(context.Background(), containerTarget, sql)
 					if err != nil {
@@ -109,6 +115,9 @@ Actions:
 				} else if engine == "redis" {
 					if containerTarget == "" {
 						containerTarget = "redis"
+					}
+					if exists, err := db.CheckRedisUserExists(context.Background(), containerTarget, userName); err == nil && exists {
+						return fmt.Errorf("user '%s' already exists in redis. To rotate password, run: oops db %s passwd %s [new_password]", userName, engineSpec, userName)
 					}
 					aclArgs := db.BuildRedisCreateACL(userName, password, dbName)
 					_, err := db.ExecuteRedis(context.Background(), containerTarget, aclArgs...)
@@ -165,6 +174,9 @@ Actions:
 					if containerTarget == "" {
 						containerTarget = "mysql"
 					}
+					if exists, what, err := db.CheckMySQLUserOrDBExists(context.Background(), containerTarget, "", userName); err == nil && exists {
+						return fmt.Errorf("readonly %s '%s' already exists in mysql. To rotate password, run: oops db %s passwd %s [new_password]", what, userName, engineSpec, userName)
+					}
 					sql := db.BuildMySQLReadonlySQL(dbName, userName, password)
 					_, err := db.ExecuteMySQL(context.Background(), containerTarget, sql)
 					if err != nil {
@@ -174,6 +186,9 @@ Actions:
 					if containerTarget == "" {
 						containerTarget = "postgres"
 					}
+					if exists, what, err := db.CheckPostgresUserOrDBExists(context.Background(), containerTarget, "", userName); err == nil && exists {
+						return fmt.Errorf("readonly %s '%s' already exists in postgres. To rotate password, run: oops db %s passwd %s [new_password]", what, userName, engineSpec, userName)
+					}
 					sql := db.BuildPostgresReadonlySQL(dbName, userName, password)
 					_, err := db.ExecutePostgres(context.Background(), containerTarget, sql)
 					if err != nil {
@@ -182,6 +197,9 @@ Actions:
 				} else if engine == "redis" {
 					if containerTarget == "" {
 						containerTarget = "redis"
+					}
+					if exists, err := db.CheckRedisUserExists(context.Background(), containerTarget, userName); err == nil && exists {
+						return fmt.Errorf("readonly user '%s' already exists in redis. To rotate password, run: oops db %s passwd %s [new_password]", userName, engineSpec, userName)
 					}
 					aclArgs := db.BuildRedisReadonlyACL(userName, password, dbName)
 					_, err := db.ExecuteRedis(context.Background(), containerTarget, aclArgs...)

@@ -66,3 +66,28 @@ func ExecuteMySQL(ctx context.Context, containerTarget, query string) (string, e
 	}
 	return string(out), nil
 }
+
+// CheckMySQLUserOrDBExists checks if a database or user already exists in MySQL
+func CheckMySQLUserOrDBExists(ctx context.Context, containerTarget, dbName, username string) (bool, string, error) {
+	if username != "" {
+		outUser, err := ExecuteMySQL(ctx, containerTarget, fmt.Sprintf("SELECT user FROM mysql.user WHERE user = '%s';", username))
+		if err == nil {
+			for _, line := range strings.Split(outUser, "\n") {
+				if strings.TrimSpace(line) == username {
+					return true, "user", nil
+				}
+			}
+		}
+	}
+	if dbName != "" {
+		outDB, err := ExecuteMySQL(ctx, containerTarget, fmt.Sprintf("SELECT schema_name FROM information_schema.schemata WHERE schema_name = '%s';", dbName))
+		if err == nil {
+			for _, line := range strings.Split(outDB, "\n") {
+				if strings.TrimSpace(line) == dbName {
+					return true, "database", nil
+				}
+			}
+		}
+	}
+	return false, "", nil
+}

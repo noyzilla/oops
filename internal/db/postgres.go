@@ -76,3 +76,28 @@ func ExecutePostgres(ctx context.Context, containerTarget, query string) (string
 	}
 	return string(out), nil
 }
+
+// CheckPostgresUserOrDBExists checks if a database or role already exists in PostgreSQL
+func CheckPostgresUserOrDBExists(ctx context.Context, containerTarget, dbName, username string) (bool, string, error) {
+	if username != "" {
+		outUser, err := ExecutePostgres(ctx, containerTarget, fmt.Sprintf("SELECT rolname FROM pg_catalog.pg_roles WHERE rolname = '%s';", username))
+		if err == nil {
+			for _, line := range strings.Split(outUser, "\n") {
+				if strings.TrimSpace(line) == username {
+					return true, "user", nil
+				}
+			}
+		}
+	}
+	if dbName != "" {
+		outDB, err := ExecutePostgres(ctx, containerTarget, fmt.Sprintf("SELECT datname FROM pg_catalog.pg_database WHERE datname = '%s';", dbName))
+		if err == nil {
+			for _, line := range strings.Split(outDB, "\n") {
+				if strings.TrimSpace(line) == dbName {
+					return true, "database", nil
+				}
+			}
+		}
+	}
+	return false, "", nil
+}
