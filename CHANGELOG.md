@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.22.0] - 2026-10-25
+
 ### Added
 - **Database Credential Repair Action (`oops db <engine> repair [user]`)**: Added `repair` action to inspect `config/env/` credential files and synchronize running database container users and passwords with `.env` files across MySQL, PostgreSQL, and Redis (`cmd/db.go`, `internal/db/`, `docs/specs/cli.md`).
 - **Duplicate Database & User Creation Protection**: Added pre-creation existence checks across MySQL, PostgreSQL, and Redis in `oops db create` and `readonly`, failing fast if the database or user already exists and providing explicit guidance to use `oops db <engine> passwd <user>` (`cmd/db.go`, `internal/db/`, `docs/specs/cli.md`).
