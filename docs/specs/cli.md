@@ -115,7 +115,10 @@ For each matched service in target order:
 - **Supported Engines**: `mysql`, `postgres`, `redis`
 - **Actions**: `create`, `readonly`, `passwd`, `list`, `drop`
 - **Naming Rule**: Database names contain at most one underscore (`_`), restricting databases to 2 levels. For Redis, this serves as the Key Prefix namespace (`~<name>:*`).
-- **Auto Credential Export**: Automatically exports credentials to `config/env/<engine>.<db_name>.env` (including `REDIS_URL` for Redis).
+- **Auto Credential Export**: Automatically exports pure engine-scoped credentials to `config/env/<engine>.<db_name>.env` without generic `DB_*` variable collisions:
+  - MySQL: `DB_ENGINE=mysql`, `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_URL`
+  - PostgreSQL: `DB_ENGINE=postgres`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DATABASE`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_URL`
+  - Redis: `DB_ENGINE=redis`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_USER`, `REDIS_PASSWORD`, `REDIS_DB=0`, `REDIS_PREFIX`, `REDIS_URL`
 
 ### Automated Backup Suite (`oops backup`, `oops backup-db`, `oops backup-data`)
 - **Unified Full Backup (`oops backup [-r <duration|int>]`)**: Runs database dumps and filesystem volume archives.

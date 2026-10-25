@@ -32,7 +32,7 @@ func TestWriteEnvFileUsesWorkDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected env file at %s, got error: %v", expectedPath, err)
 	}
-	if !strings.Contains(string(data), "DB_PASSWORD=secret123") {
+	if !strings.Contains(string(data), "MYSQL_PASSWORD=secret123") {
 		t.Errorf("unexpected env content: %s", string(data))
 	}
 
@@ -50,7 +50,7 @@ func TestWriteEnvFileUsesWorkDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed reading updated env file: %v", err)
 	}
-	if !strings.Contains(string(dataAfter), "DB_PASSWORD=rotated456") {
+	if !strings.Contains(string(dataAfter), "MYSQL_PASSWORD=rotated456") {
 		t.Errorf("expected rotated password in %s, got:\n%s", expectedPath, string(dataAfter))
 	}
 }
@@ -72,11 +72,11 @@ func TestWriteEnvFile_Redis(t *testing.T) {
 	if !strings.Contains(content, "DB_ENGINE=redis") {
 		t.Errorf("expected DB_ENGINE=redis, got: %s", content)
 	}
-	if !strings.Contains(content, "DB_PORT=6379") {
-		t.Errorf("expected DB_PORT=6379, got: %s", content)
+	if !strings.Contains(content, "REDIS_PORT=6379") {
+		t.Errorf("expected REDIS_PORT=6379, got: %s", content)
 	}
-	if !strings.Contains(content, "DB_URL=redis://myapp:redispass123@redis:6379/0") {
-		t.Errorf("expected DB_URL for redis, got: %s", content)
+	if !strings.Contains(content, "REDIS_PREFIX=myapp") {
+		t.Errorf("expected REDIS_PREFIX=myapp, got: %s", content)
 	}
 	if !strings.Contains(content, "REDIS_URL=redis://myapp:redispass123@redis:6379/0") {
 		t.Errorf("expected REDIS_URL for redis, got: %s", content)
@@ -92,11 +92,45 @@ func TestWriteEnvFile_Redis(t *testing.T) {
 		t.Fatalf("failed reading updated env file: %v", err)
 	}
 	contentAfter := string(dataAfter)
-	if !strings.Contains(contentAfter, "DB_PASSWORD=newpass789") {
+	if !strings.Contains(contentAfter, "REDIS_PASSWORD=newpass789") {
 		t.Errorf("expected rotated password, got: %s", contentAfter)
 	}
 	if !strings.Contains(contentAfter, "REDIS_URL=redis://myapp:newpass789@redis:6379/0") {
 		t.Errorf("expected rotated REDIS_URL, got: %s", contentAfter)
+	}
+}
+
+func TestWriteEnvFile_Postgres(t *testing.T) {
+	workDir := t.TempDir()
+
+	if err := writeEnvFile(workDir, "postgres", "postgres", "myapp", "myapp", "pgpass123"); err != nil {
+		t.Fatalf("writeEnvFile failed: %v", err)
+	}
+
+	expectedPath := filepath.Join(workDir, "config", "env", "postgres.myapp.env")
+	data, err := os.ReadFile(expectedPath)
+	if err != nil {
+		t.Fatalf("expected env file at %s, got error: %v", expectedPath, err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, "DB_ENGINE=postgres") {
+		t.Errorf("expected DB_ENGINE=postgres, got: %s", content)
+	}
+	if !strings.Contains(content, "POSTGRES_PORT=5432") {
+		t.Errorf("expected POSTGRES_PORT=5432, got: %s", content)
+	}
+	if !strings.Contains(content, "POSTGRES_DATABASE=myapp") {
+		t.Errorf("expected POSTGRES_DATABASE=myapp, got: %s", content)
+	}
+	if !strings.Contains(content, "POSTGRES_USER=myapp") {
+		t.Errorf("expected POSTGRES_USER=myapp, got: %s", content)
+	}
+	if !strings.Contains(content, "POSTGRES_PASSWORD=pgpass123") {
+		t.Errorf("expected POSTGRES_PASSWORD=pgpass123, got: %s", content)
+	}
+	if !strings.Contains(content, "POSTGRES_URL=postgres://myapp:pgpass123@postgres:5432/myapp") {
+		t.Errorf("expected POSTGRES_URL, got: %s", content)
 	}
 }
 
