@@ -14,6 +14,7 @@ func TestBuildRedisCreateACL(t *testing.T) {
 		"&*",
 		"+@all",
 		"-@dangerous",
+		"+info",
 	}
 
 	if !reflect.DeepEqual(args, expected) {
@@ -29,6 +30,7 @@ func TestBuildRedisReadonlyACL(t *testing.T) {
 		"~myapp:*",
 		"&*",
 		"+@read",
+		"+info",
 	}
 
 	if !reflect.DeepEqual(args, expected) {

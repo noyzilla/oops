@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Added
+- **Redis ACL Client Ready Check Support (`+info`)**: Added `+info` permission to Redis ACL generation (`BuildRedisCreateACL` and `BuildRedisReadonlyACL`), enabling standard client library connection handshakes (such as ioredis `enableReadyCheck`) without opening server-blocking commands like `KEYS` (`internal/db/redis.go`, `docs/specs/cli.md`).
+
 ### Fixed
 - **Redis Prefix Terminology in CLI (`oops db redis`)**: Replaced `Database:` label and `<db_name>` parameter terminology with `Prefix:` and `<prefix>` across `create`, `readonly`, and `drop` subcommands, reflecting Redis key-pattern ACLs and lifting the 2-level underscore restriction for Redis namespaces (`cmd/db.go`, `docs/specs/cli.md`).
 

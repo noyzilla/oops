@@ -17,6 +17,7 @@ func BuildRedisCreateACL(username, password, dbName string) []string {
 		"&*",
 		"+@all",
 		"-@dangerous",
+		"+info",
 	}
 }
 
@@ -28,6 +29,7 @@ func BuildRedisReadonlyACL(username, password, dbName string) []string {
 		"~" + dbName + ":*",
 		"&*",
 		"+@read",
+		"+info",
 	}
 }
 
