@@ -59,13 +59,16 @@ Actions:
 			switch action {
 			case "create":
 				if len(remainingArgs) < 1 {
+					if engine == "redis" {
+						return fmt.Errorf("usage: oops db %s create <prefix> [password]", engineSpec)
+					}
 					return fmt.Errorf("usage: oops db %s create <db_name> [password]", engineSpec)
 				}
 				dbName := remainingArgs[0]
 				userName := dbName
 				
 				dbParts := strings.Split(dbName, "_")
-				if len(dbParts) > 2 {
+				if engine != "redis" && len(dbParts) > 2 {
 					return fmt.Errorf("database name '%s' exceeds maximum allowed 2 levels (only one underscore allowed)", dbName)
 				}
 				isLevel1 := len(dbParts) == 1
@@ -116,7 +119,11 @@ Actions:
 					return fmt.Errorf("unsupported database engine: %s", engine)
 				}
 
-				fmt.Printf("Database: %s\nUser: %s\nPassword: %s\n", dbName, userName, password)
+				if engine == "redis" {
+					fmt.Printf("Prefix: %s\nUser: %s\nPassword: %s\n", dbName, userName, password)
+				} else {
+					fmt.Printf("Database: %s\nUser: %s\nPassword: %s\n", dbName, userName, password)
+				}
 				
 				if !noExport {
 					if err := writeEnvFile(workDir, engine, containerTarget, dbName, userName, password); err != nil {
@@ -128,13 +135,16 @@ Actions:
 
 			case "readonly":
 				if len(remainingArgs) < 2 {
+					if engine == "redis" {
+						return fmt.Errorf("usage: oops db %s readonly <prefix> <app_name> [password]", engineSpec)
+					}
 					return fmt.Errorf("usage: oops db %s readonly <db_name> <app_name> [password]", engineSpec)
 				}
 				dbName := remainingArgs[0]
 				appName := remainingArgs[1]
 				
 				dbParts := strings.Split(dbName, "_")
-				if len(dbParts) > 2 {
+				if engine != "redis" && len(dbParts) > 2 {
 					return fmt.Errorf("database name '%s' exceeds maximum allowed 2 levels (only one underscore allowed)", dbName)
 				}
 				
@@ -182,7 +192,11 @@ Actions:
 					return fmt.Errorf("unsupported database engine: %s", engine)
 				}
 
-				fmt.Printf("Readonly User: %s\nTarget DB: %s\nPassword: %s\n", userName, dbName, password)
+				if engine == "redis" {
+					fmt.Printf("Readonly User: %s\nTarget Prefix: %s\nPassword: %s\n", userName, dbName, password)
+				} else {
+					fmt.Printf("Readonly User: %s\nTarget DB: %s\nPassword: %s\n", userName, dbName, password)
+				}
 				
 				if !noExport {
 					if err := writeEnvFile(workDir, engine, containerTarget, dbName, userName, password); err != nil {
@@ -282,6 +296,9 @@ Actions:
 
 			case "drop":
 				if len(remainingArgs) < 2 {
+					if engine == "redis" {
+						return fmt.Errorf("usage: oops db %s drop <prefix> <user_name>", engineSpec)
+					}
 					return fmt.Errorf("usage: oops db %s drop <db_name> <user_name>", engineSpec)
 				}
 				dbName := remainingArgs[0]
@@ -315,7 +332,11 @@ Actions:
 						return err
 					}
 				}
-				fmt.Printf("Dropped database %s and user %s\n", dbName, userName)
+				if engine == "redis" {
+					fmt.Printf("Dropped user %s (prefix: %s)\n", userName, dbName)
+				} else {
+					fmt.Printf("Dropped database %s and user %s\n", dbName, userName)
+				}
 				return nil
 
 			default:

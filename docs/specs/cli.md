@@ -114,7 +114,7 @@ For each matched service in target order:
 ### Database Management (`oops db <mysql|postgres|redis>[:<target>] <action>`)
 - **Supported Engines**: `mysql`, `postgres`, `redis`
 - **Actions**: `create`, `readonly`, `passwd`, `list`, `drop`
-- **Naming Rule**: Database names contain at most one underscore (`_`), restricting databases to 2 levels. For Redis, this serves as the Key Prefix namespace (`~<name>:*`).
+- **Naming Rule & Terminology**: Relational database names (`mysql`, `postgres`) contain at most one underscore (`_`), restricting databases to 2 levels. For Redis, this serves as the Key Prefix namespace (`~<prefix>:*`) without underscore count restriction; output labels and CLI usage messages dynamically use `Prefix` and `<prefix>` instead of `Database` and `<db_name>`.
 - **Auto Credential Export**: Automatically exports pure engine-scoped credentials to `config/env/<engine>.<db_name>.env` without generic `DB_*` variable collisions:
   - MySQL: `DB_ENGINE=mysql`, `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_URL`
   - PostgreSQL: `DB_ENGINE=postgres`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DATABASE`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_URL`

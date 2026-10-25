@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Fixed
+- **Redis Prefix Terminology in CLI (`oops db redis`)**: Replaced `Database:` label and `<db_name>` parameter terminology with `Prefix:` and `<prefix>` across `create`, `readonly`, and `drop` subcommands, reflecting Redis key-pattern ACLs and lifting the 2-level underscore restriction for Redis namespaces (`cmd/db.go`, `docs/specs/cli.md`).
+
 ## [v1.21.0] - 2026-10-25
 
 ### Changed
