@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.21.0] - 2026-10-25
+
+### Changed
+- **Pure Engine-Scoped Database Environment Templates**: Replaced generic `DB_*` environment templates with pure, collision-free engine-scoped variables (`MYSQL_*`, `POSTGRES_*`, `REDIS_*`). Redis `.env` files now cleanly provide `REDIS_PREFIX` and `REDIS_DB=0` without conflicting `DB_NAME` or `DB_PASSWORD` variables (`cmd/db.go`, `docs/specs/cli.md`).
+
 ## [v1.20.0] - 2026-10-25
 
 ### Added
