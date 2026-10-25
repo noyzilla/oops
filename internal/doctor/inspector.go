@@ -373,6 +373,26 @@ func AuditResolverEntries(workDir string) []AuditIssue {
 		}
 	}
 
+	// Check if any active resolver points to a stale nameserver IP
+	activeOopsIP := box.GetOopsContainerIP()
+	if activeOopsIP != "" {
+		for _, r := range resolvers {
+			name := strings.ToLower(r)
+			if keepSet[name] {
+				currentIP, err := box.ReadMacOSResolver(r)
+				if err == nil && currentIP != "" && currentIP != activeOopsIP {
+					issues = append(issues, AuditIssue{
+						Scope:      "dns",
+						Target:     fmt.Sprintf("/etc/resolver/%s", r),
+						Severity:   SeverityWarn,
+						Message:    fmt.Sprintf("Resolver points to stale nameserver %s (active oops IP is %s)", currentIP, activeOopsIP),
+						Suggestion: "Run 'oops dns repair' to synchronize resolver IP",
+					})
+				}
+			}
+		}
+	}
+
 	return issues
 }
 

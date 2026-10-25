@@ -154,3 +154,95 @@ func TestDNSPruneCommand(t *testing.T) {
 		t.Errorf("expected oops resolver to be preserved")
 	}
 }
+
+func TestDNSRepairCommand(t *testing.T) {
+	tempResolverDir := t.TempDir()
+	cleanup := box.SetResolverDirForTest(tempResolverDir)
+	defer cleanup()
+
+	cleanupIP := box.SetOopsContainerIPForTest("10.240.0.2")
+	defer cleanupIP()
+
+	tempWorkDir := t.TempDir()
+	// Create registered remotes @anthole and @b9tpe
+	for _, r := range []string{"anthole", "b9tpe"} {
+		rDir := filepath.Join(tempWorkDir, "@"+r)
+		_ = os.MkdirAll(rDir, 0755)
+		_ = os.WriteFile(filepath.Join(rDir, "remote.yaml"), []byte("host: "+r+".example.com\n"), 0644)
+	}
+
+	// Seed stale resolver files:
+	// anthole: 192.168.97.3 (stale)
+	// b9tpe: 192.168.97.3 (stale)
+	// oops: missing
+	_ = os.WriteFile(filepath.Join(tempResolverDir, "anthole"), []byte("nameserver 192.168.97.3\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempResolverDir, "b9tpe"), []byte("nameserver 192.168.97.3\n"), 0644)
+
+	// 1. Test dry-run
+	rootCmd := cmd.GetRootCommand()
+	buf := new(bytes.Buffer)
+	rootCmd.SetOut(buf)
+	rootCmd.SetErr(buf)
+	rootCmd.SetArgs([]string{"-C", tempWorkDir, "dns", "repair", "--dry-run"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("dns repair --dry-run failed: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "Would update /etc/resolver/anthole (nameserver 192.168.97.3 -> 10.240.0.2)") {
+		t.Errorf("expected dry-run to show anthole update, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Would update /etc/resolver/b9tpe (nameserver 192.168.97.3 -> 10.240.0.2)") {
+		t.Errorf("expected dry-run to show b9tpe update, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Would create /etc/resolver/oops (nameserver 10.240.0.2)") {
+		t.Errorf("expected dry-run to show oops create, got:\n%s", output)
+	}
+
+	// Files should still have old IP
+	ipAnthole, _ := box.ReadMacOSResolver("anthole")
+	if ipAnthole != "192.168.97.3" {
+		t.Errorf("expected anthole to still have 192.168.97.3 after dry-run, got %s", ipAnthole)
+	}
+
+	// 2. Real repair
+	rootCmd = cmd.GetRootCommand()
+	buf.Reset()
+	rootCmd.SetOut(buf)
+	rootCmd.SetErr(buf)
+	rootCmd.SetArgs([]string{"-C", tempWorkDir, "dns", "repair"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("dns repair failed: %v", err)
+	}
+	output = buf.String()
+	if !strings.Contains(output, "Repaired 3 resolver(s)") {
+		t.Errorf("expected 3 repaired resolvers, got:\n%s", output)
+	}
+
+	// Verify all 3 now have 10.240.0.2
+	for _, domain := range []string{"anthole", "b9tpe", "oops"} {
+		ip, err := box.ReadMacOSResolver(domain)
+		if err != nil {
+			t.Errorf("failed reading resolver for %s: %v", domain, err)
+		}
+		if ip != "10.240.0.2" {
+			t.Errorf("expected %s to have 10.240.0.2, got %s", domain, ip)
+		}
+	}
+
+	// 3. Run again when already up to date
+	rootCmd = cmd.GetRootCommand()
+	buf.Reset()
+	rootCmd.SetOut(buf)
+	rootCmd.SetErr(buf)
+	rootCmd.SetArgs([]string{"-C", tempWorkDir, "dns", "repair"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("dns repair second run failed: %v", err)
+	}
+	output = buf.String()
+	if !strings.Contains(output, "is up to date") {
+		t.Errorf("expected up to date message, got:\n%s", output)
+	}
+}

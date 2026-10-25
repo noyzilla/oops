@@ -30,6 +30,7 @@ func newDNSCmd() *cobra.Command {
 	dnsCmd.AddCommand(newDNSDelCmd())
 	dnsCmd.AddCommand(newDNSReloadCmd())
 	dnsCmd.AddCommand(newDNSPruneCmd())
+	dnsCmd.AddCommand(newDNSRepairCmd())
 
 	return dnsCmd
 }
@@ -193,9 +194,8 @@ func newDNSReloadCmd() *cobra.Command {
 
 func newDNSPruneCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "prune",
-		Aliases: []string{"fix"},
-		Short:   "Prune stale macOS DNS resolver entries that do not belong to active remotes or workspaces",
+		Use:   "prune",
+		Short: "Prune stale macOS DNS resolver entries that do not belong to active remotes or workspaces",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workDir := ResolveWorkDir(targetDir)
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
@@ -257,5 +257,104 @@ func newDNSPruneCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolP("dry-run", "n", false, "Preview resolvers to prune without deleting")
+	return cmd
+}
+
+func newDNSRepairCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "repair",
+		Aliases: []string{"fix"},
+		Short:   "Repair and synchronize macOS DNS resolver entries (/etc/resolver/*) to active oops container IP",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			workDir := ResolveWorkDir(targetDir)
+			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			defer func() {
+				_ = cmd.Flags().Set("dry-run", "false")
+			}()
+
+			flagIP, _ := cmd.Flags().GetString("ip")
+			targetIP := flagIP
+			if targetIP == "" {
+				targetIP = box.GetOopsContainerIP()
+			}
+			if targetIP == "" {
+				return fmt.Errorf("cannot determine active oops container IP (is 'edge/oops' running?); specify target IP explicitly with --ip <ip>")
+			}
+
+			// Collect active TLDs to synchronize
+			activeTLDs := []string{"oops"}
+			if envTLD := os.Getenv("OOPS_DNS_TLD"); envTLD != "" {
+				activeTLDs = append(activeTLDs, strings.ToLower(strings.TrimSpace(envTLD)))
+			}
+			if remotes, err := remote.ListRemotes(workDir); err == nil {
+				for _, r := range remotes {
+					activeTLDs = append(activeTLDs, strings.ToLower(strings.TrimSpace(r)))
+				}
+			}
+
+			// Deduplicate active TLDs
+			seen := make(map[string]bool)
+			var uniqueTLDs []string
+			for _, t := range activeTLDs {
+				if !seen[t] {
+					seen[t] = true
+					uniqueTLDs = append(uniqueTLDs, t)
+				}
+			}
+
+			updatedCount := 0
+			for _, tld := range uniqueTLDs {
+				currentIP, err := box.ReadMacOSResolver(tld)
+				if err != nil || currentIP != targetIP {
+					if dryRun {
+						if err != nil {
+							fmt.Fprintf(cmd.OutOrStdout(), "[dry-run] Would create /etc/resolver/%s (nameserver %s)\n", tld, targetIP)
+						} else {
+							fmt.Fprintf(cmd.OutOrStdout(), "[dry-run] Would update /etc/resolver/%s (nameserver %s -> %s)\n", tld, currentIP, targetIP)
+						}
+					} else {
+						if err := box.SetupMacOSResolverWithIP(tld, targetIP); err != nil {
+							return fmt.Errorf("failed to configure resolver for .%s: %w", tld, err)
+						}
+						if err != nil {
+							fmt.Fprintf(cmd.OutOrStdout(), "✓ Created /etc/resolver/%s (nameserver %s)\n", tld, targetIP)
+						} else {
+							fmt.Fprintf(cmd.OutOrStdout(), "✓ Updated /etc/resolver/%s (nameserver %s -> %s)\n", tld, currentIP, targetIP)
+						}
+					}
+					updatedCount++
+				} else {
+					fmt.Fprintf(cmd.OutOrStdout(), "✓ /etc/resolver/%s is up to date (nameserver %s)\n", tld, targetIP)
+				}
+			}
+
+			if !dryRun {
+				_ = box.FlushMacOSDNSCache()
+			}
+
+			// Check for orphaned resolvers and advise user if any exist
+			resolvers, _ := box.ListMacOSResolvers()
+			var orphaned []string
+			for _, r := range resolvers {
+				if !seen[strings.ToLower(r)] {
+					orphaned = append(orphaned, r)
+				}
+			}
+			if len(orphaned) > 0 {
+				fmt.Fprintf(cmd.OutOrStdout(), "\nTip: Found %d orphaned resolver(s) not in active workspace (%s). Run 'oops dns prune' to remove them.\n", len(orphaned), strings.Join(orphaned, ", "))
+			}
+
+			if dryRun {
+				fmt.Fprintf(cmd.OutOrStdout(), "\n[dry-run] %d resolver(s) would be repaired/created.\n", updatedCount)
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "\nRepaired %d resolver(s). macOS DNS cache flushed.\n", updatedCount)
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolP("dry-run", "n", false, "Preview changes without modifying /etc/resolver")
+	cmd.Flags().String("ip", "", "Explicit nameserver IP (defaults to running edge/oops IP)")
 	return cmd
 }

@@ -80,5 +80,34 @@ func TestMacOSResolverLifecycle(t *testing.T) {
 	if _, err := os.Stat(prodPath); !os.IsNotExist(err) {
 		t.Fatalf("expected prod resolver file to be deleted")
 	}
+
+	// 7. Test SetupMacOSResolverWithIP & ReadMacOSResolver
+	if err := SetupMacOSResolverWithIP("custom", "10.240.0.15"); err != nil {
+		t.Fatalf("SetupMacOSResolverWithIP failed: %v", err)
+	}
+	readIP, err := ReadMacOSResolver("custom")
+	if err != nil {
+		t.Fatalf("ReadMacOSResolver failed: %v", err)
+	}
+	if readIP != "10.240.0.15" {
+		t.Errorf("ReadMacOSResolver = %q, want %q", readIP, "10.240.0.15")
+	}
+
+	// 8. Update custom resolver with new IP
+	if err := SetupMacOSResolverWithIP("custom", "10.240.0.99"); err != nil {
+		t.Fatalf("SetupMacOSResolverWithIP update failed: %v", err)
+	}
+	readIP2, err := ReadMacOSResolver("custom")
+	if err != nil {
+		t.Fatalf("ReadMacOSResolver after update failed: %v", err)
+	}
+	if readIP2 != "10.240.0.99" {
+		t.Errorf("ReadMacOSResolver after update = %q, want %q", readIP2, "10.240.0.99")
+	}
+
+	// 9. Flush cache
+	if err := FlushMacOSDNSCache(); err != nil {
+		t.Fatalf("FlushMacOSDNSCache failed: %v", err)
+	}
 }
 

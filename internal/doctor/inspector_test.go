@@ -117,20 +117,27 @@ func TestAuditResolverEntries(t *testing.T) {
 	cleanup := box.SetResolverDirForTest(tempResolverDir)
 	defer cleanup()
 
+	cleanupIP := box.SetOopsContainerIPForTest("10.240.0.2")
+	defer cleanupIP()
+
 	tempWorkDir := t.TempDir()
 	// Create capsule @b9tpe in workDir
 	b9tpeDir := filepath.Join(tempWorkDir, "@b9tpe")
 	_ = os.MkdirAll(b9tpeDir, 0755)
 	_ = os.WriteFile(filepath.Join(b9tpeDir, "remote.yaml"), []byte("host: b9tpe.example.com\n"), 0644)
 
-	// Resolver dir has: oops (valid), stale-resolver (orphaned), but MISSING b9tpe
-	_ = os.WriteFile(filepath.Join(tempResolverDir, "oops"), []byte("nameserver 127.0.0.1\n"), 0644)
+	// Resolver dir has:
+	// - oops: points to 192.168.97.3 (stale, active is 10.240.0.2)
+	// - stale-resolver: orphaned
+	// - MISSING b9tpe
+	_ = os.WriteFile(filepath.Join(tempResolverDir, "oops"), []byte("nameserver 192.168.97.3\n"), 0644)
 	_ = os.WriteFile(filepath.Join(tempResolverDir, "stale-resolver"), []byte("nameserver 127.0.0.1\n"), 0644)
 
 	issues := AuditResolverEntries(tempWorkDir)
 
 	hasOrphaned := false
 	hasMissing := false
+	hasStaleIP := false
 
 	for _, issue := range issues {
 		if strings.Contains(issue.Message, "Orphaned macOS DNS resolver for domain .stale-resolver") {
@@ -139,6 +146,9 @@ func TestAuditResolverEntries(t *testing.T) {
 		if strings.Contains(issue.Message, "Missing DNS resolver for registered remote '@b9tpe'") {
 			hasMissing = true
 		}
+		if strings.Contains(issue.Message, "Resolver points to stale nameserver 192.168.97.3 (active oops IP is 10.240.0.2)") {
+			hasStaleIP = true
+		}
 	}
 
 	if !hasOrphaned {
@@ -146,6 +156,9 @@ func TestAuditResolverEntries(t *testing.T) {
 	}
 	if !hasMissing {
 		t.Errorf("expected missing resolver warning for @b9tpe")
+	}
+	if !hasStaleIP {
+		t.Errorf("expected stale IP warning for /etc/resolver/oops")
 	}
 }
 

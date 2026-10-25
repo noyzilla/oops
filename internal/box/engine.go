@@ -166,8 +166,22 @@ func GetHostGatewayIP() string {
 	return "172.17.0.1"
 }
 
+var oopsContainerIPOverride string
+
+// SetOopsContainerIPForTest allows overriding oops container IP in tests.
+func SetOopsContainerIPForTest(ip string) func() {
+	orig := oopsContainerIPOverride
+	oopsContainerIPOverride = ip
+	return func() {
+		oopsContainerIPOverride = orig
+	}
+}
+
 // GetOopsContainerIP inspects the running oops container and retrieves its network IP address.
 func GetOopsContainerIP() string {
+	if oopsContainerIPOverride != "" {
+		return oopsContainerIPOverride
+	}
 	return docker.GetOopsContainerIP()
 }
 
@@ -182,8 +196,17 @@ func SetResolverDirForTest(dir string) func() {
 	}
 }
 
-// SetupMacOSResolver configures /etc/resolver/<tld> on macOS.
+// SetupMacOSResolver configures /etc/resolver/<tld> on macOS using the active oops container IP.
 func SetupMacOSResolver(tld string) error {
+	nameserverIP := GetOopsContainerIP()
+	if nameserverIP == "" {
+		nameserverIP = "127.0.0.1"
+	}
+	return SetupMacOSResolverWithIP(tld, nameserverIP)
+}
+
+// SetupMacOSResolverWithIP configures /etc/resolver/<tld> on macOS with an explicit nameserver IP.
+func SetupMacOSResolverWithIP(tld, nameserverIP string) error {
 	if runtime.GOOS != "darwin" && resolverDir == "/etc/resolver" {
 		return nil
 	}
@@ -193,7 +216,6 @@ func SetupMacOSResolver(tld string) error {
 	}
 	resolverFile := filepath.Join(resolverDir, tld)
 
-	nameserverIP := GetOopsContainerIP()
 	if nameserverIP == "" {
 		nameserverIP = "127.0.0.1"
 	}
@@ -206,6 +228,39 @@ func SetupMacOSResolver(tld string) error {
 
 	fmt.Printf("==> Configuring macOS DNS resolver for .%s domain (nameserver %s)...\n", tld, nameserverIP)
 	return writeResolverFile(resolverDir, resolverFile, content)
+}
+
+// ReadMacOSResolver reads the configured nameserver IP from /etc/resolver/<tld>.
+func ReadMacOSResolver(tld string) (string, error) {
+	if runtime.GOOS != "darwin" && resolverDir == "/etc/resolver" {
+		return "", nil
+	}
+	tld = strings.TrimPrefix(strings.TrimSpace(strings.ToLower(tld)), ".")
+	if tld == "" {
+		return "", fmt.Errorf("empty tld")
+	}
+	resolverFile := filepath.Join(resolverDir, tld)
+	content, err := os.ReadFile(resolverFile)
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(string(content), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && strings.EqualFold(fields[0], "nameserver") {
+			return fields[1], nil
+		}
+	}
+	return "", fmt.Errorf("no nameserver found in %s", resolverFile)
+}
+
+// FlushMacOSDNSCache clears the macOS DNS cache via dscacheutil and mDNSResponder.
+func FlushMacOSDNSCache() error {
+	if runtime.GOOS != "darwin" && resolverDir == "/etc/resolver" {
+		return nil
+	}
+	_ = exec.Command("dscacheutil", "-flushcache").Run()
+	_ = exec.Command("killall", "-HUP", "mDNSResponder").Run()
+	return nil
 }
 
 // RemoveMacOSResolver removes /etc/resolver/<tld> on macOS.

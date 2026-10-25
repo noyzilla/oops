@@ -32,11 +32,12 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
 - Queries matching `.oops`, `.<tld>`, or registered zone forwarders MUST NOT be relayed to external DNS relays.
 - If the domain is not found in the local resolver table or zone forwarder is unreachable, return `NXDOMAIN` immediately.
 
-### 3. macOS Resolver Lifecycle & Pruning
-- macOS host routing uses `/etc/resolver/<tld>` pointing to `nameserver <oops_container_ip>` (e.g. `192.168.97.3`).
+### 3. macOS Resolver Lifecycle, Repair & Pruning
+- macOS host routing uses `/etc/resolver/<tld>` pointing to `nameserver <oops_container_ip>` (e.g. `10.240.0.2`).
 - One-time setup occurs during `oops remote connect @<name>`.
 - Automatic cleanup on `oops remote remove` and `oops remote rename`.
-- Stale resolver entries without active remotes or workspaces are pruned via `oops dns prune` (alias `oops dns fix`).
+- Resolver entries with outdated nameserver IPs are audited by `oops doctor dns` and synchronized via `oops dns repair` (alias `oops dns fix`).
+- Orphaned resolver entries without active remotes or workspaces are pruned via `oops dns prune`.
 
 ---
 
