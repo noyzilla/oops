@@ -17,7 +17,24 @@ func newDBCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "db <engine>[:<target>] <action> [args...]",
 		Short: "Database provisioning and credentials management for mysql, postgres, or redis",
-		Long:  "Manages database and user provisioning for supported engines: mysql, postgres, redis. Actions: create, readonly, passwd, list, drop.",
+		Long: `Manages database and user provisioning for supported engines.
+
+Engines:
+  mysql     MySQL relational database
+  postgres  PostgreSQL relational database
+  redis     Redis in-memory store and cache
+
+Actions:
+  create    Create a new database and user
+  readonly  Create a read-only user for an existing database
+  passwd    Update password for a database user
+  list      List databases and users
+  drop      Drop a database and its associated user`,
+		Example: `  oops db mysql create myapp
+  oops db postgres readonly myapp_ro
+  oops db redis list
+  oops db mysql passwd myapp newsecret
+  oops db postgres drop myapp`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 2 {
 				return cmd.Help()
