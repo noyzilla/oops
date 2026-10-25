@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Changed
+- **Default Redis 8 Blueprint (`redis:8.10.2-alpine`)**: Updated the default Redis stack image and restore fallback from `redis:7-alpine` to `redis:8.10.2-alpine`, providing native RedisJSON and RediSearch capabilities out-of-the-box (`oopsbox/compose.db.yaml`, `internal/backup/restore.go`).
+
 ## [v1.22.0] - 2026-10-25
 
 ### Added
