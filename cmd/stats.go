@@ -123,8 +123,23 @@ func calculateBlockIO(blkio container.BlkioStats) (float64, float64) {
 	return read, write
 }
 
-// formatBinaryFixed formats byte sizes (base 1024) to a fixed width with exactly 2 decimal places.
-// Output is always exactly 9 characters (e.g. " 128.00MiB", "   5.26MiB", "   1.33GiB", "   0.00B  ").
+// padUnderscores replaces leading spaces with underscores (e.g. "  2.44" -> "__2.44", " 1.87%" -> "_1.87%").
+func padUnderscores(s string) string {
+	var b strings.Builder
+	leading := true
+	for _, r := range s {
+		if leading && r == ' ' {
+			b.WriteRune('_')
+		} else {
+			leading = false
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// formatBinaryFixed formats byte sizes (base 1024) to fixed width with exactly 2 decimal places.
+// Numbers have leading underscores for missing digits (e.g. "256.00MiB", "_17.93MiB", "__2.44GiB", "__0.00B  ").
 func formatBinaryFixed(b float64) string {
 	if b < 0 {
 		b = 0
@@ -136,11 +151,12 @@ func formatBinaryFixed(b float64) string {
 		val /= 1024.0
 		unitIdx++
 	}
-	return fmt.Sprintf("%6.2f%s", val, units[unitIdx])
+	numStr := padUnderscores(fmt.Sprintf("%6.2f", val))
+	return fmt.Sprintf("%s%s", numStr, units[unitIdx])
 }
 
-// formatDecimalFixed formats byte sizes (base 1000) to a fixed width with exactly 2 decimal places.
-// Output is always exactly 8 characters (e.g. " 149.60MB", "  11.60kB", "   0.00B ").
+// formatDecimalFixed formats byte sizes (base 1000) to fixed width with exactly 2 decimal places.
+// Numbers have leading underscores for missing digits (e.g. "352.26kB", "_17.17MB", "__3.28MB", "__0.00B ").
 func formatDecimalFixed(b float64) string {
 	if b < 0 {
 		b = 0
@@ -152,7 +168,8 @@ func formatDecimalFixed(b float64) string {
 		val /= 1000.0
 		unitIdx++
 	}
-	return fmt.Sprintf("%6.2f%s", val, units[unitIdx])
+	numStr := padUnderscores(fmt.Sprintf("%6.2f", val))
+	return fmt.Sprintf("%s%s", numStr, units[unitIdx])
 }
 
 func renderStatsTable(out io.Writer, items []containerStatsItem) {
@@ -198,11 +215,13 @@ func fetchSingleContainerStats(ctx context.Context, dockerCli *client.Client, c 
 		cName = strings.TrimPrefix(stats.Name, "/")
 	}
 
-	pidsStr := fmt.Sprintf("%5d", stats.PidsStats.Current)
+	pidsStr := fmt.Sprintf("%d", stats.PidsStats.Current)
 	if stats.PidsStats.Current == 0 && stats.NumProcs > 0 {
-		pidsStr = fmt.Sprintf("%5d", stats.NumProcs)
+		pidsStr = fmt.Sprintf("%d", stats.NumProcs)
 	}
 
+	cpuFormatted := padUnderscores(fmt.Sprintf("%5.2f%%", cpuPercent))
+	memPercFormatted := padUnderscores(fmt.Sprintf("%5.2f%%", memPercent))
 	memFormatted := fmt.Sprintf("%s / %s", formatBinaryFixed(memLimit), formatBinaryFixed(memUsage))
 	netFormatted := fmt.Sprintf("%s / %s", formatDecimalFixed(rx), formatDecimalFixed(tx))
 	blockFormatted := fmt.Sprintf("%s / %s", formatDecimalFixed(blkRead), formatDecimalFixed(blkWrite))
@@ -210,9 +229,9 @@ func fetchSingleContainerStats(ctx context.Context, dockerCli *client.Client, c 
 	item := &containerStatsItem{
 		ContainerID: shortContainerID(c.ID),
 		Name:        cName,
-		CPUPerc:     fmt.Sprintf("%6.2f%%", cpuPercent),
+		CPUPerc:     cpuFormatted,
 		MemLimitUse: memFormatted,
-		MemPerc:     fmt.Sprintf("%6.2f%%", memPercent),
+		MemPerc:     memPercFormatted,
 		NetIO:       netFormatted,
 		BlockIO:     blockFormatted,
 		Pids:        pidsStr,
