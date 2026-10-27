@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.25.1] - 2026-10-27
+
+### Changed
+- **Unified GB Base Unit in `oops stats`**: Standardized network (`NET RX/TX`) and block I/O (`BLOCK RD/WR`) metrics to also use `GB` as the minimum unit, aligning with memory telemetry for clean uniform unit scaling across all columns (`cmd/stats.go`).
+
 ## [v1.25.0] - 2026-10-27
 
 ### Added
