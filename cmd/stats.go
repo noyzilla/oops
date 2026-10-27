@@ -25,10 +25,13 @@ type containerStatsItem struct {
 	ContainerID string
 	Name        string
 	CPUPerc     string
-	MemLimitUse string
+	MemLimit    string
+	MemUsage    string
 	MemPerc     string
-	NetIO       string
-	BlockIO     string
+	NetRx       string
+	NetTx       string
+	BlockIn     string
+	BlockOut    string
 	Pids        string
 }
 
@@ -44,7 +47,7 @@ func newStatsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stats [targets...]",
 		Short: "Display resource usage statistics for containers",
-		Long:  "Display a formatted, real-time stream of container resource usage statistics (CPU %, Memory Limit/Usage, Memory %, Network I/O, Block I/O, PIDs) with fixed-width two-decimal aligned formatting.",
+		Long:  "Display a formatted, real-time stream of container resource usage statistics (CPU %, Memory Limit, Memory Usage, Memory %, Net RX, Net TX, Block IN, Block OUT, PIDs) with separate left-aligned columns and 2-decimal formatting.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runStats(cmd, args, noStream, showAll)
 		},
@@ -123,67 +126,51 @@ func calculateBlockIO(blkio container.BlkioStats) (float64, float64) {
 	return read, write
 }
 
-// padUnderscores replaces leading spaces with underscores (e.g. "  2.44" -> "__2.44", " 1.87%" -> "_1.87%").
-func padUnderscores(s string) string {
-	var b strings.Builder
-	leading := true
-	for _, r := range s {
-		if leading && r == ' ' {
-			b.WriteRune('_')
-		} else {
-			leading = false
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
-}
-
-// formatBinaryFixed formats byte sizes (base 1024) to fixed width with exactly 2 decimal places.
-// Numbers have leading underscores for missing digits (e.g. "256.00MiB", "_17.93MiB", "__2.44GiB", "__0.00B  ").
-func formatBinaryFixed(b float64) string {
+// formatBinary formats byte sizes (base 1024) with exactly 2 decimal places, left-aligned (e.g. "256.00MiB", "11.21MiB", "2.44GiB", "0.00B").
+func formatBinary(b float64) string {
 	if b < 0 {
 		b = 0
 	}
-	units := []string{"B  ", "KiB", "MiB", "GiB", "TiB", "PiB"}
+	units := []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB"}
 	unitIdx := 0
 	val := b
 	for val >= 1024.0 && unitIdx < len(units)-1 {
 		val /= 1024.0
 		unitIdx++
 	}
-	numStr := padUnderscores(fmt.Sprintf("%6.2f", val))
-	return fmt.Sprintf("%s%s", numStr, units[unitIdx])
+	return fmt.Sprintf("%.2f%s", val, units[unitIdx])
 }
 
-// formatDecimalFixed formats byte sizes (base 1000) to fixed width with exactly 2 decimal places.
-// Numbers have leading underscores for missing digits (e.g. "352.26kB", "_17.17MB", "__3.28MB", "__0.00B ").
-func formatDecimalFixed(b float64) string {
+// formatDecimal formats byte sizes (base 1000) with exactly 2 decimal places, left-aligned (e.g. "3.29MB", "17.21MB", "352.26kB", "0.00B").
+func formatDecimal(b float64) string {
 	if b < 0 {
 		b = 0
 	}
-	units := []string{"B ", "kB", "MB", "GB", "TB", "PB"}
+	units := []string{"B", "kB", "MB", "GB", "TB", "PB"}
 	unitIdx := 0
 	val := b
 	for val >= 1000.0 && unitIdx < len(units)-1 {
 		val /= 1000.0
 		unitIdx++
 	}
-	numStr := padUnderscores(fmt.Sprintf("%6.2f", val))
-	return fmt.Sprintf("%s%s", numStr, units[unitIdx])
+	return fmt.Sprintf("%.2f%s", val, units[unitIdx])
 }
 
 func renderStatsTable(out io.Writer, items []containerStatsItem) {
 	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "CONTAINER ID\tNAME\tCPU %\tMEM (LIMIT / USAGE)\tMEM %\tNET I/O (RX / TX)\tBLOCK I/O (IN / OUT)\tPIDS")
+	fmt.Fprintln(w, "CONTAINER ID\tNAME\tCPU %\tMEM LIMIT\tMEM USAGE\tMEM %\tNET RX\tNET TX\tBLOCK IN\tBLOCK OUT\tPIDS")
 	for _, it := range items {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			it.ContainerID,
 			it.Name,
 			it.CPUPerc,
-			it.MemLimitUse,
+			it.MemLimit,
+			it.MemUsage,
 			it.MemPerc,
-			it.NetIO,
-			it.BlockIO,
+			it.NetRx,
+			it.NetTx,
+			it.BlockIn,
+			it.BlockOut,
 			it.Pids,
 		)
 	}
@@ -220,20 +207,22 @@ func fetchSingleContainerStats(ctx context.Context, dockerCli *client.Client, c 
 		pidsStr = fmt.Sprintf("%d", stats.NumProcs)
 	}
 
-	cpuFormatted := padUnderscores(fmt.Sprintf("%5.2f%%", cpuPercent))
-	memPercFormatted := padUnderscores(fmt.Sprintf("%5.2f%%", memPercent))
-	memFormatted := fmt.Sprintf("%s / %s", formatBinaryFixed(memLimit), formatBinaryFixed(memUsage))
-	netFormatted := fmt.Sprintf("%s / %s", formatDecimalFixed(rx), formatDecimalFixed(tx))
-	blockFormatted := fmt.Sprintf("%s / %s", formatDecimalFixed(blkRead), formatDecimalFixed(blkWrite))
+	memLimitStr := "-"
+	if memLimit > 0 {
+		memLimitStr = formatBinary(memLimit)
+	}
 
 	item := &containerStatsItem{
 		ContainerID: shortContainerID(c.ID),
 		Name:        cName,
-		CPUPerc:     cpuFormatted,
-		MemLimitUse: memFormatted,
-		MemPerc:     memPercFormatted,
-		NetIO:       netFormatted,
-		BlockIO:     blockFormatted,
+		CPUPerc:     fmt.Sprintf("%.2f%%", cpuPercent),
+		MemLimit:    memLimitStr,
+		MemUsage:    formatBinary(memUsage),
+		MemPerc:     fmt.Sprintf("%.2f%%", memPercent),
+		NetRx:       formatDecimal(rx),
+		NetTx:       formatDecimal(tx),
+		BlockIn:     formatDecimal(blkRead),
+		BlockOut:    formatDecimal(blkWrite),
 		Pids:        pidsStr,
 	}
 
