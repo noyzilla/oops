@@ -16,7 +16,6 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"github.com/docker/go-units"
 	"github.com/moby/term"
 	"github.com/noyzilla/oops/internal/docker"
 	"github.com/spf13/cobra"
@@ -26,8 +25,7 @@ type containerStatsItem struct {
 	ContainerID string
 	Name        string
 	CPUPerc     string
-	MemUsage    string
-	MemLimit    string
+	MemLimitUse string
 	MemPerc     string
 	NetIO       string
 	BlockIO     string
@@ -46,7 +44,7 @@ func newStatsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stats [targets...]",
 		Short: "Display resource usage statistics for containers",
-		Long:  "Display a formatted, real-time stream of container resource usage statistics (CPU %, Memory Usage, Memory Limit, Memory %, Network I/O, Block I/O, PIDs) with separate columns for memory usage and memory limit.",
+		Long:  "Display a formatted, real-time stream of container resource usage statistics (CPU %, Memory Limit/Usage, Memory %, Network I/O, Block I/O, PIDs) with fixed-width two-decimal aligned formatting.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runStats(cmd, args, noStream, showAll)
 		},
@@ -125,16 +123,47 @@ func calculateBlockIO(blkio container.BlkioStats) (float64, float64) {
 	return read, write
 }
 
+// formatBinaryFixed formats byte sizes (base 1024) to a fixed width with exactly 2 decimal places.
+// Output is always exactly 9 characters (e.g. " 128.00MiB", "   5.26MiB", "   1.33GiB", "   0.00B  ").
+func formatBinaryFixed(b float64) string {
+	if b < 0 {
+		b = 0
+	}
+	units := []string{"B  ", "KiB", "MiB", "GiB", "TiB", "PiB"}
+	unitIdx := 0
+	val := b
+	for val >= 1024.0 && unitIdx < len(units)-1 {
+		val /= 1024.0
+		unitIdx++
+	}
+	return fmt.Sprintf("%6.2f%s", val, units[unitIdx])
+}
+
+// formatDecimalFixed formats byte sizes (base 1000) to a fixed width with exactly 2 decimal places.
+// Output is always exactly 8 characters (e.g. " 149.60MB", "  11.60kB", "   0.00B ").
+func formatDecimalFixed(b float64) string {
+	if b < 0 {
+		b = 0
+	}
+	units := []string{"B ", "kB", "MB", "GB", "TB", "PB"}
+	unitIdx := 0
+	val := b
+	for val >= 1000.0 && unitIdx < len(units)-1 {
+		val /= 1000.0
+		unitIdx++
+	}
+	return fmt.Sprintf("%6.2f%s", val, units[unitIdx])
+}
+
 func renderStatsTable(out io.Writer, items []containerStatsItem) {
 	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "CONTAINER ID\tNAME\tCPU %\tMEM USAGE\tMEM LIMIT\tMEM %\tNET I/O\tBLOCK I/O\tPIDS")
+	fmt.Fprintln(w, "CONTAINER ID\tNAME\tCPU %\tMEM (LIMIT / USAGE)\tMEM %\tNET I/O (RX / TX)\tBLOCK I/O (IN / OUT)\tPIDS")
 	for _, it := range items {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			it.ContainerID,
 			it.Name,
 			it.CPUPerc,
-			it.MemUsage,
-			it.MemLimit,
+			it.MemLimitUse,
 			it.MemPerc,
 			it.NetIO,
 			it.BlockIO,
@@ -169,25 +198,23 @@ func fetchSingleContainerStats(ctx context.Context, dockerCli *client.Client, c 
 		cName = strings.TrimPrefix(stats.Name, "/")
 	}
 
-	memLimitStr := "-"
-	if memLimit > 0 {
-		memLimitStr = units.BytesSize(memLimit)
+	pidsStr := fmt.Sprintf("%5d", stats.PidsStats.Current)
+	if stats.PidsStats.Current == 0 && stats.NumProcs > 0 {
+		pidsStr = fmt.Sprintf("%5d", stats.NumProcs)
 	}
 
-	pidsStr := fmt.Sprintf("%d", stats.PidsStats.Current)
-	if stats.PidsStats.Current == 0 && stats.NumProcs > 0 {
-		pidsStr = fmt.Sprintf("%d", stats.NumProcs)
-	}
+	memFormatted := fmt.Sprintf("%s / %s", formatBinaryFixed(memLimit), formatBinaryFixed(memUsage))
+	netFormatted := fmt.Sprintf("%s / %s", formatDecimalFixed(rx), formatDecimalFixed(tx))
+	blockFormatted := fmt.Sprintf("%s / %s", formatDecimalFixed(blkRead), formatDecimalFixed(blkWrite))
 
 	item := &containerStatsItem{
 		ContainerID: shortContainerID(c.ID),
 		Name:        cName,
-		CPUPerc:     fmt.Sprintf("%.2f%%", cpuPercent),
-		MemUsage:    units.BytesSize(memUsage),
-		MemLimit:    memLimitStr,
-		MemPerc:     fmt.Sprintf("%.2f%%", memPercent),
-		NetIO:       fmt.Sprintf("%s / %s", units.HumanSize(rx), units.HumanSize(tx)),
-		BlockIO:     fmt.Sprintf("%s / %s", units.HumanSize(blkRead), units.HumanSize(blkWrite)),
+		CPUPerc:     fmt.Sprintf("%6.2f%%", cpuPercent),
+		MemLimitUse: memFormatted,
+		MemPerc:     fmt.Sprintf("%6.2f%%", memPercent),
+		NetIO:       netFormatted,
+		BlockIO:     blockFormatted,
 		Pids:        pidsStr,
 	}
 

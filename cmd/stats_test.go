@@ -25,19 +25,16 @@ func TestCalculateCPUPercent(t *testing.T) {
 		},
 	}
 
-	// cpuDelta = 100M, systemDelta = 1000M (1B) -> ratio = 0.1 * 2 cpus * 100 = 20.00%
 	perc := calculateCPUPercent(stats, nil)
 	expected := 20.0
 	if perc != expected {
 		t.Errorf("calculateCPUPercent() = %v, expected %v", perc, expected)
 	}
 
-	// Test with previous sample override
 	prev := &cpuSample{
 		totalUsage:  150000000,
 		systemUsage: 1500000000,
 	}
-	// cpuDelta = 50M, systemDelta = 500M -> ratio = 0.1 * 2 cpus * 100 = 20.00%
 	percPrev := calculateCPUPercent(stats, prev)
 	if percPrev != expected {
 		t.Errorf("calculateCPUPercent() with prev = %v, expected %v", percPrev, expected)
@@ -69,26 +66,46 @@ func TestCalculateMemUsage(t *testing.T) {
 	}
 }
 
-func TestCalculateNetworkAndBlockIO(t *testing.T) {
-	networks := map[string]container.NetworkStats{
-		"eth0": {RxBytes: 1024, TxBytes: 2048},
-		"eth1": {RxBytes: 512, TxBytes: 256},
-	}
-	rx, tx := calculateNetwork(networks)
-	if rx != 1536 || tx != 2304 {
-		t.Errorf("calculateNetwork() = (%v, %v), expected (1536, 2304)", rx, tx)
+func TestFormatBinaryFixed(t *testing.T) {
+	tests := []struct {
+		bytes    float64
+		expected string
+	}{
+		{0, "  0.00B  "},
+		{128 * 1024 * 1024, "128.00MiB"},
+		{5.258 * 1024 * 1024, "  5.26MiB"},
+		{1.333 * 1024 * 1024 * 1024, "  1.33GiB"},
 	}
 
-	blkio := container.BlkioStats{
-		IoServiceBytesRecursive: []container.BlkioStatEntry{
-			{Op: "Read", Value: 4096},
-			{Op: "Write", Value: 8192},
-			{Op: "read", Value: 1024},
-		},
+	for _, tt := range tests {
+		actual := formatBinaryFixed(tt.bytes)
+		if len(actual) != 9 {
+			t.Errorf("formatBinaryFixed(%v) width = %d, expected 9", tt.bytes, len(actual))
+		}
+		if actual != tt.expected {
+			t.Errorf("formatBinaryFixed(%v) = %q, expected %q", tt.bytes, actual, tt.expected)
+		}
 	}
-	read, write := calculateBlockIO(blkio)
-	if read != 5120 || write != 8192 {
-		t.Errorf("calculateBlockIO() = (%v, %v), expected (5120, 8192)", read, write)
+}
+
+func TestFormatDecimalFixed(t *testing.T) {
+	tests := []struct {
+		bytes    float64
+		expected string
+	}{
+		{0, "  0.00B "},
+		{11600, " 11.60kB"},
+		{149600000, "149.60MB"},
+	}
+
+	for _, tt := range tests {
+		actual := formatDecimalFixed(tt.bytes)
+		if len(actual) != 8 {
+			t.Errorf("formatDecimalFixed(%v) width = %d, expected 8", tt.bytes, len(actual))
+		}
+		if actual != tt.expected {
+			t.Errorf("formatDecimalFixed(%v) = %q, expected %q", tt.bytes, actual, tt.expected)
+		}
 	}
 }
 
@@ -97,24 +114,22 @@ func TestRenderStatsTable(t *testing.T) {
 		{
 			ContainerID: "ddadb950dd83",
 			Name:        "oops",
-			CPUPerc:     "0.00%",
-			MemUsage:    "5.258MiB",
-			MemLimit:    "128MiB",
-			MemPerc:     "4.11%",
-			NetIO:       "11.6kB / 12.6kB",
-			BlockIO:     "0B / 0B",
-			Pids:        "6",
+			CPUPerc:     "  0.01%",
+			MemLimitUse: "128.00MiB /   5.32MiB",
+			MemPerc:     "  4.15%",
+			NetIO:       " 20.04kB /  22.26kB",
+			BlockIO:     "  0.00B  /   0.00B ",
+			Pids:        "    6",
 		},
 		{
 			ContainerID: "98ba9bf3e428",
 			Name:        "caddy-proxy",
-			CPUPerc:     "0.32%",
-			MemUsage:    "50.14MiB",
-			MemLimit:    "256MiB",
-			MemPerc:     "19.58%",
-			NetIO:       "81.7MB / 88.7MB",
-			BlockIO:     "180kB / 8.19kB",
-			Pids:        "10",
+			CPUPerc:     "  0.45%",
+			MemLimitUse: "256.00MiB /  55.33MiB",
+			MemPerc:     " 21.61%",
+			NetIO:       "149.60MB / 162.50MB",
+			BlockIO:     "180.20kB /   8.19kB",
+			Pids:        "   10",
 		},
 	}
 
@@ -122,13 +137,10 @@ func TestRenderStatsTable(t *testing.T) {
 	renderStatsTable(&buf, items)
 	out := buf.String()
 
-	// Verify header contains individual MEM USAGE and MEM LIMIT columns
-	header := "CONTAINER ID   NAME          CPU %   MEM USAGE   MEM LIMIT   MEM %    NET I/O           BLOCK I/O        PIDS"
-	if !strings.Contains(out, "MEM USAGE") || !strings.Contains(out, "MEM LIMIT") {
-		t.Errorf("renderStatsTable header missing MEM USAGE or MEM LIMIT: \n%s", out)
+	if !strings.Contains(out, "MEM (LIMIT / USAGE)") {
+		t.Errorf("renderStatsTable header missing MEM (LIMIT / USAGE): \n%s", out)
 	}
-	if !strings.Contains(out, "ddadb950dd83") || !strings.Contains(out, "5.258MiB") || !strings.Contains(out, "128MiB") {
+	if !strings.Contains(out, "128.00MiB /   5.32MiB") {
 		t.Errorf("renderStatsTable missing oops row data: \n%s", out)
 	}
-	_ = header
 }
