@@ -11,10 +11,10 @@ func TestFormatBinary(t *testing.T) {
 		bytes    float64
 		expected string
 	}{
-		{0, "  0.00kB"},
-		{256 * 1024 * 1024, "256.00MB"},
-		{11.21 * 1024 * 1024, " 11.21MB"},
-		{2.44 * 1024 * 1024 * 1024, "  2.44GB"},
+		{0, "  0.00 KB"},
+		{256 * 1024 * 1024, "256.00 MB"},
+		{11.21 * 1024 * 1024, " 11.21 MB"},
+		{2.44 * 1024 * 1024 * 1024, "  2.44 GB"},
 	}
 
 	for _, tt := range tests {
@@ -30,10 +30,10 @@ func TestFormatDecimal(t *testing.T) {
 		bytes    float64
 		expected string
 	}{
-		{0, "  0.00kB"},
-		{352.26 * 1000, "352.26kB"},
-		{3.29 * 1000 * 1000, "  3.29MB"},
-		{1.73 * 1000 * 1000 * 1000, "  1.73GB"},
+		{0, "  0.00 KB"},
+		{352.26 * 1000, "352.26 KB"},
+		{3.29 * 1000 * 1000, "  3.29 MB"},
+		{1.73 * 1000 * 1000 * 1000, "  1.73 GB"},
 	}
 
 	for _, tt := range tests {
@@ -49,27 +49,27 @@ func TestRenderStatsTableSeparated(t *testing.T) {
 		{
 			ContainerID: "ddadb950dd83",
 			Name:        "oops",
-			CPUPerc:     "  0.01%",
-			MemLimit:    "256.00MB",
-			MemUsage:    "  5.30MB",
-			MemPerc:     "  4.14%",
-			NetRx:       " 27.69kB",
-			NetTx:       " 31.05kB",
-			BlockIn:     "  0.00kB",
-			BlockOut:    "  0.00kB",
+			CPUPerc:     "0.01 %",
+			MemLimit:    "128.00 MB",
+			MemUsage:    "  5.30 MB",
+			MemPerc:     "4.14 %",
+			NetRx:       " 27.69 KB",
+			NetTx:       " 31.05 KB",
+			BlockIn:     "  0.00 KB",
+			BlockOut:    "  0.00 KB",
 			Pids:        "6",
 		},
 		{
 			ContainerID: "98ba9bf3e428",
 			Name:        "caddy-proxy",
-			CPUPerc:     "  0.38%",
-			MemLimit:    "256.00MB",
-			MemUsage:    " 50.74MB",
-			MemPerc:     " 19.82%",
-			NetRx:       "199.90MB",
-			NetTx:       "217.70MB",
-			BlockIn:     "180.22kB",
-			BlockOut:    "  8.19kB",
+			CPUPerc:     "0.38 %",
+			MemLimit:    "256.00 MB",
+			MemUsage:    " 50.74 MB",
+			MemPerc:     "19.82 %",
+			NetRx:       "199.90 MB",
+			NetTx:       "217.70 MB",
+			BlockIn:     "180.22 KB",
+			BlockOut:    "  8.19 KB",
 			Pids:        "10",
 		},
 	}
@@ -84,7 +84,7 @@ func TestRenderStatsTableSeparated(t *testing.T) {
 			t.Errorf("renderStatsTable missing header %q in:\n%s", h, out)
 		}
 	}
-	if !strings.Contains(out, "256.00MB") || !strings.Contains(out, "5.30MB") || !strings.Contains(out, "27.69kB") {
+	if !strings.Contains(out, "128.00 MB") || !strings.Contains(out, "5.30 MB") || !strings.Contains(out, "27.69 KB") {
 		t.Errorf("renderStatsTable missing oops row values in:\n%s", out)
 	}
 }

@@ -126,39 +126,39 @@ func calculateBlockIO(blkio container.BlkioStats) (float64, float64) {
 	return read, write
 }
 
-// formatBinary formats byte sizes (base 1024) with minimum unit kB and exactly 2 decimal places (e.g. "256.00MB", "  2.44GB", "  0.00kB").
+// formatBinary formats byte sizes (base 1024) with minimum unit KB and exactly 2 decimal places (e.g. "256.00 MB", "  2.44 GB", "  0.00 KB").
 func formatBinary(b float64) string {
 	if b < 0 {
 		b = 0
 	}
-	units := []string{"kB", "MB", "GB", "TB", "PB"}
+	units := []string{"KB", "MB", "GB", "TB", "PB"}
 	unitIdx := 0
 	val := b / 1024.0
 	for val >= 1024.0 && unitIdx < len(units)-1 {
 		val /= 1024.0
 		unitIdx++
 	}
-	return fmt.Sprintf("%6.2f%s", val, units[unitIdx])
+	return fmt.Sprintf("%6.2f %s", val, units[unitIdx])
 }
 
-// formatDecimal formats byte sizes (base 1000) with minimum unit kB and exactly 2 decimal places (e.g. "  3.29MB", "352.26kB", "  0.00kB").
+// formatDecimal formats byte sizes (base 1000) with minimum unit KB and exactly 2 decimal places (e.g. "  3.29 MB", "352.26 KB", "  0.00 KB").
 func formatDecimal(b float64) string {
 	if b < 0 {
 		b = 0
 	}
-	units := []string{"kB", "MB", "GB", "TB", "PB"}
+	units := []string{"KB", "MB", "GB", "TB", "PB"}
 	unitIdx := 0
 	val := b / 1000.0
 	for val >= 1000.0 && unitIdx < len(units)-1 {
 		val /= 1000.0
 		unitIdx++
 	}
-	return fmt.Sprintf("%6.2f%s", val, units[unitIdx])
+	return fmt.Sprintf("%6.2f %s", val, units[unitIdx])
 }
 
 func renderStatsTable(out io.Writer, items []containerStatsItem) {
 	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
-	fmt.Fprintf(w, "%s\t%s\t%7s\t%9s\t%9s\t%7s\t%8s\t%8s\t%8s\t%9s\t%5s\n",
+	fmt.Fprintf(w, "%s\t%s\t%8s\t%9s\t%9s\t%8s\t%9s\t%9s\t%9s\t%9s\t%5s\n",
 		"CONTAINER ID",
 		"NAME",
 		"CPU %",
@@ -172,7 +172,7 @@ func renderStatsTable(out io.Writer, items []containerStatsItem) {
 		"PIDS",
 	)
 	for _, it := range items {
-		fmt.Fprintf(w, "%s\t%s\t%7s\t%9s\t%9s\t%7s\t%8s\t%8s\t%8s\t%9s\t%5s\n",
+		fmt.Fprintf(w, "%s\t%s\t%8s\t%9s\t%9s\t%8s\t%9s\t%9s\t%9s\t%9s\t%5s\n",
 			it.ContainerID,
 			it.Name,
 			it.CPUPerc,
@@ -227,10 +227,10 @@ func fetchSingleContainerStats(ctx context.Context, dockerCli *client.Client, c 
 	item := &containerStatsItem{
 		ContainerID: shortContainerID(c.ID),
 		Name:        cName,
-		CPUPerc:     fmt.Sprintf("%6.2f%%", cpuPercent),
+		CPUPerc:     fmt.Sprintf("%.2f %%", cpuPercent),
 		MemLimit:    memLimitStr,
 		MemUsage:    formatBinary(memUsage),
-		MemPerc:     fmt.Sprintf("%6.2f%%", memPercent),
+		MemPerc:     fmt.Sprintf("%.2f %%", memPercent),
 		NetRx:       formatDecimal(rx),
 		NetTx:       formatDecimal(tx),
 		BlockIn:     formatDecimal(blkRead),
