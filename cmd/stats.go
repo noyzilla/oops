@@ -126,14 +126,14 @@ func calculateBlockIO(blkio container.BlkioStats) (float64, float64) {
 	return read, write
 }
 
-// formatBinary formats byte sizes (base 1024) with minimum unit KB and exactly 2 decimal places (e.g. "256.00 MB", "  2.44 GB", "  0.00 KB").
+// formatBinary formats byte sizes (base 1024) with minimum unit GB and exactly 2 decimal places (e.g. "  0.25 GB", "  2.44 GB", "  0.00 GB").
 func formatBinary(b float64) string {
 	if b < 0 {
 		b = 0
 	}
-	units := []string{"KB", "MB", "GB", "TB", "PB"}
+	units := []string{"GB", "TB", "PB"}
 	unitIdx := 0
-	val := b / 1024.0
+	val := b / (1024.0 * 1024.0 * 1024.0)
 	for val >= 1024.0 && unitIdx < len(units)-1 {
 		val /= 1024.0
 		unitIdx++
