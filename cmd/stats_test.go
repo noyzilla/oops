@@ -78,7 +78,7 @@ func TestRenderStatsTableSeparated(t *testing.T) {
 	renderStatsTable(&buf, items)
 	out := buf.String()
 
-	expectedHeaders := []string{"CONTAINER ID", "NAME", "CPU %", "MEM", "MEM USAGE", "MEM %", "NET RX", "NET TX", "BLOCK IN", "BLOCK OUT", "PIDS"}
+	expectedHeaders := []string{"CONTAINER ID", "NAME", "CPU %", "MEM LM", "MEM US", "MEM %", "NET RX", "NET TX", "BLOCK RD", "BLOCK WR", "PIDS"}
 	for _, h := range expectedHeaders {
 		if !strings.Contains(out, h) {
 			t.Errorf("renderStatsTable missing header %q in:\n%s", h, out)

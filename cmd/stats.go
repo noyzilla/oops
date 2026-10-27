@@ -47,7 +47,7 @@ func newStatsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stats [targets...]",
 		Short: "Display resource usage statistics for containers",
-		Long:  "Display a formatted, real-time stream of container resource usage statistics (CPU %, Memory Limit, Memory Usage, Memory %, Net RX, Net TX, Block IN, Block OUT, PIDs) with separate left-aligned columns and 2-decimal formatting.",
+		Long:  "Display a formatted, real-time stream of container resource usage statistics (CPU %, MEM LM, MEM US, MEM %, NET RX, NET TX, BLOCK RD, BLOCK WR, PIDs) with right-aligned metrics and 2-decimal formatting.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runStats(cmd, args, noStream, showAll)
 		},
@@ -162,13 +162,13 @@ func renderStatsTable(out io.Writer, items []containerStatsItem) {
 		"CONTAINER ID",
 		"NAME",
 		"CPU %",
-		"MEM",
-		"MEM USAGE",
+		"MEM LM",
+		"MEM US",
 		"MEM %",
 		"NET RX",
 		"NET TX",
-		"BLOCK IN",
-		"BLOCK OUT",
+		"BLOCK RD",
+		"BLOCK WR",
 		"PIDS",
 	)
 	for _, it := range items {
