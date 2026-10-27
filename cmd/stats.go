@@ -126,12 +126,12 @@ func calculateBlockIO(blkio container.BlkioStats) (float64, float64) {
 	return read, write
 }
 
-// formatBinary formats byte sizes (base 1024) with minimum unit KiB and exactly 2 decimal places (e.g. "256.00 MiB", "  2.44 GiB", "  0.00 KiB").
+// formatBinary formats byte sizes (base 1024) with minimum unit kB and exactly 2 decimal places (e.g. "256.00 MB", "  2.44 GB", "  0.00 kB").
 func formatBinary(b float64) string {
 	if b < 0 {
 		b = 0
 	}
-	units := []string{"KiB", "MiB", "GiB", "TiB", "PiB"}
+	units := []string{"kB", "MB", "GB", "TB", "PB"}
 	unitIdx := 0
 	val := b / 1024.0
 	for val >= 1024.0 && unitIdx < len(units)-1 {
@@ -158,7 +158,7 @@ func formatDecimal(b float64) string {
 
 func renderStatsTable(out io.Writer, items []containerStatsItem) {
 	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
-	fmt.Fprintf(w, "%s\t%s\t%8s\t%10s\t%10s\t%8s\t%9s\t%9s\t%9s\t%9s\t%5s\n",
+	fmt.Fprintf(w, "%s\t%s\t%8s\t%9s\t%9s\t%8s\t%9s\t%9s\t%9s\t%9s\t%5s\n",
 		"CONTAINER ID",
 		"NAME",
 		"CPU %",
@@ -172,7 +172,7 @@ func renderStatsTable(out io.Writer, items []containerStatsItem) {
 		"PIDS",
 	)
 	for _, it := range items {
-		fmt.Fprintf(w, "%s\t%s\t%8s\t%10s\t%10s\t%8s\t%9s\t%9s\t%9s\t%9s\t%5s\n",
+		fmt.Fprintf(w, "%s\t%s\t%8s\t%9s\t%9s\t%8s\t%9s\t%9s\t%9s\t%9s\t%5s\n",
 			it.ContainerID,
 			it.Name,
 			it.CPUPerc,
