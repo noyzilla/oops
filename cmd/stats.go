@@ -126,7 +126,7 @@ func calculateBlockIO(blkio container.BlkioStats) (float64, float64) {
 	return read, write
 }
 
-// formatBinary formats byte sizes (base 1024) with exactly 2 decimal places, left-aligned (e.g. "256.00MiB", "11.21MiB", "2.44GiB", "0.00B").
+// formatBinary formats byte sizes (base 1024) with exactly 2 decimal places and a space before unit (e.g. "256.00 MiB", "2.44 GiB", "0.00 B").
 func formatBinary(b float64) string {
 	if b < 0 {
 		b = 0
@@ -138,10 +138,10 @@ func formatBinary(b float64) string {
 		val /= 1024.0
 		unitIdx++
 	}
-	return fmt.Sprintf("%.2f%s", val, units[unitIdx])
+	return fmt.Sprintf("%.2f %s", val, units[unitIdx])
 }
 
-// formatDecimal formats byte sizes (base 1000) with exactly 2 decimal places, left-aligned (e.g. "3.29MB", "17.21MB", "352.26kB", "0.00B").
+// formatDecimal formats byte sizes (base 1000) with exactly 2 decimal places and a space before unit (e.g. "3.29 MB", "352.26 kB", "0.00 B").
 func formatDecimal(b float64) string {
 	if b < 0 {
 		b = 0
@@ -153,14 +153,26 @@ func formatDecimal(b float64) string {
 		val /= 1000.0
 		unitIdx++
 	}
-	return fmt.Sprintf("%.2f%s", val, units[unitIdx])
+	return fmt.Sprintf("%.2f %s", val, units[unitIdx])
 }
 
 func renderStatsTable(out io.Writer, items []containerStatsItem) {
 	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "CONTAINER ID\tNAME\tCPU %\tMEM LIMIT\tMEM USAGE\tMEM %\tNET RX\tNET TX\tBLOCK IN\tBLOCK OUT\tPIDS")
+	fmt.Fprintf(w, "%s\t%s\t%8s\t%11s\t%11s\t%8s\t%10s\t%10s\t%10s\t%10s\t%5s\n",
+		"CONTAINER ID",
+		"NAME",
+		"CPU %",
+		"MEM LIMIT",
+		"MEM USAGE",
+		"MEM %",
+		"NET RX",
+		"NET TX",
+		"BLOCK IN",
+		"BLOCK OUT",
+		"PIDS",
+	)
 	for _, it := range items {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%8s\t%11s\t%11s\t%8s\t%10s\t%10s\t%10s\t%10s\t%5s\n",
 			it.ContainerID,
 			it.Name,
 			it.CPUPerc,
@@ -215,10 +227,10 @@ func fetchSingleContainerStats(ctx context.Context, dockerCli *client.Client, c 
 	item := &containerStatsItem{
 		ContainerID: shortContainerID(c.ID),
 		Name:        cName,
-		CPUPerc:     fmt.Sprintf("%.2f%%", cpuPercent),
+		CPUPerc:     fmt.Sprintf("%.2f %%", cpuPercent),
 		MemLimit:    memLimitStr,
 		MemUsage:    formatBinary(memUsage),
-		MemPerc:     fmt.Sprintf("%.2f%%", memPercent),
+		MemPerc:     fmt.Sprintf("%.2f %%", memPercent),
 		NetRx:       formatDecimal(rx),
 		NetTx:       formatDecimal(tx),
 		BlockIn:     formatDecimal(blkRead),
