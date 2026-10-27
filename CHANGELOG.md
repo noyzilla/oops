@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Added
+- **Real-Time Resource Telemetry (`oops stats`)**: Added interactive streaming resource monitor displaying `CONTAINER ID`, `NAME`, `CPU %`, `MEM LM`, `MEM US`, `MEM %`, `NET RX`, `NET TX`, `BLOCK RD`, `BLOCK WR`, and `PIDS` with right-aligned metrics, 2-decimal formatting, automatic terminal refresh, `--no-stream` single snapshot mode, and target/stack filtering (`cmd/stats.go`, `docs/specs/cli.md`).
+- **Configurable Tunnel Memory Limit (`--memory`)**: Added default 256MB memory limit to client tunnel containers to prevent memory ballooning over prolonged SSH sessions, configurable via `--memory` on `oops tunnel up` and `tunnel.memory` in `remote.yaml` (`cmd/tunnel.go`, `internal/tunnel/`, `docs/specs/tunnel.md`, `docs/specs/cli.md`).
+
 ## [v1.24.0] - 2026-10-25
 
 ### Added

@@ -60,6 +60,9 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
   - Oops DNS resolves `mysql1.<remote>.tunnel.oops` to IP 1 and `mysql2.<remote>.tunnel.oops` to IP 2.
   - SSH runs a single session forwarding each local IP:port directly to its respective remote container.
 - This guarantees zero port clashes on macOS `localhost`, allowing concurrent tunnels to multiple remote environments (`@b9tpe`, `@prod`, `@staging`) and multiple services with identical ports simultaneously.
+- **Client Container Memory Limits**:
+  - Tunnel containers enforce a default memory limit of `256MB` (`268435456` bytes) to prevent resource ballooning during prolonged SSH port forwarding.
+  - Configurable per-remote in `remote.yaml` via `tunnel.memory` (e.g. `256MB`, `512MB`, `1GB`) or via the `--memory` flag on `oops tunnel up` and `oops tunnel restart`.
 
 ### 4. Configuration Resolution (`@<remote>/remote.yaml`)
 - The tunnel configuration is loaded automatically from `/@<remote>/remote.yaml` in the active workspace.

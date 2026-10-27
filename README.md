@@ -149,6 +149,19 @@ oops logs /db --tail 20
 oops logs app.. -f
 ```
 
+### Container Status & Resource Telemetry
+```bash
+# Formatted status table with stack path notation and IP bindings
+oops ps
+oops ps -a                 # Include missing compose services
+oops ps /db                # Filter by stack or service
+
+# Real-time streaming resource usage telemetry (CPU, Memory, Net, Disk, PIDs)
+oops stats
+oops stats --no-stream     # Single-snapshot query without streaming
+oops stats /db/mysql       # Filter target service
+```
+
 ### CLI Version & Self-Update
 ```bash
 # Display binary version & build information
