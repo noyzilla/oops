@@ -141,14 +141,14 @@ func formatBinary(b float64) string {
 	return fmt.Sprintf("%6.2f %s", val, units[unitIdx])
 }
 
-// formatDecimal formats byte sizes (base 1000) with minimum unit KB and exactly 2 decimal places (e.g. "  3.29 MB", "352.26 KB", "  0.00 KB").
+// formatDecimal formats byte sizes (base 1000) with minimum unit GB and exactly 2 decimal places (e.g. "  0.00 GB", "  1.73 GB", "  3.29 GB").
 func formatDecimal(b float64) string {
 	if b < 0 {
 		b = 0
 	}
-	units := []string{"KB", "MB", "GB", "TB", "PB"}
+	units := []string{"GB", "TB", "PB"}
 	unitIdx := 0
-	val := b / 1000.0
+	val := b / (1000.0 * 1000.0 * 1000.0)
 	for val >= 1000.0 && unitIdx < len(units)-1 {
 		val /= 1000.0
 		unitIdx++
