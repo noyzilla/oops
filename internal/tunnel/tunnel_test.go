@@ -271,4 +271,29 @@ func TestBuildContainerConfig_CapNetAdminAndDnsMappings(t *testing.T) {
 	if !foundCap {
 		t.Errorf("expected NET_ADMIN capability, got %v", hConfig.CapAdd)
 	}
+
+	if hConfig.Resources.Memory != DefaultTunnelMemoryLimit {
+		t.Errorf("expected default memory limit %d, got %d", DefaultTunnelMemoryLimit, hConfig.Resources.Memory)
+	}
+	if hConfig.Resources.MemoryReservation != DefaultTunnelMemoryReservation {
+		t.Errorf("expected default memory reservation %d, got %d", DefaultTunnelMemoryReservation, hConfig.Resources.MemoryReservation)
+	}
+
+	// Custom memory limit
+	cfgCustomMem := &TunnelConfig{
+		RemoteName:  "b9tpe",
+		Host:        "b9tpe",
+		Hostname:    "tunnel-b9tpe.oops",
+		MemoryLimit: 512 * 1024 * 1024,
+	}
+	_, hConfigCustom, err := BuildContainerConfig(cfgCustomMem, mappings)
+	if err != nil {
+		t.Fatalf("BuildContainerConfig custom mem failed: %v", err)
+	}
+	if hConfigCustom.Resources.Memory != 512*1024*1024 {
+		t.Errorf("expected 512MB memory limit, got %d", hConfigCustom.Resources.Memory)
+	}
+	if hConfigCustom.Resources.MemoryReservation != 256*1024*1024 {
+		t.Errorf("expected 256MB memory reservation, got %d", hConfigCustom.Resources.MemoryReservation)
+	}
 }

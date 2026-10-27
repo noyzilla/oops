@@ -25,6 +25,12 @@ const (
 
 	// LabelTunnelHostname stores the allocated domain
 	LabelTunnelHostname = "oops.tunnel.hostname"
+
+	// DefaultTunnelMemoryLimit is 256MB for the tunnel container
+	DefaultTunnelMemoryLimit = 256 * 1024 * 1024 // 256 MB
+
+	// DefaultTunnelMemoryReservation is 128MB
+	DefaultTunnelMemoryReservation = 128 * 1024 * 1024 // 128 MB
 )
 
 // BuildTunnelCommand constructs the in-container startup script using standard ssh
@@ -184,11 +190,24 @@ func BuildContainerConfig(cfg *TunnelConfig, mappings []PortMapping) (*container
 		Env:      env,
 	}
 
+	memLimit := cfg.MemoryLimit
+	if memLimit <= 0 {
+		memLimit = DefaultTunnelMemoryLimit
+	}
+	memReservation := cfg.MemoryReservation
+	if memReservation <= 0 {
+		memReservation = memLimit / 2
+	}
+
 	hostConfig := &container.HostConfig{
-		CapAdd:      []string{"NET_ADMIN"},
-		Mounts:      mounts,
+		CapAdd: []string{"NET_ADMIN"},
+		Mounts: mounts,
 		RestartPolicy: container.RestartPolicy{
 			Name: "unless-stopped",
+		},
+		Resources: container.Resources{
+			Memory:            memLimit,
+			MemoryReservation: memReservation,
 		},
 	}
 

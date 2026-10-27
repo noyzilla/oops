@@ -8,6 +8,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/docker/docker/client"
+	"github.com/docker/go-units"
 	"github.com/noyzilla/oops/internal/docker"
 	"github.com/noyzilla/oops/internal/tunnel"
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ import (
 var (
 	tunnelMeshMode bool
 	tunnelPortMode bool
+	tunnelMemory   string
 )
 
 func newTunnelCmd() *cobra.Command {
@@ -38,6 +40,7 @@ Local applications and database GUIs connect directly via DNS: <service>.<remote
 
 	cmd.PersistentFlags().BoolVar(&tunnelMeshMode, "mesh", false, "Use L3 user-space mesh routing mode over SOCKS5")
 	cmd.PersistentFlags().BoolVar(&tunnelPortMode, "port", false, "Use standard L4 port forwarding mode")
+	cmd.PersistentFlags().StringVar(&tunnelMemory, "memory", "", "Memory limit for tunnel container (e.g. 128m, 256m, default 256m)")
 
 	cmd.AddCommand(newTunnelUpCmd())
 	cmd.AddCommand(newTunnelDownCmd())
@@ -64,6 +67,7 @@ Example: oops tunnel up @b9tpe mysql:3306 redis:6379 pg:5432:5432`,
 
 	cmd.Flags().BoolVar(&tunnelMeshMode, "mesh", false, "Use L3 user-space mesh routing mode over SOCKS5")
 	cmd.Flags().BoolVar(&tunnelPortMode, "port", false, "Use standard L4 port forwarding mode")
+	cmd.Flags().StringVar(&tunnelMemory, "memory", "", "Memory limit for tunnel container (e.g. 128m, 256m, default 256m)")
 
 	return cmd
 }
@@ -122,6 +126,15 @@ func runTunnelUp(cmd *cobra.Command, remoteTarget string, portSpecs []string) er
 		cfg.Mode = "mesh"
 	} else if tunnelPortMode {
 		cfg.Mode = "port"
+	}
+
+	if tunnelMemory != "" {
+		bytes, err := units.RAMInBytes(tunnelMemory)
+		if err != nil {
+			return fmt.Errorf("invalid memory limit %q: %w", tunnelMemory, err)
+		}
+		cfg.MemoryLimit = bytes
+		cfg.MemoryReservation = bytes / 2
 	}
 
 	mappings, err := tunnel.ParsePortSpecs(portSpecs, cfg.Services)

@@ -12,7 +12,8 @@ import (
 // TunnelManifest defines tunnel service configuration in remote.yaml
 type TunnelManifest struct {
 	Services []string `yaml:"services,omitempty"`
-	Mode     string   `yaml:"mode,omitempty"` // "mesh" or "port"
+	Mode     string   `yaml:"mode,omitempty"`   // "mesh" or "port"
+	Memory   string   `yaml:"memory,omitempty"` // e.g. "256m"
 }
 
 // NetworkManifest defines network configuration in remote.yaml

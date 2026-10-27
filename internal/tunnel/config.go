@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/noyzilla/oops/internal/docker"
 	"github.com/noyzilla/oops/internal/remote"
 )
@@ -31,13 +32,15 @@ func (m PortMapping) String() string {
 
 // TunnelConfig holds the resolved parameters for a tunnel connection
 type TunnelConfig struct {
-	RemoteName string   `json:"remote_name"`
-	Host       string   `json:"host"`
-	Path       string   `json:"path,omitempty"`
-	Hostname   string   `json:"hostname"`
-	Services   []string `json:"services,omitempty"`
-	Mode       string   `json:"mode,omitempty"`   // "port" or "mesh"
-	Subnet     string   `json:"subnet,omitempty"` // CIDR (e.g. 10.240.0.0/16)
+	RemoteName        string   `json:"remote_name"`
+	Host              string   `json:"host"`
+	Path              string   `json:"path,omitempty"`
+	Hostname          string   `json:"hostname"`
+	Services          []string `json:"services,omitempty"`
+	Mode              string   `json:"mode,omitempty"`   // "port" or "mesh"
+	Subnet            string   `json:"subnet,omitempty"` // CIDR (e.g. 10.240.0.0/16)
+	MemoryLimit       int64    `json:"memory_limit,omitempty"`
+	MemoryReservation int64    `json:"memory_reservation,omitempty"`
 }
 
 // ServiceDomain returns Single-TLD remote domain: <service>.<remote>
@@ -158,13 +161,23 @@ func ResolveTunnelConfig(workDir, remoteTarget string) (*TunnelConfig, error) {
 		subnet = "10.240.0.0/16"
 	}
 
+	var memLimit, memReservation int64
+	if memStr := strings.TrimSpace(cfg.Tunnel.Memory); memStr != "" {
+		if bytes, err := units.RAMInBytes(memStr); err == nil && bytes > 0 {
+			memLimit = bytes
+			memReservation = bytes / 2
+		}
+	}
+
 	return &TunnelConfig{
-		RemoteName: cleanRemote,
-		Host:       host,
-		Path:       cfg.Path,
-		Hostname:   hostname,
-		Services:   cfg.Tunnel.Services,
-		Mode:       mode,
-		Subnet:     subnet,
+		RemoteName:        cleanRemote,
+		Host:              host,
+		Path:              cfg.Path,
+		Hostname:          hostname,
+		Services:          cfg.Tunnel.Services,
+		Mode:              mode,
+		Subnet:            subnet,
+		MemoryLimit:       memLimit,
+		MemoryReservation: memReservation,
 	}, nil
 }
