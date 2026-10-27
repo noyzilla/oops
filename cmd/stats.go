@@ -126,34 +126,34 @@ func calculateBlockIO(blkio container.BlkioStats) (float64, float64) {
 	return read, write
 }
 
-// formatBinary formats byte sizes (base 1024) with exactly 2 decimal places and a right-aligned unit of width 3 (e.g. "256.00 MiB", "  2.44 GiB", "  0.00   B").
+// formatBinary formats byte sizes (base 1024) with minimum unit KiB and exactly 2 decimal places (e.g. "256.00 MiB", "  2.44 GiB", "  0.00 KiB").
 func formatBinary(b float64) string {
 	if b < 0 {
 		b = 0
 	}
-	units := []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB"}
+	units := []string{"KiB", "MiB", "GiB", "TiB", "PiB"}
 	unitIdx := 0
-	val := b
+	val := b / 1024.0
 	for val >= 1024.0 && unitIdx < len(units)-1 {
 		val /= 1024.0
 		unitIdx++
 	}
-	return fmt.Sprintf("%6.2f %3s", val, units[unitIdx])
+	return fmt.Sprintf("%6.2f %s", val, units[unitIdx])
 }
 
-// formatDecimal formats byte sizes (base 1000) with exactly 2 decimal places and a right-aligned unit of width 2 (e.g. "  3.29 MB", "352.26 kB", "  0.00  B").
+// formatDecimal formats byte sizes (base 1000) with minimum unit kB and exactly 2 decimal places (e.g. "  3.29 MB", "352.26 kB", "  0.00 kB").
 func formatDecimal(b float64) string {
 	if b < 0 {
 		b = 0
 	}
-	units := []string{"B", "kB", "MB", "GB", "TB", "PB"}
+	units := []string{"kB", "MB", "GB", "TB", "PB"}
 	unitIdx := 0
-	val := b
+	val := b / 1000.0
 	for val >= 1000.0 && unitIdx < len(units)-1 {
 		val /= 1000.0
 		unitIdx++
 	}
-	return fmt.Sprintf("%6.2f %2s", val, units[unitIdx])
+	return fmt.Sprintf("%6.2f %s", val, units[unitIdx])
 }
 
 func renderStatsTable(out io.Writer, items []containerStatsItem) {

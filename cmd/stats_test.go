@@ -11,7 +11,7 @@ func TestFormatBinary(t *testing.T) {
 		bytes    float64
 		expected string
 	}{
-		{0, "  0.00   B"},
+		{0, "  0.00 KiB"},
 		{256 * 1024 * 1024, "256.00 MiB"},
 		{11.21 * 1024 * 1024, " 11.21 MiB"},
 		{2.44 * 1024 * 1024 * 1024, "  2.44 GiB"},
@@ -30,7 +30,7 @@ func TestFormatDecimal(t *testing.T) {
 		bytes    float64
 		expected string
 	}{
-		{0, "  0.00  B"},
+		{0, "  0.00 kB"},
 		{352.26 * 1000, "352.26 kB"},
 		{3.29 * 1000 * 1000, "  3.29 MB"},
 		{1.73 * 1000 * 1000 * 1000, "  1.73 GB"},
@@ -51,12 +51,12 @@ func TestRenderStatsTableSeparated(t *testing.T) {
 			Name:        "oops",
 			CPUPerc:     "0.01 %",
 			MemLimit:    "128.00 MiB",
-			MemUsage:    "5.30 MiB",
+			MemUsage:    "  5.30 MiB",
 			MemPerc:     "4.14 %",
-			NetRx:       "27.69 kB",
-			NetTx:       "31.05 kB",
-			BlockIn:     "0.00 B",
-			BlockOut:    "0.00 B",
+			NetRx:       " 27.69 kB",
+			NetTx:       " 31.05 kB",
+			BlockIn:     "  0.00 kB",
+			BlockOut:    "  0.00 kB",
 			Pids:        "6",
 		},
 		{
@@ -64,12 +64,12 @@ func TestRenderStatsTableSeparated(t *testing.T) {
 			Name:        "caddy-proxy",
 			CPUPerc:     "0.38 %",
 			MemLimit:    "256.00 MiB",
-			MemUsage:    "50.74 MiB",
+			MemUsage:    " 50.74 MiB",
 			MemPerc:     "19.82 %",
 			NetRx:       "199.90 MB",
 			NetTx:       "217.70 MB",
 			BlockIn:     "180.22 kB",
-			BlockOut:    "8.19 kB",
+			BlockOut:    "  8.19 kB",
 			Pids:        "10",
 		},
 	}
