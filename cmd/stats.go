@@ -162,7 +162,7 @@ func renderStatsTable(out io.Writer, items []containerStatsItem) {
 		"CONTAINER ID",
 		"NAME",
 		"CPU %",
-		"MEM LIMIT",
+		"MEM",
 		"MEM USAGE",
 		"MEM %",
 		"NET RX",
