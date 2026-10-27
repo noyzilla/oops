@@ -11,10 +11,10 @@ func TestFormatBinary(t *testing.T) {
 		bytes    float64
 		expected string
 	}{
-		{0, "0.00 B"},
+		{0, "  0.00   B"},
 		{256 * 1024 * 1024, "256.00 MiB"},
-		{11.21 * 1024 * 1024, "11.21 MiB"},
-		{2.44 * 1024 * 1024 * 1024, "2.44 GiB"},
+		{11.21 * 1024 * 1024, " 11.21 MiB"},
+		{2.44 * 1024 * 1024 * 1024, "  2.44 GiB"},
 	}
 
 	for _, tt := range tests {
@@ -30,10 +30,10 @@ func TestFormatDecimal(t *testing.T) {
 		bytes    float64
 		expected string
 	}{
-		{0, "0.00 B"},
+		{0, "  0.00  B"},
 		{352.26 * 1000, "352.26 kB"},
-		{3.29 * 1000 * 1000, "3.29 MB"},
-		{1.73 * 1000 * 1000 * 1000, "1.73 GB"},
+		{3.29 * 1000 * 1000, "  3.29 MB"},
+		{1.73 * 1000 * 1000 * 1000, "  1.73 GB"},
 	}
 
 	for _, tt := range tests {
