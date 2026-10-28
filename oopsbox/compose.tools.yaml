@@ -19,6 +19,7 @@ services:
     labels:
       oops.enable: "true"
       caddy: "httpbin.web.oops"
+      caddy.tls: "internal"
       caddy.reverse_proxy: "{{upstreams 8080}}"
 
   mailpit:
@@ -32,4 +33,5 @@ services:
     labels:
       oops.enable: "true"
       caddy: "mailpit.web.oops"
+      caddy.tls: "internal"
       caddy.reverse_proxy: "{{upstreams 8025}}"

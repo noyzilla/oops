@@ -126,6 +126,20 @@ services:
 
 ---
 
+## Local TLS Root CA Trust (`oops box cert`)
+
+For local wildcard domains (`https://*.web.oops`), run:
+```bash
+oops box cert
+```
+- Installs the local Caddy Root CA certificate into the host OS trust store (macOS System Keychain or Linux `ca-certificates`).
+- **Chrome / Safari / Edge / curl**: Works immediately without warnings.
+- **Firefox / Firefox Developer Edition**: Firefox uses an isolated certificate store. To trust the OS Keychain:
+  1. Open `about:config`
+  2. Set `security.enterprise_roots.enabled` to `true`
+
+---
+
 ## Recommendation & Decision Guide
 
 - **Choose Caddy (Default)** if you want the cleanest, zero-config setup with automatic SSL and minimal label clutter.

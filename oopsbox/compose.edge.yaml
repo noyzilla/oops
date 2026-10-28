@@ -26,6 +26,7 @@ services:
     labels:
       caddy: "${OOPS_DOMAIN:-oops.web.oops}"
       caddy.reverse_proxy: "{{upstreams 8080}}"
+      caddy.tls: "internal"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./:/oopsbox

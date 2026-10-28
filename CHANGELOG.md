@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Changed
+- **Direct Container CA Extraction (`oops box cert`)**: Replaced host-path certificate resolution with direct extraction via `docker cp` from `caddy-proxy:/data/caddy/pki/authorities/local/root.crt`, eliminating legacy directory dependency and ensuring compatibility across all workspace setups (`internal/box/cert.go`, `docs/specs/oopsbox.md`).
+- **Explicit Internal TLS In Blueprint Stacks**: Added `caddy.tls: "internal"` to default blueprint services (`oops`, `httpbin`, `mailpit`) to prevent Caddy from requesting public ACME certificates for `.oops` domains (`oopsbox/compose.edge.yaml`, `oopsbox/compose.tools.yaml`).
+- **Firefox Enterprise Roots Guidance**: Added automatic post-install terminal hints and documentation for enabling `security.enterprise_roots.enabled = true` in Firefox and Firefox Developer Edition (`internal/box/cert.go`, `oopsbox/README.edge.md`).
+
 ## [v1.25.1] - 2026-10-27
 
 ### Changed

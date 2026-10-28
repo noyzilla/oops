@@ -81,8 +81,9 @@ When switching between isolated organization workspaces:
 - **State Handover**: Sets `~/.oops/active_box` to the target path and invokes `oops box start` on the target workspace.
 
 ### CA Certificate Trust (`oops box cert`)
-- Exports Caddy root CA (`root.crt`) from the Caddy container volume (`caddy_data` or `data/caddy/pki/authorities/local/root.crt`).
+- Directly extracts Caddy root CA (`root.crt`) from the `caddy-proxy` container via `docker cp` (`/data/caddy/pki/authorities/local/root.crt`).
 - Installs root CA into macOS System Keychain (`security add-trusted-cert -d -r trustRoot`) or Linux system trust store (`/usr/local/share/ca-certificates/` and `update-ca-certificates`).
+- **Browser Compatibility**: Safari, Chrome, Edge, and `curl` trust the installed root CA automatically. For Firefox and Firefox Developer Edition (which manage an isolated NSS certificate store), users must enable `security.enterprise_roots.enabled = true` in `about:config` to trust the macOS System Keychain.
 
 ## Interface & Subcommands Specification
 
