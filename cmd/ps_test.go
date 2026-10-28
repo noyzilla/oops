@@ -369,4 +369,35 @@ func TestStatusItemSorting(t *testing.T) {
 	}
 }
 
+func TestCompactContainerStatus(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"Up 2 hours (healthy)", "Up 2h (healthy)"},
+		{"Up 3 days (healthy)", "Up 3d (healthy)"},
+		{"Up 1 hour", "Up 1h"},
+		{"Up 45 minutes", "Up 45m"},
+		{"Up 15 seconds", "Up 15s"},
+		{"Up 1 second", "Up 1s"},
+		{"Exited (0) 5 minutes ago", "Exited (0) 5m ago"},
+		{"Restarting (1) 20 seconds ago", "Restarting (1) 20s ago"},
+		{"Up About an hour", "Up ~1h"},
+		{"Up Less than a second", "Up <1s"},
+		{"Up About a minute", "Up ~1m"},
+		{"Up 2 weeks", "Up 2w"},
+		{"Up 3 months", "Up 3mo"},
+		{"Up 1 year", "Up 1y"},
+		{"missing", "missing"},
+		{"-", "-"},
+	}
+
+	for _, tt := range tests {
+		actual := compactContainerStatus(tt.input)
+		if actual != tt.expected {
+			t.Errorf("compactContainerStatus(%q) = %q, want %q", tt.input, actual, tt.expected)
+		}
+	}
+}
+
 

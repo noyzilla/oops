@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -15,6 +16,47 @@ import (
 	"github.com/noyzilla/oops/internal/docker"
 	"github.com/spf13/cobra"
 )
+
+var statusDurationRegex = regexp.MustCompile(`(?i)\b(\d+)\s*(seconds?|minutes?|hours?|days?|weeks?|months?|years?)\b`)
+
+// compactContainerStatus shortens verbose duration strings in container status (e.g. "Up 2 hours (healthy)" -> "Up 2h (healthy)").
+func compactContainerStatus(status string) string {
+	if status == "" {
+		return status
+	}
+	s := status
+	s = strings.ReplaceAll(s, "Less than a second", "<1s")
+	s = strings.ReplaceAll(s, "About an hour", "~1h")
+	s = strings.ReplaceAll(s, "About a minute", "~1m")
+
+	s = statusDurationRegex.ReplaceAllStringFunc(s, func(match string) string {
+		parts := statusDurationRegex.FindStringSubmatch(match)
+		if len(parts) < 3 {
+			return match
+		}
+		num := parts[1]
+		unit := strings.ToLower(parts[2])
+		switch {
+		case strings.HasPrefix(unit, "sec"):
+			return num + "s"
+		case strings.HasPrefix(unit, "min"):
+			return num + "m"
+		case strings.HasPrefix(unit, "hour"):
+			return num + "h"
+		case strings.HasPrefix(unit, "day"):
+			return num + "d"
+		case strings.HasPrefix(unit, "week"):
+			return num + "w"
+		case strings.HasPrefix(unit, "month"):
+			return num + "mo"
+		case strings.HasPrefix(unit, "year"):
+			return num + "y"
+		default:
+			return match
+		}
+	})
+	return s
+}
 
 type containerStatusItem struct {
 	ContainerID  string
@@ -289,6 +331,7 @@ func runPs(cmd *cobra.Command, args []string, fullImage bool, showAll bool) erro
 				status = fmt.Sprintf("%s (%d)", inspect.State.Status, inspect.State.ExitCode)
 			}
 		}
+		status = compactContainerStatus(status)
 
 		rawImage := c.Image
 		if rawImage == "" && inspect.Config != nil {

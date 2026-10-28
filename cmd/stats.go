@@ -34,6 +34,16 @@ type containerStatsItem struct {
 	BlockIn     string
 	BlockOut    string
 	Pids        string
+
+	// Raw values for compact mode
+	CPUPercent float64
+	MemPercent float64
+	MemLimitGB float64
+	MemUsageGB float64
+	NetRxGB    float64
+	NetTxGB    float64
+	BlockInGB  float64
+	BlockOutGB float64
 }
 
 type cpuSample struct {
@@ -44,18 +54,20 @@ type cpuSample struct {
 func newStatsCmd() *cobra.Command {
 	var noStream bool
 	var showAll bool
+	var full bool
 
 	cmd := &cobra.Command{
 		Use:   "stats [targets...]",
 		Short: "Display resource usage statistics for containers",
-		Long:  "Display a formatted, real-time stream of container resource usage statistics (STACK, CPU %, MEM %, MEM LM, MEM US, NET RX, NET TX, BLOCK RD, BLOCK WR, PIDs) with right-aligned metrics, 2-decimal formatting, and stack ordering.",
+		Long:  "Display a real-time stream of container resource usage statistics (STACK, CPU%, MEM%, MEM LM / US, NET I/O, BLOCK I/O, PIDs) formatted for split-terminal screens by default. Use --full (-fl) for expanded multi-column layout.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runStats(cmd, args, noStream, showAll)
+			return runStats(cmd, args, noStream, showAll, full)
 		},
 	}
 
 	cmd.Flags().BoolVar(&noStream, "no-stream", false, "Disable streaming stats and only pull the first result")
 	cmd.Flags().BoolVarP(&showAll, "all", "a", false, "Show all running containers on daemon (default filters active box)")
+	cmd.Flags().BoolVar(&full, "full", false, "Display expanded full table with separated metric columns (-fl)")
 
 	return cmd
 }
@@ -218,6 +230,52 @@ func renderStatsTable(out io.Writer, items []containerStatsItem) {
 	w.Flush()
 }
 
+// formatDualMetric formats a pair of metrics in GB with 3 decimal places with the '/' strictly aligned.
+// Left value is formatted in 8 characters (%8.3f or "       -"), followed by " / ", followed by right value (%.3f).
+// Character '/' is strictly at index 9 (0-indexed).
+func formatDualMetric(leftVal float64, isLeftValid bool, rightVal float64) string {
+	leftStr := "       -"
+	if isLeftValid {
+		leftStr = fmt.Sprintf("%8.3f", leftVal)
+	}
+	return fmt.Sprintf("%s / %.3f", leftStr, rightVal)
+}
+
+func renderCompactStatsTable(out io.Writer, items []containerStatsItem) {
+	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "%s\t%s\t%s\t%6s\t%6s\t%s\t%s\t%s\t%4s\n",
+		"CONTAINER ID",
+		"STACK",
+		"NAME",
+		"CPU%",
+		"MEM%",
+		"  MEM LM / US (GB)",
+		"    NET I/O (GB)",
+		"  BLOCK I/O (GB)",
+		"PIDS",
+	)
+	for _, it := range items {
+		cpuCompact := fmt.Sprintf("%.2f%%", it.CPUPercent)
+		memCompact := fmt.Sprintf("%.2f%%", it.MemPercent)
+		memDual := formatDualMetric(it.MemLimitGB, it.MemLimit != "-", it.MemUsageGB)
+		netDual := formatDualMetric(it.NetRxGB, true, it.NetTxGB)
+		blkDual := formatDualMetric(it.BlockInGB, true, it.BlockOutGB)
+
+		fmt.Fprintf(w, "%s\t%s\t%s\t%6s\t%6s\t%s\t%s\t%s\t%4s\n",
+			it.ContainerID,
+			it.Stack,
+			it.Name,
+			cpuCompact,
+			memCompact,
+			memDual,
+			netDual,
+			blkDual,
+			it.Pids,
+		)
+	}
+	w.Flush()
+}
+
 func fetchSingleContainerStats(ctx context.Context, dockerCli *client.Client, c container.Summary, prevSample *cpuSample) (*containerStatsItem, *cpuSample, error) {
 	resp, err := dockerCli.ContainerStats(ctx, c.ID, false)
 	if err != nil {
@@ -248,12 +306,20 @@ func fetchSingleContainerStats(ctx context.Context, dockerCli *client.Client, c 
 		pidsStr = fmt.Sprintf("%d", stats.NumProcs)
 	}
 
+	var memLimitGB float64
 	memLimitStr := "-"
 	if memLimit > 0 {
 		memLimitStr = formatBinary(memLimit)
+		memLimitGB = memLimit / (1024.0 * 1024.0 * 1024.0)
 	}
 
 	stackName := extractContainerStackName(c.Labels, cName)
+
+	memUsageGB := memUsage / (1024.0 * 1024.0 * 1024.0)
+	rxGB := rx / (1000.0 * 1000.0 * 1000.0)
+	txGB := tx / (1000.0 * 1000.0 * 1000.0)
+	blkReadGB := blkRead / (1000.0 * 1000.0 * 1000.0)
+	blkWriteGB := blkWrite / (1000.0 * 1000.0 * 1000.0)
 
 	item := &containerStatsItem{
 		ContainerID: shortContainerID(c.ID),
@@ -268,6 +334,15 @@ func fetchSingleContainerStats(ctx context.Context, dockerCli *client.Client, c 
 		BlockIn:     formatDecimal(blkRead),
 		BlockOut:    formatDecimal(blkWrite),
 		Pids:        pidsStr,
+
+		CPUPercent: cpuPercent,
+		MemPercent: memPercent,
+		MemLimitGB: memLimitGB,
+		MemUsageGB: memUsageGB,
+		NetRxGB:    rxGB,
+		NetTxGB:    txGB,
+		BlockInGB:  blkReadGB,
+		BlockOutGB: blkWriteGB,
 	}
 
 	newSample := &cpuSample{
@@ -347,7 +422,7 @@ func filterRunningContainers(containers []container.Summary, workDir string, arg
 	return filtered
 }
 
-func runStats(cmd *cobra.Command, args []string, noStream bool, showAll bool) error {
+func runStats(cmd *cobra.Command, args []string, noStream bool, showAll bool, full bool) error {
 	workDir := ResolveWorkDir(targetDir)
 	_ = ValidateActiveBox(workDir)
 
@@ -420,7 +495,11 @@ func runStats(cmd *cobra.Command, args []string, noStream bool, showAll bool) er
 			if !firstRender && isTerminal && !noStream {
 				fmt.Print("\033[H\033[2J")
 			}
-			renderStatsTable(os.Stdout, items)
+			if full {
+				renderStatsTable(os.Stdout, items)
+			} else {
+				renderCompactStatsTable(os.Stdout, items)
+			}
 			firstRender = false
 		}
 
