@@ -9,9 +9,14 @@ import (
 
 // ExtractCACertificate extracts Caddy's root CA certificate directly from the caddy-proxy container.
 func ExtractCACertificate(dstPath string) error {
-	cpCmd := exec.Command("docker", "cp", "caddy-proxy:/data/caddy/pki/authorities/local/root.crt", dstPath)
+	return ExtractCACertificateFromContainer("caddy-proxy", dstPath)
+}
+
+// ExtractCACertificateFromContainer extracts Caddy's root CA certificate directly from the given container name.
+func ExtractCACertificateFromContainer(containerName, dstPath string) error {
+	cpCmd := exec.Command("docker", "cp", fmt.Sprintf("%s:/data/caddy/pki/authorities/local/root.crt", containerName), dstPath)
 	if out, err := cpCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("could not extract Caddy root CA certificate from caddy-proxy container: %s (ensure caddy-proxy container exists)", string(out))
+		return fmt.Errorf("could not extract Caddy root CA certificate from %s container: %s (ensure %s container exists)", containerName, string(out), containerName)
 	}
 	return nil
 }
