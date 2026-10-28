@@ -49,11 +49,12 @@ func TestRenderStatsTableSeparated(t *testing.T) {
 	items := []containerStatsItem{
 		{
 			ContainerID: "ddadb950dd83",
+			Stack:       "/edge",
 			Name:        "oops",
 			CPUPerc:     "0.01 %",
+			MemPerc:     "4.14 %",
 			MemLimit:    "128.00 MB",
 			MemUsage:    "  5.30 MB",
-			MemPerc:     "4.14 %",
 			NetRx:       " 27.69 KB",
 			NetTx:       " 31.05 KB",
 			BlockIn:     "  0.00 KB",
@@ -62,11 +63,12 @@ func TestRenderStatsTableSeparated(t *testing.T) {
 		},
 		{
 			ContainerID: "98ba9bf3e428",
+			Stack:       "/edge",
 			Name:        "caddy-proxy",
 			CPUPerc:     "0.38 %",
+			MemPerc:     "19.82 %",
 			MemLimit:    "256.00 MB",
 			MemUsage:    " 50.74 MB",
-			MemPerc:     "19.82 %",
 			NetRx:       "199.90 MB",
 			NetTx:       "217.70 MB",
 			BlockIn:     "180.22 KB",
@@ -79,13 +81,44 @@ func TestRenderStatsTableSeparated(t *testing.T) {
 	renderStatsTable(&buf, items)
 	out := buf.String()
 
-	expectedHeaders := []string{"CONTAINER ID", "NAME", "CPU %", "MEM LM", "MEM US", "MEM %", "NET RX", "NET TX", "BLOCK RD", "BLOCK WR", "PIDS"}
+	expectedHeaders := []string{"CONTAINER ID", "STACK", "NAME", "CPU %", "MEM %", "MEM LM", "MEM US", "NET RX", "NET TX", "BLOCK RD", "BLOCK WR", "PIDS"}
 	for _, h := range expectedHeaders {
 		if !strings.Contains(out, h) {
 			t.Errorf("renderStatsTable missing header %q in:\n%s", h, out)
 		}
 	}
-	if !strings.Contains(out, "128.00 MB") || !strings.Contains(out, "5.30 MB") || !strings.Contains(out, "27.69 KB") {
+	if !strings.Contains(out, "/edge") || !strings.Contains(out, "128.00 MB") || !strings.Contains(out, "5.30 MB") || !strings.Contains(out, "27.69 KB") {
 		t.Errorf("renderStatsTable missing oops row values in:\n%s", out)
+	}
+
+	// Verify column order: STACK before NAME, MEM % before MEM LM
+	stackIdx := strings.Index(out, "STACK")
+	nameIdx := strings.Index(out, "NAME")
+	cpuIdx := strings.Index(out, "CPU %")
+	memPercIdx := strings.Index(out, "MEM %")
+	memLmIdx := strings.Index(out, "MEM LM")
+
+	if !(stackIdx < nameIdx && nameIdx < cpuIdx && cpuIdx < memPercIdx && memPercIdx < memLmIdx) {
+		t.Errorf("header column order unexpected in:\n%s", out)
+	}
+}
+
+func TestStatsStackSorting(t *testing.T) {
+	items := []containerStatsItem{
+		{ContainerID: "1", Stack: "%", Name: "standalone"},
+		{ContainerID: "2", Stack: "/tools", Name: "mailpit"},
+		{ContainerID: "3", Stack: "/", Name: "app"},
+		{ContainerID: "4", Stack: "/db", Name: "redis"},
+		{ContainerID: "5", Stack: "/tools", Name: "httpbin"},
+		{ContainerID: "6", Stack: "/db", Name: "mysql"},
+	}
+
+	sortStatsItems(items)
+
+	expectedOrder := []string{"app", "mysql", "redis", "httpbin", "mailpit", "standalone"}
+	for i, it := range items {
+		if it.Name != expectedOrder[i] {
+			t.Errorf("item at index %d = %q, expected %q", i, it.Name, expectedOrder[i])
+		}
 	}
 }

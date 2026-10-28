@@ -23,11 +23,12 @@ import (
 
 type containerStatsItem struct {
 	ContainerID string
+	Stack       string
 	Name        string
 	CPUPerc     string
+	MemPerc     string
 	MemLimit    string
 	MemUsage    string
-	MemPerc     string
 	NetRx       string
 	NetTx       string
 	BlockIn     string
@@ -47,7 +48,7 @@ func newStatsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stats [targets...]",
 		Short: "Display resource usage statistics for containers",
-		Long:  "Display a formatted, real-time stream of container resource usage statistics (CPU %, MEM LM, MEM US, MEM %, NET RX, NET TX, BLOCK RD, BLOCK WR, PIDs) with right-aligned metrics and 2-decimal formatting.",
+		Long:  "Display a formatted, real-time stream of container resource usage statistics (STACK, CPU %, MEM %, MEM LM, MEM US, NET RX, NET TX, BLOCK RD, BLOCK WR, PIDs) with right-aligned metrics, 2-decimal formatting, and stack ordering.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runStats(cmd, args, noStream, showAll)
 		},
@@ -156,15 +157,42 @@ func formatDecimal(b float64) string {
 	return fmt.Sprintf("%6.2f %s", val, units[unitIdx])
 }
 
+func sortStatsItems(items []containerStatsItem) {
+	sort.Slice(items, func(i, j int) bool {
+		stackWeight := func(s string) int {
+			if s == "/" {
+				return 0
+			}
+			if strings.HasPrefix(s, "/") {
+				return 1
+			}
+			if s == "%" {
+				return 3
+			}
+			return 2
+		}
+		wI := stackWeight(items[i].Stack)
+		wJ := stackWeight(items[j].Stack)
+		if wI != wJ {
+			return wI < wJ
+		}
+		if items[i].Stack != items[j].Stack {
+			return items[i].Stack < items[j].Stack
+		}
+		return strings.ToLower(items[i].Name) < strings.ToLower(items[j].Name)
+	})
+}
+
 func renderStatsTable(out io.Writer, items []containerStatsItem) {
 	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
-	fmt.Fprintf(w, "%s\t%s\t%8s\t%9s\t%9s\t%8s\t%9s\t%9s\t%9s\t%9s\t%5s\n",
+	fmt.Fprintf(w, "%s\t%s\t%s\t%8s\t%8s\t%9s\t%9s\t%9s\t%9s\t%9s\t%9s\t%5s\n",
 		"CONTAINER ID",
+		"STACK",
 		"NAME",
 		"CPU %",
+		"MEM %",
 		"MEM LM",
 		"MEM US",
-		"MEM %",
 		"NET RX",
 		"NET TX",
 		"BLOCK RD",
@@ -172,13 +200,14 @@ func renderStatsTable(out io.Writer, items []containerStatsItem) {
 		"PIDS",
 	)
 	for _, it := range items {
-		fmt.Fprintf(w, "%s\t%s\t%8s\t%9s\t%9s\t%8s\t%9s\t%9s\t%9s\t%9s\t%5s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s\t%8s\t%8s\t%9s\t%9s\t%9s\t%9s\t%9s\t%9s\t%5s\n",
 			it.ContainerID,
+			it.Stack,
 			it.Name,
 			it.CPUPerc,
+			it.MemPerc,
 			it.MemLimit,
 			it.MemUsage,
-			it.MemPerc,
 			it.NetRx,
 			it.NetTx,
 			it.BlockIn,
@@ -224,13 +253,16 @@ func fetchSingleContainerStats(ctx context.Context, dockerCli *client.Client, c 
 		memLimitStr = formatBinary(memLimit)
 	}
 
+	stackName := extractContainerStackName(c.Labels, cName)
+
 	item := &containerStatsItem{
 		ContainerID: shortContainerID(c.ID),
+		Stack:       stackName,
 		Name:        cName,
 		CPUPerc:     fmt.Sprintf("%.2f %%", cpuPercent),
+		MemPerc:     fmt.Sprintf("%.2f %%", memPercent),
 		MemLimit:    memLimitStr,
 		MemUsage:    formatBinary(memUsage),
-		MemPerc:     fmt.Sprintf("%.2f %%", memPercent),
 		NetRx:       formatDecimal(rx),
 		NetTx:       formatDecimal(tx),
 		BlockIn:     formatDecimal(blkRead),
@@ -383,9 +415,7 @@ func runStats(cmd *cobra.Command, args []string, noStream bool, showAll bool) er
 				}
 			}
 
-			sort.Slice(items, func(i, j int) bool {
-				return strings.ToLower(items[i].Name) < strings.ToLower(items[j].Name)
-			})
+			sortStatsItems(items)
 
 			if !firstRender && isTerminal && !noStream {
 				fmt.Print("\033[H\033[2J")

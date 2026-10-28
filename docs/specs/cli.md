@@ -148,7 +148,7 @@ For each matched service in target order:
 | `oops restart`| `[targets...] [-d 0s] [-i <img/alias>]` | Restarts target services with stop hooks and delay |
 | `oops down` | `[-d 0s] [--wipe-all] [-y]` | Tears down running containers |
 | `oops ps` | `[targets...] [-a, --all] [--full, -fl]` | Formatted table of `CONTAINER ID`, `STACK` (`/` for root compose, `/<stack>` for sub-stacks, `/tunnel` for oops tunnels, `%` for external containers), `SERVICE` (remote name for tunnels), `IMAGE` (shortened by default, full path with `--full` / `-fl`), `STATUS` (with uptime & health; uncreated services shown as `missing` with `-a`), `IP`, and `PORTS` |
-| `oops stats` | `[targets...] [--no-stream] [-a, --all]` | Real-time container resource telemetry stream (`CPU %`, `MEM LM`, `MEM US`, `MEM %`, `NET RX`, `NET TX`, `BLOCK RD`, `BLOCK WR`, `PIDS`) with right-aligned metrics, 2-decimal formatting, and workspace filtering |
+| `oops stats` | `[targets...] [--no-stream] [-a, --all]` | Real-time container resource telemetry stream (`CONTAINER ID`, `STACK`, `NAME`, `CPU %`, `MEM %`, `MEM LM`, `MEM US`, `NET RX`, `NET TX`, `BLOCK RD`, `BLOCK WR`, `PIDS`) with right-aligned metrics, 2-decimal formatting, stack ordering (`/` first, named stacks alphabetically, `%` external last), and workspace filtering |
 | `oops logs` | `[targets...] [--tail 50] [-f]` | Tail service logs |
 | `oops pull` | `[targets...] [--all]` | Pulls images for targets |
 | `oops update` | `[targets...] [--all] [-i <img/alias>] [-d 0s]` | Executes sequential rolling update with health check |
