@@ -6,8 +6,15 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.26.0] - 2026-10-28
+
 ### Added
+- **Default Compact Mode & Strict Slash Alignment (`oops stats`)**: Defaulted `oops stats` to split-terminal friendly compact layout with two-space column padding (`--full` / `-fl` for expanded table view), dual-metric columns (`MEM LM / US`, `NET I/O`, `BLOCK I/O`) formatted to 3 decimal places in GB, and vertical slash (`/`) alignment across all rows and headers (`cmd/stats.go`, `cmd/stats_test.go`, `docs/specs/cli.md`).
+- **Abbreviated Duration Status (`oops ps`)**: Compacted time duration units in `STATUS` column (e.g. `2 days` -> `2d`, `10 hours` -> `10h`, `45 minutes` -> `45m`, `About an hour` -> `~1h`, `Less than a second` -> `<1s`) to prevent terminal overflow in split screen layouts (`cmd/ps.go`, `cmd/ps_test.go`, `docs/specs/cli.md`).
 - **Stack-Aware Resource Telemetry & Layout (`oops stats`)**: Added `STACK` column matching `oops ps` notation (`/`, `/<stack>`, `/tunnel`, `%`), ordered rows by stack (`/` first, named stacks alphabetically, `%` external last), and repositioned `MEM %` immediately adjacent to `CPU %` for intuitive resource consumption scanning (`cmd/stats.go`, `cmd/stats_test.go`, `docs/specs/cli.md`).
+
+### Fixed
+- **CA Extraction Unit Testing (`internal/box`)**: Added `ExtractCACertificateFromContainer` allowing unit tests to specify target container name without requiring `caddy-proxy` to be offline (`internal/box/cert.go`, `internal/box/cert_test.go`).
 
 ## [v1.25.2] - 2026-10-28
 
