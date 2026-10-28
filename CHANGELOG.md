@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Added
+- **Stack-Aware Resource Telemetry & Layout (`oops stats`)**: Added `STACK` column matching `oops ps` notation (`/`, `/<stack>`, `/tunnel`, `%`), ordered rows by stack (`/` first, named stacks alphabetically, `%` external last), and repositioned `MEM %` immediately adjacent to `CPU %` for intuitive resource consumption scanning (`cmd/stats.go`, `cmd/stats_test.go`, `docs/specs/cli.md`).
+
 ## [v1.25.2] - 2026-10-28
 
 ### Changed
