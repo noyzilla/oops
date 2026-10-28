@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.25.2] - 2026-10-28
+
 ### Changed
 - **Direct Container CA Extraction (`oops box cert`)**: Replaced host-path certificate resolution with direct extraction via `docker cp` from `caddy-proxy:/data/caddy/pki/authorities/local/root.crt`, eliminating legacy directory dependency and ensuring compatibility across all workspace setups (`internal/box/cert.go`, `docs/specs/oopsbox.md`).
 - **Explicit Internal TLS In Blueprint Stacks**: Added `caddy.tls: "internal"` to default blueprint services (`oops`, `httpbin`, `mailpit`) to prevent Caddy from requesting public ACME certificates for `.oops` domains (`oopsbox/compose.edge.yaml`, `oopsbox/compose.tools.yaml`).
