@@ -6,7 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
-## [v1.26.0] - 2026-10-28
+## [v1.27.0] - 2026-10-31
+
+### Added
+- **Auto-Follow Logs by Default (`oops up`)**: `oops up` now automatically streams/tails container logs (`runLogs`) immediately after services start, eliminating the need to run `oops logs -f` manually. Added `--detach` flag to run containers in the background without tailing logs (`cmd/up.go`, `cmd/up_test.go`).
+
 
 ### Added
 - **Default Compact Mode & Strict Slash Alignment (`oops stats`)**: Defaulted `oops stats` to split-terminal friendly compact layout with two-space column padding (`--full` / `-fl` for expanded table view), dual-metric columns (`MEM LM / US`, `NET I/O`, `BLOCK I/O`) formatted to 3 decimal places in GB, and vertical slash (`/`) alignment across all rows and headers (`cmd/stats.go`, `cmd/stats_test.go`, `docs/specs/cli.md`).
