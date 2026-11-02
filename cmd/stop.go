@@ -9,14 +9,14 @@ import (
 )
 
 func newStopCmd() *cobra.Command {
-	var delay string
+	var wait string
 	var exceptTargets []string
 
 	cmd := &cobra.Command{
 		Use:   "stop [targets...]",
 		Short: "Gracefully stops target services with pre-stop hooks",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			d, err := orchestrator.ParseDelay(delay)
+			d, err := orchestrator.ParseDelay(wait)
 			if err != nil {
 				return err
 			}
@@ -41,7 +41,7 @@ func newStopCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&delay, "delay", "d", "0s", "Inter-service delay duration between consecutive stops (e.g. 5s, 5)")
+	cmd.Flags().StringVarP(&wait, "wait", "w", "0s", "Inter-service wait duration between consecutive stops (e.g. 5s, 5)")
 	cmd.Flags().StringSliceVarP(&exceptTargets, "except", "x", nil, "Exclude specific targets/groups/stacks from being stopped (e.g. -x @core, --except /db)")
 	cmd.Flags().StringSliceVar(&exceptTargets, "exclude", nil, "Alias for --except")
 

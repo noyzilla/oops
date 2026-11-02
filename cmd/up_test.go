@@ -7,20 +7,25 @@ import (
 func TestNewUpCmd_Flags(t *testing.T) {
 	cmd := newUpCmd()
 
-	detachFlag := cmd.Flags().Lookup("detach")
-	if detachFlag == nil {
-		t.Fatalf("expected --detach flag to exist on up command")
+	noFollowFlag := cmd.Flags().Lookup("no-follow")
+	if noFollowFlag == nil {
+		t.Fatalf("expected --no-follow flag to exist on up command")
 	}
-	if detachFlag.DefValue != "false" {
-		t.Errorf("expected default value of --detach to be 'false', got '%s'", detachFlag.DefValue)
+	if noFollowFlag.Shorthand != "d" {
+		t.Errorf("expected shorthand for --no-follow to be 'd', got '%s'", noFollowFlag.Shorthand)
+	}
+	if noFollowFlag.DefValue != "false" {
+		t.Errorf("expected default value of --no-follow to be 'false', got '%s'", noFollowFlag.DefValue)
 	}
 
-	delayFlag := cmd.Flags().Lookup("delay")
-	if delayFlag == nil {
-		t.Fatalf("expected --delay flag to exist on up command")
+	waitFlag := cmd.Flags().Lookup("wait")
+	if waitFlag == nil {
+		t.Fatalf("expected --wait flag to exist on up command")
 	}
-	if delayFlag.Shorthand != "d" {
-		t.Errorf("expected shorthand for --delay to be 'd', got '%s'", delayFlag.Shorthand)
+	if waitFlag.Shorthand != "w" {
+		t.Errorf("expected shorthand for --wait to be 'w', got '%s'", waitFlag.Shorthand)
+	}
+	if waitFlag.DefValue != "0s" {
+		t.Errorf("expected default value of --wait to be '0s', got '%s'", waitFlag.DefValue)
 	}
 }
-

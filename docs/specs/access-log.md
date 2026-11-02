@@ -31,7 +31,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
   1. If `[container]` argument is provided, target that container directly.
   2. If omitted, inspect active Docker containers for `caddy-proxy` or any container belonging to the `/edge` stack.
   3. Fallback: Search for any running container whose name contains `caddy` or `nginx`.
-- **Default Follow Mode**: `-f` / `--follow` defaults to `true` (continuous streaming). Passing `--no-follow` sets follow to `false` (dump existing buffer and exit).
+- **Default Follow Mode**: `-f` / `--follow` defaults to `true` (continuous streaming). Passing `-d` / `--no-follow` sets follow to `false` (dump existing buffer and exit).
 - **Default Buffer Depth**: `-t` / `--tail` defaults to `100` historical lines.
 
 ### Log Classification & Visibility Filtering

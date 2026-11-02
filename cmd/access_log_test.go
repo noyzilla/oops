@@ -20,6 +20,11 @@ func TestAccessLogCmd_Flags(t *testing.T) {
 		t.Errorf("expected --tail default to be '100', got %v", tailFlag)
 	}
 
+	noFollowFlag := cmd.Flag("no-follow")
+	if noFollowFlag == nil || noFollowFlag.Shorthand != "d" {
+		t.Errorf("expected --no-follow shorthand to be 'd', got %v", noFollowFlag)
+	}
+
 	// Verify all 1:1 filter flags are registered
 	expectedFlags := []string{
 		"follow", "no-follow", "tail",

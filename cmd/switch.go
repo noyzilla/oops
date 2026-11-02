@@ -11,7 +11,7 @@ import (
 )
 
 func newSwitchCmd() *cobra.Command {
-	var delay string
+	var wait string
 
 	cmd := &cobra.Command{
 		Use:   "switch <target>",
@@ -21,7 +21,7 @@ func newSwitchCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			target := args[0]
 
-			d, err := orchestrator.ParseDelay(delay)
+			d, err := orchestrator.ParseDelay(wait)
 			if err != nil {
 				return err
 			}
@@ -67,7 +67,7 @@ func newSwitchCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&delay, "delay", "d", "0s", "Inter-service delay duration (e.g. 5s, 5)")
+	cmd.Flags().StringVarP(&wait, "wait", "w", "0s", "Inter-service wait duration (e.g. 5s, 5)")
 
 	return cmd
 }

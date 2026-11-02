@@ -100,7 +100,7 @@ All interactions with the local Docker daemon via the Go Docker SDK are centrali
 When executing group lifecycle commands (`oops stop`, `oops restart`, `oops down`, or `oops up` targeting wildcards):
 - **Sequential Service Execution**: Matched services are processed sequentially one by one in resolved dependency or lexicographical order.
 - **Native Docker Compose Hooks**: Relies entirely on Docker Compose native lifecycle hooks (`pre_start`, `post_start`, `pre_stop`) defined within `compose.yaml`.
-- **Inter-Service Delay Gap (`--delay, -d <duration|int>`)**: Introduces a pause between each consecutive service operation in a group.
+- **Inter-Service Wait Gap (`--wait, -w <duration|int>`)**: Introduces a pause between each consecutive service operation in a group.
 
 ### Sequential Rolling Update Algorithm (`oops update <targets...>`)
 For each matched service in target order:
@@ -108,7 +108,7 @@ For each matched service in target order:
 - **Step 2 - Recreate**: Run `docker compose -f <chain> up -d --no-deps <service>`.
 - **Step 3 - Health Polling**:
   - Poll Docker container inspection state `.State.Health.Status` every `OOPS_HEALTHCHECK_INTERVAL` (default 3s, loaded from `x-oops.orchestrator.healthcheck.interval` with env override).
-  - If `.State.Health.Status == "healthy"`: Service update succeeded. If `-d` / `--delay` is set, pause for delay gap.
+  - If `.State.Health.Status == "healthy"`: Service update succeeded. If `-w` / `--wait` is set, pause for wait gap.
   - If status is `"unhealthy"` or polling exceeds `OOPS_HEALTHCHECK_TIMEOUT` (default 10m, loaded from `x-oops.orchestrator.healthcheck.timeout` with env override): Abort update immediately and exit Code 1.
 
 ### Database Management (`oops db <mysql|postgres|redis>[:<target>] <action>`)
@@ -143,15 +143,15 @@ For each matched service in target order:
 | Command | Arguments / Flags | Description |
 | :--- | :--- | :--- |
 | `oops` | `[-C, --dir <path>]` | Displays help menu and available subcommands |
-| `oops up` | `[targets...] [-d 0s]` | Starts stacks (`/<stack>`), scoped services (`/<stack>/<service>`), or bare services with optional delay |
-| `oops stop` | `[targets...] [-x, --except <tgt>] [-d 0s]` | Gracefully stops target services |
-| `oops restart`| `[targets...] [-d 0s] [-i <img/alias>]` | Restarts target services with stop hooks and delay |
-| `oops down` | `[-d 0s] [--wipe-all] [-y]` | Tears down running containers |
+| `oops up` | `[targets...] [-w 0s] [-d, --no-follow]` | Starts stacks (`/<stack>`), scoped services (`/<stack>/<service>`), or bare services with optional wait |
+| `oops stop` | `[targets...] [-x, --except <tgt>] [-w 0s]` | Gracefully stops target services with optional wait |
+| `oops restart`| `[targets...] [-w 0s] [-i <img/alias>]` | Restarts target services with stop hooks and wait |
+| `oops down` | `[-w 0s] [--wipe-all] [-y]` | Tears down running containers with optional wait |
 | `oops ps` | `[targets...] [-a, --all] [--full, -fl]` | Formatted table of `CONTAINER ID`, `STACK` (`/` for root compose, `/<stack>` for sub-stacks, `/tunnel` for oops tunnels, `%` for external containers), `SERVICE` (remote name for tunnels), `IMAGE` (shortened by default, full path with `--full` / `-fl`), `STATUS` (compacted duration units like `1h`, `3d`, `2m` with uptime & health; uncreated services shown as `missing` with `-a`), `IP`, and `PORTS` |
 | `oops stats` | `[targets...] [--no-stream] [-a, --all] [--full, -fl]` | Real-time container resource telemetry stream (`CONTAINER ID`, `STACK`, `NAME`, `CPU%`, `MEM%`, `MEM LM / US (GB)`, `NET I/O (GB)`, `BLOCK I/O (GB)`, `PIDS`) formatted for split-terminal screens by default with 3-decimal dual-metrics and strict slash alignment. Use `--full` (`-fl`) for expanded multi-column layout with separate metric columns |
 | `oops logs` | `[targets...] [--tail 50] [-f]` | Tail service logs |
 | `oops pull` | `[targets...] [--all]` | Pulls images for targets |
-| `oops update` | `[targets...] [--all] [-i <img/alias>] [-d 0s]` | Executes sequential rolling update with health check |
+| `oops update` | `[targets...] [--all] [-i <img/alias>] [-w 0s]` | Executes sequential rolling update with health check |
 | `oops db` | `<mysql\|postgres\|redis>[:<target>] <action>` | DB provisioning: `create`, `readonly`, `passwd`, `list`, `drop`, `repair` |
 | `oops backup` | `[-r 7d]` | Full backup (DB + volumes) and retention prune |
 | `oops backup-db` | `[targets...] [-r 7d]` | DB dump and retention prune |

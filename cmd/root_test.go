@@ -90,15 +90,17 @@ func TestSubcommandFlags(t *testing.T) {
 		flagName string
 		shorthand string
 	}{
-		{"up", "delay", "d"},
-		{"stop", "delay", "d"},
+		{"up", "wait", "w"},
+		{"up", "no-follow", "d"},
+		{"stop", "wait", "w"},
 		{"stop", "except", "x"},
-		{"restart", "delay", "d"},
-		{"down", "delay", "d"},
+		{"restart", "wait", "w"},
+		{"down", "wait", "w"},
 		{"down", "wipe-all", ""},
 		{"down", "yes", "y"},
-		{"update", "delay", "d"},
-		{"switch", "delay", "d"},
+		{"update", "wait", "w"},
+		{"switch", "wait", "w"},
+		{"access-log", "no-follow", "d"},
 		{"server", "port", "p"},
 		{"server", "config", "c"},
 		{"logs", "tail", "t"},

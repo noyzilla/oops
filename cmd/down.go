@@ -15,7 +15,7 @@ import (
 )
 
 func newDownCmd() *cobra.Command {
-	var delay string
+	var wait string
 	var wipeAll bool
 	var autoConfirm bool
 
@@ -55,7 +55,7 @@ func newDownCmd() *cobra.Command {
 				return nil
 			}
 
-			d, err := orchestrator.ParseDelay(delay)
+			d, err := orchestrator.ParseDelay(wait)
 			if err != nil {
 				return err
 			}
@@ -93,7 +93,7 @@ func newDownCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&delay, "delay", "d", "0s", "Inter-service delay duration between consecutive stops (e.g. 5s, 5)")
+	cmd.Flags().StringVarP(&wait, "wait", "w", "0s", "Inter-service wait duration between consecutive stops (e.g. 5s, 5)")
 	cmd.Flags().BoolVar(&wipeAll, "wipe-all", false, "Forcefully stop and remove all containers on the Docker daemon")
 	cmd.Flags().BoolVarP(&autoConfirm, "yes", "y", false, "Automatic yes to prompts (for non-interactive execution)")
 

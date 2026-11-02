@@ -75,7 +75,7 @@ Formats logs into an ergonomic, colorized single-line table with regex filtering
 
 	cmd.Flags().IntVarP(&tail, "tail", "t", 100, "Number of lines to show from the end of the logs")
 	cmd.Flags().BoolVarP(&follow, "follow", "f", true, "Follow log output continuously")
-	cmd.Flags().BoolVar(&noFollow, "no-follow", false, "Do not follow log output (dump historical lines and exit)")
+	cmd.Flags().BoolVarP(&noFollow, "no-follow", "d", false, "Do not follow log output (dump historical lines and exit)")
 	cmd.Flags().StringVar(&level, "level", "", "Filter by log level regex (e.g. error, error|warn)")
 	cmd.Flags().StringVar(&status, "status", "", "Filter by HTTP status code regex (e.g. ^5.., 404)")
 	cmd.Flags().StringVar(&method, "method", "", "Filter by HTTP method regex (e.g. POST|PUT, GET)")

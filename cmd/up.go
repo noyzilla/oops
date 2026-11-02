@@ -9,15 +9,15 @@ import (
 )
 
 func newUpCmd() *cobra.Command {
-	var delay string
-	var detach bool
+	var wait string
+	var noFollow bool
 
 	cmd := &cobra.Command{
 		Use:   "up [targets...]",
 		Short: "Starts stack or targeted services",
-		Long:  "Starts stack or specific services. Target can be a whole stack (e.g. /apps, /db), scoped service (e.g. /db/mysql), service name (e.g. mysql), or wildcard (e.g. app..). By default, tails service logs after starting. Use --detach to run in background.",
+		Long:  "Starts stack or specific services. Target can be a whole stack (e.g. /apps, /db), scoped service (e.g. /db/mysql), service name (e.g. mysql), or wildcard (e.g. app..). By default, tails service logs after starting. Use -d, --no-follow to run without following logs.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			d, err := orchestrator.ParseDelay(delay)
+			d, err := orchestrator.ParseDelay(wait)
 			if err != nil {
 				return err
 			}
@@ -42,7 +42,7 @@ func newUpCmd() *cobra.Command {
 				return err
 			}
 
-			if detach {
+			if noFollow {
 				return nil
 			}
 
@@ -50,8 +50,8 @@ func newUpCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&delay, "delay", "d", "0s", "Inter-service delay duration between consecutive starts (e.g. 5s, 5)")
-	cmd.Flags().BoolVar(&detach, "detach", false, "Run containers in the background without tailing logs")
+	cmd.Flags().StringVarP(&wait, "wait", "w", "0s", "Inter-service wait duration between consecutive starts (e.g. 5s, 5)")
+	cmd.Flags().BoolVarP(&noFollow, "no-follow", "d", false, "Do not follow service logs after starting")
 
 	return cmd
 }

@@ -9,6 +9,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ### Added
 - **Edge Proxy Access Log Streaming & Filtering (`oops access-log`)**: Added `oops access-log` command to stream, decode, and filter HTTP access logs from Caddy and Nginx proxy containers. Features single-line compact table layout, auto-follow (`-f` default), and 1:1 regex filtering across `--level`, `--status`, `--method`, `--host`, `--path`, `--scheme`, `--client`, alongside comparison-based `--latency` parsing (e.g. `>10ms`, `<5ms`) and `--all` flag for system logs (`cmd/access_log.go`, `cmd/access_log_test.go`, `internal/accesslog/`, `docs/specs/access-log.md`).
 
+### Changed
+- **Standardized `-d, --no-follow` on Streaming Commands**: Replaced `--detach` with `-d, --no-follow` on `oops up`, and bound shorthand `-d` to `--no-follow` on `oops access-log` (`cmd/up.go`, `cmd/up_test.go`, `cmd/access_log.go`, `cmd/access_log_test.go`, `docs/specs/cli.md`).
+- **Standardized `-w, --wait` and Removed `--delay, -d`**: Standardized inter-service pause duration across all lifecycle commands (`up`, `down`, `stop`, `restart`, `update`, `switch`) to `-w, --wait` (default `"0s"`), retiring `--delay` and `-d` (`cmd/up.go`, `cmd/down.go`, `cmd/stop.go`, `cmd/restart.go`, `cmd/update.go`, `cmd/switch.go`, `cmd/root_test.go`, `docs/specs/cli.md`).
+
 ## [v1.27.0] - 2026-10-31
 
 ### Added

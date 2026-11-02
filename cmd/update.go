@@ -9,7 +9,7 @@ import (
 )
 
 func newUpdateCmd() *cobra.Command {
-	var delay string
+	var wait string
 	var imageFlag string
 
 	cmd := &cobra.Command{
@@ -24,7 +24,7 @@ func newUpdateCmd() *cobra.Command {
 				return cmd.Help()
 			}
 
-			d, err := orchestrator.ParseDelay(delay)
+			d, err := orchestrator.ParseDelay(wait)
 			if err != nil {
 				return err
 			}
@@ -49,7 +49,7 @@ func newUpdateCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&delay, "delay", "d", "0s", "Inter-service delay duration between consecutive updates (e.g. 5s, 5)")
+	cmd.Flags().StringVarP(&wait, "wait", "w", "0s", "Inter-service wait duration between consecutive updates (e.g. 5s, 5)")
 	cmd.Flags().StringVarP(&imageFlag, "image", "i", "", "Target all services matching a specific container image or registry alias (e.g. gar/app:v1.0)")
 
 	return cmd
