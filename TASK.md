@@ -3,7 +3,7 @@
 This file tracks the active focus, immediate next actions, and backlog deliverables for the repository.
 
 ## Active Focus
-- Standardize `-d, --no-follow` and `-w, --wait` on `feat/flag-standards`.
+- Maintain living specifications, documentation, and stability following `v1.28.0` release.
 
 ## Immediate Next Actions
-- Complete pre-merge audit and merge to main.
+- Ready for next development milestone (`cmd/`, `internal/`, `oopsbox/`, `docs/specs/`).

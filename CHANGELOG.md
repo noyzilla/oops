@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.28.0] - 2026-11-02
+
 ### Added
 - **Edge Proxy Access Log Streaming & Filtering (`oops access-log`)**: Added `oops access-log` command to stream, decode, and filter HTTP access logs from Caddy and Nginx proxy containers. Features single-line compact table layout, auto-follow (`-f` default), and 1:1 regex filtering across `--level`, `--status`, `--method`, `--host`, `--path`, `--scheme`, `--client`, alongside comparison-based `--latency` parsing (e.g. `>10ms`, `<5ms`) and `--all` flag for system logs (`cmd/access_log.go`, `cmd/access_log_test.go`, `internal/accesslog/`, `docs/specs/access-log.md`).
 
