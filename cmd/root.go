@@ -240,6 +240,7 @@ func init() {
 	rootCmd.AddCommand(newPsCmd())
 	rootCmd.AddCommand(newStatsCmd())
 	rootCmd.AddCommand(newLogsCmd())
+	rootCmd.AddCommand(newAccessLogCmd())
 	rootCmd.AddCommand(newPullCmd())
 	rootCmd.AddCommand(newUpdateCmd())
 	rootCmd.AddCommand(newSwitchCmd())

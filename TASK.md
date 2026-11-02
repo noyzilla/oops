@@ -3,7 +3,7 @@
 This file tracks the active focus, immediate next actions, and backlog deliverables for the repository.
 
 ## Active Focus
-- Maintain living specifications, documentation, and stability following `v1.26.0` release.
+- Edge Proxy Access Log Streaming & Filtering (`oops access-log`) on `feat/access-log`.
 
 ## Immediate Next Actions
-- Ready for next development milestone (`cmd/`, `internal/`, `oopsbox/`, `docs/specs/`).
+- Verify test suite and pre-merge audit via `jarn-review`.
