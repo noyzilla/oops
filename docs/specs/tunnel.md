@@ -20,7 +20,7 @@ This specification defines the `oops tunnel` subsystem. It provides secure, seam
 ## Domain Context & Ubiquitous Language
 
 Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
-- **Client Tunnel Container**: Isolated local Docker container (`google/cloud-sdk:alpine`) managed by Oops on the local Docker network (`oops_edge`/`bridge`), executing the IAP SSH client and listening on service ports.
+- **Client Tunnel Container**: Isolated local Docker container (`gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine`) managed by Oops on the local Docker network (`oops_edge`/`bridge`), executing the IAP SSH client and listening on service ports.
 - **Dynamic Service-to-IP Resolution**: Technique of querying the container IP of a remote Docker Compose service (e.g., `mysql`, `redis`) directly on the remote server's Docker bridge network, bypassing remote host port mappings.
 - **Zero Remote Host Port Exposure**: Invariant stating remote servers map zero database ports (`3306`, `6379`) to host interfaces (`127.0.0.1` or `0.0.0.0`). Communication is routed solely through internal container bridge IPs.
 - **Zero Local Host Port Exposure**: Invariant stating local development workstations map zero tunnel ports to `localhost`. Port bindings exist exclusively within the Client Tunnel Container, accessed via Oops DNS (`tunnel-<remote>.oops:<port>`).
@@ -112,7 +112,7 @@ Terms strictly follow [CONTEXT.md](../../CONTEXT.md):
        ▼
 3. Ensure local network exists (oops_edge / bridge)
 4. Spawn Client Tunnel Container:
-       ├── Image: google/cloud-sdk:alpine
+       ├── Image: gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine
        ├── Container Name: oops-tunnel-b9tpe
        ├── Hostname & Label: tunnel-b9tpe.oops, b9tpe.oops
        ├── Volumes: ~/.config/gcloud:/root/.config/gcloud-host:ro, ~/.ssh:/root/.ssh-host:ro

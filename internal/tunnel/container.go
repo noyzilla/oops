@@ -15,7 +15,7 @@ import (
 
 const (
 	// TunnelImage defines the base container image
-	TunnelImage = "google/cloud-sdk:alpine"
+	TunnelImage = "gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine"
 
 	// LabelTunnelRemote identifies the remote name for the tunnel
 	LabelTunnelRemote = "oops.tunnel.remote"
