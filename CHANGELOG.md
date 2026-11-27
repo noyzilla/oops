@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [v1.28.1] - 2026-11-27
+
+### Fixed
+- **Native Multi-Arch Tunnel Image (`oops tunnel`)**: Switched `TunnelImage` from single-arch `google/cloud-sdk:alpine` (`amd64` only) to multi-arch `gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine` (`linux/arm64` and `linux/amd64`), eliminating Rosetta/QEMU emulation on Apple Silicon (`internal/tunnel/container.go`, `docs/specs/tunnel.md`).
+
 ## [v1.28.0] - 2026-11-02
 
 ### Added
